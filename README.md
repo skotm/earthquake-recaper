@@ -1,1 +1,1 @@
-# plate-analyzer-pro
+# earthquake recaper
