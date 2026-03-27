@@ -37,7 +37,7 @@
            サイドバー ＆ タブUI
            ------------------------------------- */
         #sidebar {
-            width: 320px; min-width: 320px;
+            width: 280px; min-width: 280px;
             background: var(--surface-color);
             backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border-right: 1px solid var(--border-color);
@@ -94,6 +94,16 @@
         .legend i { width: 14px; height: 14px; float: left; margin-top: 4px; margin-right: 10px; border-radius: 50%; }
 
         /* -------------------------------------
+           パネル共通 閉じるボタン
+           ------------------------------------- */
+        .dp-close, .tp-close {
+            position: absolute; top: 12px; right: 16px; width: 24px; height: 24px;
+            background: rgba(255,255,255,0.1); border-radius: 50%; text-align: center;
+            line-height: 24px; font-size: 12px; cursor: pointer; color: #fff; z-index: 10;
+        }
+        .dp-close:hover, .tp-close:hover { background: rgba(255,255,255,0.2); }
+
+        /* -------------------------------------
            メイン詳細パネル (地震用)
            ------------------------------------- */
         #detail-panel {
@@ -107,13 +117,6 @@
             pointer-events: none; display: flex; flex-direction: column;
         }
         #detail-panel.show { bottom: 50px; pointer-events: auto; }
-        
-        .dp-close {
-            position: absolute; top: 12px; right: 16px; width: 24px; height: 24px;
-            background: rgba(255,255,255,0.1); border-radius: 50%; text-align: center;
-            line-height: 24px; font-size: 12px; cursor: pointer; color: #fff; z-index: 10;
-        }
-        .dp-close:hover { background: rgba(255,255,255,0.2); }
 
         .dp-main { display: flex; align-items: center; gap: 15px; flex-shrink: 0; }
         .dp-scale-box {
@@ -194,6 +197,7 @@
         .tp-header {
             font-size: 15px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1);
             padding-bottom: 10px; margin-bottom: 10px; color: #fff;
+            padding-right: 24px; 
         }
         .tp-list {
             overflow-y: auto; max-height: 250px; padding-right: 4px;
@@ -259,6 +263,7 @@
     </div>
 
     <div id="tsunami-panel">
+        <div class="tp-close" onclick="closeTsunamiPanel()">✕</div>
         <div class="tp-header" id="tp-main-header">津波到達予想</div>
         <div class="tp-list"></div>
     </div>
@@ -293,7 +298,6 @@
         }
     });
 
-    // JMA Tsunami専用のアーカイブエンドポイントから本物の過去データを取得
     Promise.all([
         fetch('./japan.geo.json').then(res => res.json()).catch(() => null),
         fetch('./stations_with_amp_revised.json').then(res => res.json()).catch(() => []),
@@ -309,8 +313,6 @@
         
         stationsData = stations || [];
         tsunamiGeoData = tGeo; 
-        
-        // JMA津波アーカイブからの本物データ
         tsunamiDataList = tsunamiHistory || [];
 
         fetchEarthquakeHistory();
@@ -335,7 +337,6 @@
         return scaleMap[scale] || "?";
     }
 
-    // ★修正: タブ切り替え時に地震マーカーの表示・非表示を連動
     window.switchTab = function(tabName) {
         const tabs = document.querySelectorAll('.tab-btn');
         tabs[0].classList.toggle('active', tabName === 'history');
@@ -349,18 +350,17 @@
                 renderTsunamiList();
                 isTsunamiListRendered = true;
             }
-            // 津波タブを見ている時は、地震の円を非表示にする
             if (map.hasLayer(allEarthquakesLayer)) {
                 map.removeLayer(allEarthquakesLayer);
             }
         } else {
-            // 地震履歴タブに戻ったら、地震の円を再表示する
             if (!map.hasLayer(allEarthquakesLayer)) {
                 map.addLayer(allEarthquakesLayer);
             }
         }
 
         closeDetailPanel();
+        closeTsunamiPanel(); 
     };
 
     window.toggleExtendedArea = function() {
@@ -372,8 +372,7 @@
         } else {
             area.classList.add('collapsed');
             btn.innerHTML = '詳細情報を表示 ▼';
-            document.getElementById('tsunami-panel').classList.remove('show');
-            tsunamiLineLayer.clearLayers(); 
+            closeTsunamiPanel(); 
         }
     };
 
@@ -383,7 +382,12 @@
         
         const panel = document.getElementById('tsunami-panel');
         document.getElementById('tp-main-header').innerText = "津波到達予想";
-        panel.classList.toggle('show');
+        
+        if (panel.classList.contains('show')) {
+            closeTsunamiPanel();
+        } else {
+            panel.classList.add('show');
+        }
     };
 
     function fetchEarthquakeHistory() {
@@ -422,7 +426,13 @@
                         <div class="list-item-details">${timeStr} | M${hypo.magnitude >= 0 ? hypo.magnitude : '-'}</div>
                     `;
 
+                    // ★修正: 選択済みの項目をクリックしたら閉じる（トグル機能）
                     const activateEarthquake = () => {
+                        if (listItem.classList.contains('active')) {
+                            closeDetailPanel();
+                            return;
+                        }
+                        
                         document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
                         listItem.classList.add('active');
                         listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -528,7 +538,13 @@
                 <div class="t-list-item-details">${timeStr} 発表</div>
             `;
 
+            // ★修正: 選択済みの項目をクリックしたら閉じる（トグル機能）
             item.addEventListener('click', () => {
+                if (item.classList.contains('active')) {
+                    closeTsunamiPanel();
+                    return;
+                }
+
                 document.querySelectorAll('.t-list-item').forEach(el => el.classList.remove('active'));
                 item.classList.add('active');
                 
@@ -628,7 +644,7 @@
         detailLayer.clearLayers();
         tsunamiLineLayer.clearLayers(); 
         map.addLayer(detailLayer);
-        document.getElementById('tsunami-panel').classList.remove('show'); 
+        closeTsunamiPanel(); 
 
         const hypo = eq.earthquake.hypocenter;
         
@@ -760,17 +776,13 @@
         document.getElementById('dp-extended-area').scrollTop = 0;
     }
 
-    // ★修正: パネルを閉じた時に、選択しているタブに応じてマーカーを復元する
     window.closeDetailPanel = function() {
         document.getElementById('detail-panel').classList.remove('show');
-        document.getElementById('tsunami-panel').classList.remove('show');
         document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.t-list-item').forEach(el => el.classList.remove('active')); 
         
         map.removeLayer(detailLayer);
-        tsunamiLineLayer.clearLayers(); 
+        closeTsunamiPanel(); 
         
-        // 現在「地震履歴」タブが開かれているかチェック
         const isHistoryTab = document.querySelectorAll('.tab-btn')[0].classList.contains('active');
         if (isHistoryTab) {
             map.addLayer(allEarthquakesLayer);
@@ -779,6 +791,12 @@
         }
         
         map.setView([38.0, 137.0], 5, { animate: true });
+    };
+
+    window.closeTsunamiPanel = function() {
+        document.getElementById('tsunami-panel').classList.remove('show');
+        document.querySelectorAll('.t-list-item').forEach(el => el.classList.remove('active'));
+        tsunamiLineLayer.clearLayers(); 
     };
 
     const legend = L.control({position: 'bottomright'});
