@@ -37,7 +37,7 @@
            サイドバー ＆ タブUI
            ------------------------------------- */
         #sidebar {
-            width: 240px; min-width: 240px; /* ★280pxから240pxに縮小 */
+            width: 240px; min-width: 240px;
             background: var(--surface-color);
             backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border-right: 1px solid var(--border-color);
@@ -51,7 +51,7 @@
         }
         .tab-btn {
             flex: 1; text-align: center; padding: 8px 0;
-            font-size: 13px; font-weight: 600; color: var(--text-secondary); /* ★フォント少し縮小 */
+            font-size: 13px; font-weight: 600; color: var(--text-secondary);
             background: rgba(255, 255, 255, 0.05); border-radius: 8px;
             cursor: pointer; transition: all 0.2s;
         }
@@ -67,7 +67,7 @@
         #list-container::-webkit-scrollbar, #tsunami-list-container::-webkit-scrollbar { width: 0px; }
 
         .list-item, .t-list-item {
-            padding: 10px; margin-bottom: 4px; /* ★padding縮小 */
+            padding: 10px; margin-bottom: 4px;
             border-radius: 8px; cursor: pointer;
             border-left: 4px solid transparent; 
             background: rgba(255,255,255,0.02);
@@ -76,8 +76,8 @@
         .list-item:hover, .t-list-item:hover { background-color: rgba(255, 255, 255, 0.08); }
         .list-item.active, .t-list-item.active { background-color: rgba(255, 255, 255, 0.15); }
         
-        .list-item-title, .t-list-item-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; display: flex; justify-content: space-between;} /* ★フォント縮小 */
-        .list-item-details, .t-list-item-details { font-size: 11px; color: var(--text-secondary); } /* ★フォント縮小 */
+        .list-item-title, .t-list-item-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; display: flex; justify-content: space-between;}
+        .list-item-details, .t-list-item-details { font-size: 11px; color: var(--text-secondary); }
 
         /* -------------------------------------
            メインマップ＆凡例
@@ -88,7 +88,7 @@
         .legend {
             background: var(--surface-color); backdrop-filter: blur(20px);
             padding: 10px 14px; border-radius: 12px; border: 0.5px solid var(--border-color);
-            line-height: 1.6; color: var(--text-primary); font-size: 12px; /* ★サイズ縮小 */
+            line-height: 1.6; color: var(--text-primary); font-size: 12px;
         }
         .legend strong { display: block; margin-bottom: 6px; font-size: 13px; }
         .legend i { width: 12px; height: 12px; float: left; margin-top: 4px; margin-right: 8px; border-radius: 50%; }
@@ -97,9 +97,9 @@
            パネル共通 閉じるボタン
            ------------------------------------- */
         .dp-close, .tp-close {
-            position: absolute; top: 12px; right: 16px; width: 24px; height: 24px;
+            position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; /* ★さらに小型化 */
             background: rgba(255,255,255,0.1); border-radius: 50%; text-align: center;
-            line-height: 24px; font-size: 12px; cursor: pointer; color: #fff; z-index: 10;
+            line-height: 20px; font-size: 10px; cursor: pointer; color: #fff; z-index: 10;
         }
         .dp-close:hover, .tp-close:hover { background: rgba(255,255,255,0.2); }
 
@@ -107,36 +107,37 @@
            メイン詳細パネル (地震用)
            ------------------------------------- */
         #detail-panel {
-            position: absolute; bottom: -600px; left: 10px; /* ★left調整 */
-            width: 300px; /* ★340pxから300pxに縮小 */
+            position: absolute; bottom: -600px; left: 10px;
+            width: 230px; /* ★260pxから230pxへ極限まで縮小 */
             max-width: calc(100vw - 20px);
             background: rgba(28, 28, 30, 0.45);
             backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
             border: 0.5px solid var(--border-color); border-radius: 16px;
-            padding: 16px 12px 10px 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            padding: 12px 10px 8px 10px; /* ★padding微調整 */
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
             z-index: 1000; transition: bottom 0.5s cubic-bezier(0.16, 1, 0.3, 1);
             pointer-events: none; display: flex; flex-direction: column;
         }
         #detail-panel.show { bottom: 20px; pointer-events: auto; }
 
-        .dp-main { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+        .dp-main { display: flex; align-items: center; gap: 8px; flex-shrink: 0; } /* ★gapを8pxに縮小 */
         .dp-scale-box {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            border-radius: 12px; padding: 10px; min-width: 66px;
+            border-radius: 10px; padding: 6px; min-width: 50px; /* ★サイズダウン */
             background: rgba(0,0,0,0.3); border: 2px solid transparent;
         }
-        .dp-scale-label { font-size: 10px; color: var(--text-secondary); margin-bottom: 2px; }
-        .dp-scale-value { font-size: 32px; font-weight: 700; line-height: 1; }
+        .dp-scale-label { font-size: 8px; color: var(--text-secondary); margin-bottom: 2px; } /* ★フォント縮小 */
+        .dp-scale-value { font-size: 24px; font-weight: 700; line-height: 1; } /* ★フォント縮小 */
         
-        .dp-info { flex-grow: 1; display: flex; flex-direction: column; }
-        .dp-name { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
-        .dp-time { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
-        .dp-meta { font-size: 13px; }
-        .dp-meta strong { font-size: 16px; color: #fff; }
+        .dp-info { flex-grow: 1; display: flex; flex-direction: column; padding-right: 12px; } /* 閉じるボタンと被らないようpadding */
+        .dp-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* ★フォント縮小、はみ出し防止 */
+        .dp-time { font-size: 10px; color: var(--text-secondary); margin-bottom: 4px; } /* ★フォント縮小 */
+        .dp-meta { font-size: 11px; } /* ★フォント縮小 */
+        .dp-meta strong { font-size: 13px; color: #fff; }
 
         .dp-toggle-btn {
-            margin-top: 12px; padding: 8px 0 4px 0; text-align: center;
-            font-size: 12px; font-weight: 600; color: var(--text-secondary); cursor: pointer;
+            margin-top: 10px; padding: 8px 0 4px 0; text-align: center;
+            font-size: 11px; font-weight: 600; color: var(--text-secondary); cursor: pointer;
             border-top: 1px solid rgba(255,255,255,0.1); transition: color 0.2s;
         }
         .dp-toggle-btn:hover { color: #fff; }
@@ -144,7 +145,7 @@
         .dp-extended-area {
             overflow-y: auto; padding-right: 4px;
             transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.4s ease;
-            max-height: 300px; opacity: 1; margin-top: 10px; display: flex; flex-direction: column; gap: 10px;
+            max-height: 300px; opacity: 1; margin-top: 8px; display: flex; flex-direction: column; gap: 8px;
         }
         .dp-extended-area.collapsed {
             max-height: 0; opacity: 0; margin-top: 0; overflow: hidden; padding-top: 0; padding-bottom: 0;
@@ -153,16 +154,16 @@
         .dp-extended-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
 
         .dp-comments-box {
-            background: rgba(0, 0, 0, 0.5); border-radius: 8px; padding: 10px 12px;
-            font-size: 12px; line-height: 1.5; color: #e5e5ea;
+            background: rgba(0, 0, 0, 0.5); border-radius: 8px; padding: 8px 10px;
+            font-size: 10.5px; line-height: 1.4; color: #e5e5ea; /* ★フォント縮小 */
             border-left: 4px solid var(--tsunami-none);
             position: relative; transition: background-color 0.2s;
         }
         .dp-comments-box.clickable { cursor: pointer; }
         .dp-comments-box.clickable:hover { background: rgba(255, 255, 255, 0.1); }
         .dp-comments-hint {
-            display: none; position: absolute; right: 12px; bottom: 8px;
-            font-size: 10px; font-weight: bold; color: var(--text-secondary);
+            display: none; position: absolute; right: 10px; bottom: 6px;
+            font-size: 9px; font-weight: bold; color: var(--text-secondary);
         }
         .dp-comments-box.clickable .dp-comments-hint { display: block; }
 
@@ -172,22 +173,22 @@
             padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,0.04);
         }
         .dp-station-item:last-child { border-bottom: none; }
-        .dp-station-name { font-size: 13px; color: #e5e5ea; }
+        .dp-station-name { font-size: 11px; color: #e5e5ea; } /* ★フォント縮小 */
         .dp-station-scale {
-            font-size: 12px; font-weight: 700; color: #fff; padding: 2px 8px; border-radius: 6px;
+            font-size: 11px; font-weight: 700; color: #fff; padding: 2px 6px; border-radius: 4px;
         }
 
         /* -------------------------------------
            津波詳細サブパネル (右上に配置)
            ------------------------------------- */
         #tsunami-panel {
-            position: absolute; top: 60px; right: 10px; /* ★top, right調整 */
-            width: 280px; /* ★320pxから280pxに縮小 */
+            position: absolute; top: 60px; right: 10px;
+            width: 240px; /* ★280pxから240pxへ縮小 */
             max-width: calc(100vw - 20px);
-            max-height: 40vh; /* ★画面高の40%に制限して地図領域を確保 */
+            max-height: 40vh; 
             background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
             border: 0.5px solid var(--border-color); border-radius: 16px;
-            padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            padding: 14px 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
             z-index: 1000; 
             opacity: 0; transform: translateX(20px); pointer-events: none;
             transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -198,9 +199,9 @@
         }
         
         .tp-header {
-            font-size: 14px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 13px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); /* ★フォント縮小 */
             padding-bottom: 8px; margin-bottom: 8px; color: #fff;
-            padding-right: 24px; flex-shrink: 0;
+            padding-right: 20px; flex-shrink: 0;
         }
         .tp-list {
             overflow-y: auto; padding-right: 4px;
@@ -211,13 +212,13 @@
         
         .tp-item {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 6px 0; /* ★8pxから6pxに詰める */
+            padding: 6px 0;
             border-bottom: 1px solid rgba(255,255,255,0.04);
         }
         .tp-item:last-child { border-bottom: none; }
-        .tp-area { font-size: 13px; font-weight: 600; color: #e5e5ea; } /* ★フォント縮小 */
-        .tp-details { font-size: 11px; color: var(--text-secondary); text-align: right;} /* ★フォント縮小 */
-        .tp-height { font-size: 13px; font-weight: bold; margin-left: 6px;}
+        .tp-area { font-size: 12px; font-weight: 600; color: #e5e5ea; } /* ★フォント縮小 */
+        .tp-details { font-size: 10px; color: var(--text-secondary); text-align: right;} /* ★フォント縮小 */
+        .tp-height { font-size: 12px; font-weight: bold; margin-left: 6px;} /* ★フォント縮小 */
 
         /* マーカー等の既存スタイル */
         .epicenter-cross { color: #ff3b30; font-size: 24px; font-weight: bold; line-height: 24px; text-align: center; text-shadow: 0 0 5px #000; position: absolute; top: -12px; left: -12px; width: 24px; height: 24px; }
@@ -250,7 +251,7 @@
                 <span class="dp-scale-value" id="dp-scale">-</span>
             </div>
             <div class="dp-info">
-                <div class="dp-name" id="dp-name">----</div>
+                <div class="dp-name" id="dp-name" title="----">----</div>
                 <div class="dp-time" id="dp-time">--/-- --:-- 発生</div>
                 <div class="dp-meta">
                     M <strong id="dp-mag">-.-</strong> / 深さ <strong id="dp-depth">--</strong>km
@@ -831,7 +832,11 @@
         document.getElementById('dp-scale').innerText = getIntensityString(eq.earthquake.maxScale);
         document.getElementById('dp-scale').style.color = mainColor;
         document.getElementById('dp-box').style.borderColor = mainColor;
-        document.getElementById('dp-name').innerText = hypo.name || "震源地不明";
+        
+        // 震源地名が長い場合の対策
+        const dpNameEl = document.getElementById('dp-name');
+        dpNameEl.innerText = hypo.name || "震源地不明";
+        dpNameEl.title = hypo.name || "震源地不明"; // マウスオーバーで全文表示
         
         document.getElementById('dp-time').innerText = safeFormatDateString(eq.earthquake.time) + " 発生";
         document.getElementById('dp-mag').innerText = hypo.magnitude >= 0 ? hypo.magnitude.toFixed(1) : '-.-';
