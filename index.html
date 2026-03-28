@@ -302,20 +302,15 @@
         }
     });
 
-    // API取得（アーカイブである /v2/jma/tsunami を使用して、確実に過去データを引っ張る）
+    // ★修正: 正式な津波アーカイブAPI（/v2/jma/tsunami）を使用して、過去300件を一気に取得！
     Promise.all([
         fetch('./japan.geo.json').then(res => res.json()).catch(() => null),
         fetch('./stations_with_amp_revised.json').then(res => res.json()).catch(() => []),
         fetch('./津波予報区.json').then(res => res.json()).catch(() => null),
-        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100').then(res => {
-            if (!res.ok) throw new Error("APIレスポンスエラー");
-            return res.json();
-        }).catch(err => {
-            console.error("津波データの取得に失敗:", err);
-            isTsunamiFetchError = true; 
-            return [];
-        }) 
-    ]).then(([geoData, stations, tGeo, tsunamiHistory]) => {
+        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=0').then(res => res.ok ? res.json() : []).catch(() => []),
+        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=100').then(res => res.ok ? res.json() : []).catch(() => []),
+        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=200').then(res => res.ok ? res.json() : []).catch(() => [])
+    ]).then(([geoData, stations, tGeo, tData1, tData2, tData3]) => {
         if (geoData) {
             L.geoJSON(geoData, {
                 pane: 'baseMapPane',
@@ -325,7 +320,15 @@
         
         stationsData = stations || [];
         tsunamiGeoData = tGeo; 
-        tsunamiDataList = tsunamiHistory || [];
+        
+        // 3回分の取得結果を合体させて、300件の履歴を作る
+        const combinedTsunamiData = [...(tData1||[]), ...(tData2||[]), ...(tData3||[])];
+        
+        if (combinedTsunamiData.length === 0 && (!tData1 || tData1.length === 0)) {
+            isTsunamiFetchError = true;
+        }
+
+        tsunamiDataList = combinedTsunamiData;
 
         fetchEarthquakeHistory();
     }).catch(err => console.error("データ読み込みエラー:", err));
