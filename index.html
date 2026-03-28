@@ -180,12 +180,14 @@
            津波詳細サブパネル (右上に配置)
            ------------------------------------- */
         #tsunami-panel {
-            position: absolute; top: 80px; right: 20px; 
-            width: 320px; 
+            position: absolute; top: 70px; right: 20px; 
+            width: 320px;
+            max-width: calc(100vw - 40px); /* 画面幅が狭いスマホ用 */
+            max-height: calc(100vh - 220px); /* ★修正：下の凡例と被らないように最大高さを動的制御 */
             background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
             border: 0.5px solid var(--border-color); border-radius: 20px;
             padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-            z-index: 990; 
+            z-index: 1000; 
             opacity: 0; transform: translateX(20px); pointer-events: none;
             transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             display: flex; flex-direction: column;
@@ -197,10 +199,11 @@
         .tp-header {
             font-size: 15px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1);
             padding-bottom: 10px; margin-bottom: 10px; color: #fff;
-            padding-right: 24px; 
+            padding-right: 24px; flex-shrink: 0;
         }
         .tp-list {
-            overflow-y: auto; max-height: 250px; padding-right: 4px;
+            overflow-y: auto; padding-right: 4px;
+            flex-grow: 1; /* ★修正：固定の高さをやめて空きスペース全体を使う */
         }
         .tp-list::-webkit-scrollbar { width: 4px; }
         .tp-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
@@ -298,12 +301,12 @@
         }
     });
 
-    // JMA Tsunami専用のアーカイブエンドポイントから本物の過去データを取得
+    // ★修正：津波情報の安定取得のためエンドポイントを `/v2/history?codes=552` に変更
     Promise.all([
         fetch('./japan.geo.json').then(res => res.json()).catch(() => null),
         fetch('./stations_with_amp_revised.json').then(res => res.json()).catch(() => []),
         fetch('./津波予報区.json').then(res => res.json()).catch(() => null),
-        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100').then(res => res.json()).catch(() => []) 
+        fetch('https://api.p2pquake.net/v2/history?codes=552&limit=100').then(res => res.json()).catch(() => []) 
     ]).then(([geoData, stations, tGeo, tsunamiHistory]) => {
         if (geoData) {
             L.geoJSON(geoData, {
@@ -318,6 +321,23 @@
 
         fetchEarthquakeHistory();
     }).catch(err => console.error("データ読み込みエラー:", err));
+
+    // --- 日時パースの補助関数（SafariのNaN対策用） ---
+    function safeFormatDateString(rawTimeStr) {
+        if (!rawTimeStr) return "--/-- --:--";
+        // ハイフンをスラッシュに置換、Tを空白に置換しブラウザのパース失敗を防ぐ
+        const safeStr = rawTimeStr.replace(/-/g, '/').replace(/T/, ' ').replace(/\+.*/, '').replace(/Z/, '');
+        const d = new Date(safeStr);
+        if (isNaN(d.getTime())) return rawTimeStr; // パース失敗時は生の文字列を返す
+        
+        return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function getSafeDateObj(rawTimeStr) {
+        if (!rawTimeStr) return new Date(NaN);
+        const safeStr = rawTimeStr.replace(/-/g, '/').replace(/T/, ' ').replace(/\+.*/, '').replace(/Z/, '');
+        return new Date(safeStr);
+    }
 
     function getIntensityColor(scale) {
         switch (scale) {
@@ -338,7 +358,6 @@
         return scaleMap[scale] || "?";
     }
 
-    // ★追加: 凡例の中身を動的に書き換える関数
     let legendDiv = null;
     function updateLegend(type) {
         if (!legendDiv) return;
@@ -378,13 +397,11 @@
             if (map.hasLayer(allEarthquakesLayer)) {
                 map.removeLayer(allEarthquakesLayer);
             }
-            // ★凡例を津波モードに変更
             updateLegend('tsunami');
         } else {
             if (!map.hasLayer(allEarthquakesLayer)) {
                 map.addLayer(allEarthquakesLayer);
             }
-            // ★凡例を地震モードに変更
             updateLegend('earthquake');
         }
 
@@ -435,8 +452,7 @@
                     if (maxScale === undefined || maxScale === null || maxScale < 10) return;
 
                     const color = getIntensityColor(maxScale);
-                    const d = new Date(eq.earthquake.time);
-                    const timeStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                    const timeStr = safeFormatDateString(eq.earthquake.time);
                     const radius = Math.max((hypo.magnitude || 4) * 2.5, 5);
 
                     const eqCircle = L.circleMarker([hypo.latitude, hypo.longitude], {
@@ -553,8 +569,9 @@
                 else { color = "var(--tsunami-none)"; title = "津波情報 (調査中等)"; }
             }
 
-            const d = new Date(tInfo.time);
-            const timeStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            // ★修正: 安全な日時パース処理を通す
+            const rawTime = tInfo.time || (tInfo.issue && tInfo.issue.time) || tInfo.created_at;
+            const timeStr = safeFormatDateString(rawTime);
 
             const item = document.createElement('div');
             item.className = 't-list-item';
@@ -594,15 +611,20 @@
     }
 
     function getMatchingTsunamiInfo(eqTimeStr) {
-        const eqTime = new Date(eqTimeStr).getTime();
+        const eqTime = getSafeDateObj(eqTimeStr).getTime();
         let matched = null;
         let minDiff = Infinity;
 
         tsunamiDataList.forEach(tInfo => {
             if (tInfo.cancelled) return; 
-            const tTime = new Date(tInfo.time).getTime();
-            const diff = Math.abs(tTime - eqTime); 
+            
+            // ★修正: 安全な日時パース処理を通す
+            const rawTime = tInfo.time || (tInfo.issue && tInfo.issue.time) || tInfo.created_at;
+            const tTime = getSafeDateObj(rawTime).getTime();
+            
+            if (isNaN(tTime) || isNaN(eqTime)) return;
 
+            const diff = Math.abs(tTime - eqTime); 
             if (diff <= 7200000) { 
                 if (diff < minDiff) {
                     minDiff = diff;
@@ -651,8 +673,13 @@
                 if (area.firstHeight.condition) {
                     timeText = area.firstHeight.condition;
                 } else if (area.firstHeight.time) {
-                    const d = new Date(area.firstHeight.time);
-                    timeText = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                    // ★修正: 安全な日時パース
+                    const d = getSafeDateObj(area.firstHeight.time);
+                    if (!isNaN(d.getTime())) {
+                        timeText = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                    } else {
+                        timeText = area.firstHeight.time;
+                    }
                 }
             }
 
@@ -792,8 +819,7 @@
         document.getElementById('dp-box').style.borderColor = mainColor;
         document.getElementById('dp-name').innerText = hypo.name || "震源地不明";
         
-        const d = new Date(eq.earthquake.time);
-        document.getElementById('dp-time').innerText = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} 発生`;
+        document.getElementById('dp-time').innerText = safeFormatDateString(eq.earthquake.time) + " 発生";
         document.getElementById('dp-mag').innerText = hypo.magnitude >= 0 ? hypo.magnitude.toFixed(1) : '-.-';
         document.getElementById('dp-depth').innerText = hypo.depth >= 0 ? hypo.depth : '--';
 
@@ -826,11 +852,10 @@
         tsunamiLineLayer.clearLayers(); 
     };
 
-    // ★修正: 凡例の初期描画部分を、updateLegend関数を使う形に変更
     const legend = L.control({position: 'bottomright'});
     legend.onAdd = function () {
         legendDiv = L.DomUtil.create('div', 'legend');
-        updateLegend('earthquake'); // 初期状態は地震の凡例
+        updateLegend('earthquake');
         return legendDiv;
     };
     legend.addTo(map);
