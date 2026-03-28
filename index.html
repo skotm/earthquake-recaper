@@ -83,13 +83,23 @@
             padding: 20px; text-align: center; color: var(--text-secondary); font-size: 13px; line-height: 1.6;
         }
         .live-indicator {
-            display: inline-block; width: 8px; height: 8px; background-color: #FF453A; border-radius: 50%;
-            margin-right: 6px; box-shadow: 0 0 8px #FF453A; animation: pulse 1.5s infinite;
+            display: inline-block; width: 8px; height: 8px; background-color: #30D158; border-radius: 50%;
+            margin-right: 6px; box-shadow: 0 0 8px #30D158; animation: pulse 1.5s infinite;
+        }
+        .live-indicator.error {
+            background-color: #FF453A; box-shadow: 0 0 8px #FF453A;
         }
         @keyframes pulse {
             0% { transform: scale(0.95); opacity: 0.5; }
             50% { transform: scale(1.2); opacity: 1; }
             100% { transform: scale(0.95); opacity: 0.5; }
+        }
+
+        #kmoni-debug-canvas {
+            display: none; /* デバッグ時はブロックにして表示できます */
+            position: absolute; bottom: 10px; left: 10px; z-index: 9999;
+            border: 1px solid #fff; background: #000;
+            width: 176px; height: 200px; /* 元画像は352x400 */
         }
 
         /* -------------------------------------
@@ -275,14 +285,17 @@
     <div id="tsunami-list-container" style="display: none;"></div>
     <div id="kyoshin-list-container" style="display: none;">
         <div class="kyoshin-status-box">
-            <span class="live-indicator"></span><strong>リアルタイム監視中</strong><br><br>
-            全国の観測点の揺れをCanvasで毎秒プロットしています。<br>（※現在は方針Aのランダムテストデータで稼働中）
+            <span id="kmoni-indicator" class="live-indicator"></span><strong id="kmoni-status-text">リアルタイム監視中</strong><br><br>
+            <span id="kmoni-time" style="font-family: monospace; font-size: 14px; color: #fff;">----/--/-- --:--:--</span><br><br>
+            画像解析方式でデータを取得・プロットしています。<br>
+            <span style="font-size: 10px; color: #888;">※CORSプロキシを経由しています</span>
         </div>
     </div>
 </div>
 
 <div id="map-container">
     <div id="map"></div>
+    <canvas id="kmoni-debug-canvas" width="352" height="400"></canvas>
     
     <div id="detail-panel">
         <div class="dp-close" onclick="closeDetailPanel()">✕</div>
@@ -324,15 +337,8 @@
         options: { position: 'topright' },
         onAdd: function (map) {
             const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-settings-btn');
-            container.innerHTML = `
-                <a href="#" title="設定" role="button">
-                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
-                </a>
-            `;
-            container.onclick = function(e){ e.preventDefault(); alert("設定パネルは今後のアップデートで実装予定です！"); }
+            container.innerHTML = `<a href="#" title="設定" role="button"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></a>`;
+            container.onclick = function(e){ e.preventDefault(); alert("設定は今後のアップデートで実装予定です！"); }
             return container;
         }
     });
@@ -347,17 +353,53 @@
     const tsunamiLineLayer = L.layerGroup().addTo(map); 
 
     // ==========================================
-    // 【強震モニタ】 カスタムCanvasレイヤー定義
+    // 【強震モニタ】 解析用ロジック ＆ レイヤー
     // ==========================================
+    function rgbToShindo(r, g, b) {
+        if (r === 0 && g === 0 && b === 0) return -999;
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        if (max === min) return -999;
+        
+        let h = 0;
+        if (max === r) h = 60 * ((g - b) / (max - min)) + (g < b ? 360 : 0);
+        else if (max === g) h = 60 * ((b - r) / (max - min)) + 120;
+        else if (max === b) h = 60 * ((r - g) / (max - min)) + 240;
+        
+        let shindo = -3;
+        if (h > 240) shindo = -3;
+        else if (h > 180) shindo = -3 + (240 - h) / 60 * 1.5;
+        else if (h > 120) shindo = -1.5 + (180 - h) / 60 * 1.5;
+        else if (h > 60) shindo = 0 + (120 - h) / 60 * 2.0;
+        else if (h > 30) shindo = 2.0 + (60 - h) / 30 * 2.0;
+        else shindo = 4.0 + (30 - h) / 30 * 3.0;
+        
+        return shindo;
+    }
+
+    function latLngToKmoniPixel(lat, lng) {
+        const minLat = 30.0, maxLat = 46.0;
+        const minLng = 128.0, maxLng = 146.0;
+        const width = 352, height = 400;
+        
+        let x = ((lng - minLng) / (maxLng - minLng)) * width;
+        let y = height - (((lat - minLat) / (maxLat - minLat)) * height);
+        
+        return { x: Math.round(x), y: Math.round(y) };
+    }
+
     L.KyoshinMonitorLayer = L.Layer.extend({
         initialize: function (stations, options) {
             L.setOptions(this, options);
-            this._stations = stations; 
+            this._stations = stations.map(st => {
+                const px = latLngToKmoniPixel(parseFloat(st.lat), parseFloat(st.lon));
+                return { ...st, kx: px.x, ky: px.y, currentShindo: -999 };
+            });
         },
         onAdd: function (map) {
             this._map = map;
             this._canvas = L.DomUtil.create('canvas', 'leaflet-kyoshin-layer leaflet-zoom-animated');
-            this._canvas.style.zIndex = 255; // 地図のすぐ上
+            this._canvas.style.zIndex = 255; 
             map.getPane(this.options.pane || 'overlayPane').appendChild(this._canvas);
             this._ctx = this._canvas.getContext('2d');
             map.on('moveend zoomend resize', this._updatePosition, this);
@@ -375,14 +417,26 @@
             this._canvas.height = size.y;
             for (let i = 0; i < this._stations.length; i++) {
                 const st = this._stations[i];
-                const p = this._map.latLngToContainerPoint([st.lat, st.lng]);
-                st.x = p.x; st.y = p.y;
+                const p = this._map.latLngToContainerPoint([parseFloat(st.lat), parseFloat(st.lon)]);
+                st.cx = p.x; st.cy = p.y;
             }
             this.redraw();
         },
-        updateValues: function(newValues) {
+        updateFromImageData: function(imgData) {
+            if (!imgData) return;
+            const data = imgData.data;
+            const width = imgData.width;
+            
             for(let i = 0; i < this._stations.length; i++){
-                this._stations[i].value = newValues[i];
+                const st = this._stations[i];
+                if(st.kx < 0 || st.kx >= width || st.ky < 0 || st.ky >= imgData.height) continue;
+                
+                const idx = (st.ky * width + st.kx) * 4;
+                const r = data[idx];
+                const g = data[idx+1];
+                const b = data[idx+2];
+                
+                st.currentShindo = rgbToShindo(r, g, b);
             }
             this.redraw();
         },
@@ -392,11 +446,12 @@
             ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
             for (let i = 0; i < this._stations.length; i++) {
                 const st = this._stations[i];
-                if (st.x < 0 || st.y < 0 || st.x > this._canvas.width || st.y > this._canvas.height) continue;
+                if (st.currentShindo <= -3) continue;
+                if (st.cx < 0 || st.cy < 0 || st.cx > this._canvas.width || st.cy > this._canvas.height) continue;
                 
                 ctx.beginPath();
-                ctx.arc(st.x, st.y, this._getRadius(st.value), 0, Math.PI * 2);
-                ctx.fillStyle = this._getColor(st.value);
+                ctx.arc(st.cx, st.cy, this._getRadius(st.currentShindo), 0, Math.PI * 2);
+                ctx.fillStyle = this._getColor(st.currentShindo);
                 ctx.fill();
             }
         },
@@ -409,28 +464,67 @@
             if (v < 5.5) return 'rgba(255, 69, 58, 1)';     
             return 'rgba(191, 90, 242, 1)';                 
         },
-        _getRadius: function(v) { return Math.max(2, v * 1.5); }
+        _getRadius: function(v) { return Math.max(2, (v+1) * 1.5); }
     });
 
-    // テストデータの生成とレイヤー初期化
-    const dummyStations = [];
-    for (let i = 0; i < 1000; i++) {
-        dummyStations.push({ lat: 31 + Math.random() * 14, lng: 130 + Math.random() * 15, value: 0 });
+    let kyoshinLayer = null;
+    let kmoniInterval = null;
+    let isKyoshinActive = false;
+    const debugCanvas = document.getElementById('kmoni-debug-canvas');
+    const debugCtx = debugCanvas.getContext('2d', { willReadFrequently: true });
+
+    function fetchKmoniImage() {
+        if (!isKyoshinActive) return;
+
+        const now = new Date(Date.now() - 2000);
+        const yyyy = now.getFullYear();
+        const MM = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        const timeStr = `${yyyy}${MM}${dd}${hh}${mm}${ss}`;
+        const dateStr = `${yyyy}${MM}${dd}`;
+        
+        document.getElementById('kmoni-time').innerText = `${yyyy}/${MM}/${dd} ${hh}:${mm}:${ss}`;
+
+        const imgUrl = `http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/${dateStr}/${timeStr}.png`;
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(imgUrl)}`;
+
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+            document.getElementById('kmoni-indicator').classList.remove('error');
+            document.getElementById('kmoni-status-text').innerText = "リアルタイム監視中";
+            
+            debugCtx.clearRect(0, 0, 352, 400);
+            debugCtx.drawImage(img, 0, 0);
+            const imgData = debugCtx.getImageData(0, 0, 352, 400);
+            
+            if(kyoshinLayer) kyoshinLayer.updateFromImageData(imgData);
+        };
+        img.onerror = () => {
+            document.getElementById('kmoni-indicator').classList.add('error');
+            document.getElementById('kmoni-status-text').innerText = "データ待機中...";
+        };
+        img.src = proxyUrl;
     }
-    const kyoshinLayer = new L.KyoshinMonitorLayer(dummyStations); // まだaddTo(map)しない
 
-    // 毎秒更新ループ (バックグラウンドで回し続ける)
-    setInterval(() => {
-        const newValues = [];
-        for (let i = 0; i < 1000; i++) {
-            let randomValue = Math.random() * 2; 
-            if (Math.random() > 0.95) randomValue = 3 + Math.random() * 2.5; 
-            newValues.push(randomValue);
-        }
-        kyoshinLayer.updateValues(newValues);
-    }, 1000);
+    function startKyoshinMonitor() {
+        isKyoshinActive = true;
+        fetchKmoniImage();
+        kmoniInterval = setInterval(fetchKmoniImage, 1000);
+    }
+    
+    function stopKyoshinMonitor() {
+        isKyoshinActive = false;
+        if(kmoniInterval) clearInterval(kmoniInterval);
+    }
 
 
+    // ==========================================
+    // データ読み込み ＆ 初期化
+    // ==========================================
     let stationsData = [];
     let tsunamiDataList = []; 
     let tsunamiGeoData = null; 
@@ -457,9 +551,15 @@
         }
         stationsData = stations || [];
         tsunamiGeoData = tGeo; 
+        
         const combinedTsunamiData = [...(tData1||[]), ...(tData2||[]), ...(tData3||[])];
         if (combinedTsunamiData.length === 0 && (!tData1 || tData1.length === 0)) isTsunamiFetchError = true;
         tsunamiDataList = combinedTsunamiData;
+        
+        if(stationsData.length > 0) {
+            kyoshinLayer = new L.KyoshinMonitorLayer(stationsData);
+        }
+
         fetchEarthquakeHistory();
     }).catch(err => console.error("データ読み込みエラー:", err));
 
@@ -517,7 +617,7 @@
     }
 
     // ==========================================
-    // タブ切り替えロジック
+    // UI イベント制御
     // ==========================================
     window.switchTab = function(tabName) {
         const tabs = document.querySelectorAll('.tab-btn');
@@ -532,24 +632,23 @@
         closeDetailPanel();
         closeTsunamiPanel();
 
-        // 強震モニタ表示
         if (tabName === 'kyoshin') {
             if (map.hasLayer(allEarthquakesLayer)) map.removeLayer(allEarthquakesLayer);
-            if (!map.hasLayer(kyoshinLayer)) map.addLayer(kyoshinLayer);
+            if (kyoshinLayer && !map.hasLayer(kyoshinLayer)) map.addLayer(kyoshinLayer);
+            startKyoshinMonitor();
             updateLegend('kyoshin');
-        } 
-        // 津波表示
-        else if (tabName === 'tsunami') {
-            if (map.hasLayer(allEarthquakesLayer)) map.removeLayer(allEarthquakesLayer);
-            if (map.hasLayer(kyoshinLayer)) map.removeLayer(kyoshinLayer);
-            if (!isTsunamiListRendered) { renderTsunamiList(); isTsunamiListRendered = true; }
-            updateLegend('tsunami');
-        } 
-        // 履歴表示
-        else {
-            if (map.hasLayer(kyoshinLayer)) map.removeLayer(kyoshinLayer);
-            if (!map.hasLayer(allEarthquakesLayer)) map.addLayer(allEarthquakesLayer);
-            updateLegend('earthquake');
+        } else {
+            stopKyoshinMonitor();
+            if (kyoshinLayer && map.hasLayer(kyoshinLayer)) map.removeLayer(kyoshinLayer);
+            
+            if (tabName === 'tsunami') {
+                if (map.hasLayer(allEarthquakesLayer)) map.removeLayer(allEarthquakesLayer);
+                if (!isTsunamiListRendered) { renderTsunamiList(); isTsunamiListRendered = true; }
+                updateLegend('tsunami');
+            } else {
+                if (!map.hasLayer(allEarthquakesLayer)) map.addLayer(allEarthquakesLayer);
+                updateLegend('earthquake');
+            }
         }
     };
 
@@ -752,7 +851,7 @@
 
     function showEarthquakeDetails(eq, mainColor) {
         map.removeLayer(allEarthquakesLayer);
-        map.removeLayer(kyoshinLayer); // 念のため強震モニタを非表示
+        if (kyoshinLayer && map.hasLayer(kyoshinLayer)) map.removeLayer(kyoshinLayer); 
         detailLayer.clearLayers();
         tsunamiLineLayer.clearLayers(); 
         map.addLayer(detailLayer);
@@ -840,10 +939,15 @@
         const isHistoryTab = document.querySelectorAll('.tab-btn')[0].classList.contains('active');
         const isKyoshinTab = document.querySelectorAll('.tab-btn')[2].classList.contains('active');
         
-        if (isHistoryTab) map.addLayer(allEarthquakesLayer);
-        else map.removeLayer(allEarthquakesLayer);
+        if (isHistoryTab) {
+            map.addLayer(allEarthquakesLayer);
+        } else {
+            map.removeLayer(allEarthquakesLayer);
+        }
 
-        if (isKyoshinTab) map.addLayer(kyoshinLayer);
+        if (isKyoshinTab) {
+            if(kyoshinLayer && !map.hasLayer(kyoshinLayer)) map.addLayer(kyoshinLayer);
+        }
         
         map.setView([38.0, 137.0], 5, { animate: true });
     };
