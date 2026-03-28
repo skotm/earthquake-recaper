@@ -298,6 +298,7 @@
         }
     });
 
+    // JMA Tsunami専用のアーカイブエンドポイントから本物の過去データを取得
     Promise.all([
         fetch('./japan.geo.json').then(res => res.json()).catch(() => null),
         fetch('./stations_with_amp_revised.json').then(res => res.json()).catch(() => []),
@@ -337,6 +338,30 @@
         return scaleMap[scale] || "?";
     }
 
+    // ★追加: 凡例の中身を動的に書き換える関数
+    let legendDiv = null;
+    function updateLegend(type) {
+        if (!legendDiv) return;
+        
+        if (type === 'earthquake') {
+            const grades = [10, 20, 30, 40, 45, 50, 55, 60, 70];
+            const labels = ['1', '2', '3', '4', '5-', '5+', '6-', '6+', '7'];
+            let html = '<strong>最大震度</strong>';
+            for (let i = 0; i < grades.length; i++) {
+                html += '<div><i style="background:' + getIntensityColor(grades[i]) + '"></i> ' + labels[i] + '</div>';
+            }
+            legendDiv.innerHTML = html;
+        } else if (type === 'tsunami') {
+            const colors = ['#BF5AF2', '#FF453A', '#FFD60A', '#64D2FF', '#8E8E93'];
+            const labels = ['大津波警報', '津波警報', '津波注意報', '若干の海面変動', '調査中等・解除'];
+            let html = '<strong>津波予報</strong>';
+            for (let i = 0; i < colors.length; i++) {
+                html += '<div><i style="background:' + colors[i] + '"></i> ' + labels[i] + '</div>';
+            }
+            legendDiv.innerHTML = html;
+        }
+    }
+
     window.switchTab = function(tabName) {
         const tabs = document.querySelectorAll('.tab-btn');
         tabs[0].classList.toggle('active', tabName === 'history');
@@ -353,10 +378,14 @@
             if (map.hasLayer(allEarthquakesLayer)) {
                 map.removeLayer(allEarthquakesLayer);
             }
+            // ★凡例を津波モードに変更
+            updateLegend('tsunami');
         } else {
             if (!map.hasLayer(allEarthquakesLayer)) {
                 map.addLayer(allEarthquakesLayer);
             }
+            // ★凡例を地震モードに変更
+            updateLegend('earthquake');
         }
 
         closeDetailPanel();
@@ -426,7 +455,6 @@
                         <div class="list-item-details">${timeStr} | M${hypo.magnitude >= 0 ? hypo.magnitude : '-'}</div>
                     `;
 
-                    // ★修正: 選択済みの項目をクリックしたら閉じる（トグル機能）
                     const activateEarthquake = () => {
                         if (listItem.classList.contains('active')) {
                             closeDetailPanel();
@@ -538,7 +566,6 @@
                 <div class="t-list-item-details">${timeStr} 発表</div>
             `;
 
-            // ★修正: 選択済みの項目をクリックしたら閉じる（トグル機能）
             item.addEventListener('click', () => {
                 if (item.classList.contains('active')) {
                     closeTsunamiPanel();
@@ -799,16 +826,12 @@
         tsunamiLineLayer.clearLayers(); 
     };
 
+    // ★修正: 凡例の初期描画部分を、updateLegend関数を使う形に変更
     const legend = L.control({position: 'bottomright'});
     legend.onAdd = function () {
-        const div = L.DomUtil.create('div', 'legend');
-        const grades = [10, 20, 30, 40, 45, 50, 55, 60, 70];
-        const labels = ['1', '2', '3', '4', '5-', '5+', '6-', '6+', '7'];
-        div.innerHTML = '<strong>最大震度</strong>';
-        for (let i = 0; i < grades.length; i++) {
-            div.innerHTML += '<div><i style="background:' + getIntensityColor(grades[i]) + '"></i> ' + labels[i] + '</div>';
-        }
-        return div;
+        legendDiv = L.DomUtil.create('div', 'legend');
+        updateLegend('earthquake'); // 初期状態は地震の凡例
+        return legendDiv;
     };
     legend.addTo(map);
 
