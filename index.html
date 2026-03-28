@@ -37,7 +37,7 @@
            サイドバー ＆ タブUI
            ------------------------------------- */
         #sidebar {
-            width: 280px; min-width: 280px;
+            width: 240px; min-width: 240px; /* ★280pxから240pxに縮小 */
             background: var(--surface-color);
             backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border-right: 1px solid var(--border-color);
@@ -51,7 +51,7 @@
         }
         .tab-btn {
             flex: 1; text-align: center; padding: 8px 0;
-            font-size: 14px; font-weight: 600; color: var(--text-secondary);
+            font-size: 13px; font-weight: 600; color: var(--text-secondary); /* ★フォント少し縮小 */
             background: rgba(255, 255, 255, 0.05); border-radius: 8px;
             cursor: pointer; transition: all 0.2s;
         }
@@ -67,7 +67,7 @@
         #list-container::-webkit-scrollbar, #tsunami-list-container::-webkit-scrollbar { width: 0px; }
 
         .list-item, .t-list-item {
-            padding: 12px; margin-bottom: 4px;
+            padding: 10px; margin-bottom: 4px; /* ★padding縮小 */
             border-radius: 8px; cursor: pointer;
             border-left: 4px solid transparent; 
             background: rgba(255,255,255,0.02);
@@ -76,8 +76,8 @@
         .list-item:hover, .t-list-item:hover { background-color: rgba(255, 255, 255, 0.08); }
         .list-item.active, .t-list-item.active { background-color: rgba(255, 255, 255, 0.15); }
         
-        .list-item-title, .t-list-item-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; display: flex; justify-content: space-between;}
-        .list-item-details, .t-list-item-details { font-size: 12px; color: var(--text-secondary); }
+        .list-item-title, .t-list-item-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; display: flex; justify-content: space-between;} /* ★フォント縮小 */
+        .list-item-details, .t-list-item-details { font-size: 11px; color: var(--text-secondary); } /* ★フォント縮小 */
 
         /* -------------------------------------
            メインマップ＆凡例
@@ -87,11 +87,11 @@
 
         .legend {
             background: var(--surface-color); backdrop-filter: blur(20px);
-            padding: 12px 16px; border-radius: 14px; border: 0.5px solid var(--border-color);
-            line-height: 1.8; color: var(--text-primary); font-size: 13px;
+            padding: 10px 14px; border-radius: 12px; border: 0.5px solid var(--border-color);
+            line-height: 1.6; color: var(--text-primary); font-size: 12px; /* ★サイズ縮小 */
         }
-        .legend strong { display: block; margin-bottom: 6px; font-size: 14px; }
-        .legend i { width: 14px; height: 14px; float: left; margin-top: 4px; margin-right: 10px; border-radius: 50%; }
+        .legend strong { display: block; margin-bottom: 6px; font-size: 13px; }
+        .legend i { width: 12px; height: 12px; float: left; margin-top: 4px; margin-right: 8px; border-radius: 50%; }
 
         /* -------------------------------------
            パネル共通 閉じるボタン
@@ -107,35 +107,36 @@
            メイン詳細パネル (地震用)
            ------------------------------------- */
         #detail-panel {
-            position: absolute; bottom: -600px; left: 20px; 
-            width: 340px; 
+            position: absolute; bottom: -600px; left: 10px; /* ★left調整 */
+            width: 300px; /* ★340pxから300pxに縮小 */
+            max-width: calc(100vw - 20px);
             background: rgba(28, 28, 30, 0.45);
             backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
-            border: 0.5px solid var(--border-color); border-radius: 20px;
-            padding: 20px 16px 10px 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            border: 0.5px solid var(--border-color); border-radius: 16px;
+            padding: 16px 12px 10px 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
             z-index: 1000; transition: bottom 0.5s cubic-bezier(0.16, 1, 0.3, 1);
             pointer-events: none; display: flex; flex-direction: column;
         }
-        #detail-panel.show { bottom: 50px; pointer-events: auto; }
+        #detail-panel.show { bottom: 20px; pointer-events: auto; }
 
-        .dp-main { display: flex; align-items: center; gap: 15px; flex-shrink: 0; }
+        .dp-main { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
         .dp-scale-box {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            border-radius: 16px; padding: 12px; min-width: 76px;
+            border-radius: 12px; padding: 10px; min-width: 66px;
             background: rgba(0,0,0,0.3); border: 2px solid transparent;
         }
-        .dp-scale-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 2px; }
-        .dp-scale-value { font-size: 38px; font-weight: 700; line-height: 1; }
+        .dp-scale-label { font-size: 10px; color: var(--text-secondary); margin-bottom: 2px; }
+        .dp-scale-value { font-size: 32px; font-weight: 700; line-height: 1; }
         
         .dp-info { flex-grow: 1; display: flex; flex-direction: column; }
-        .dp-name { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
-        .dp-time { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
-        .dp-meta { font-size: 14px; }
-        .dp-meta strong { font-size: 18px; color: #fff; }
+        .dp-name { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+        .dp-time { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+        .dp-meta { font-size: 13px; }
+        .dp-meta strong { font-size: 16px; color: #fff; }
 
         .dp-toggle-btn {
-            margin-top: 15px; padding: 10px 0 5px 0; text-align: center;
-            font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer;
+            margin-top: 12px; padding: 8px 0 4px 0; text-align: center;
+            font-size: 12px; font-weight: 600; color: var(--text-secondary); cursor: pointer;
             border-top: 1px solid rgba(255,255,255,0.1); transition: color 0.2s;
         }
         .dp-toggle-btn:hover { color: #fff; }
@@ -143,7 +144,7 @@
         .dp-extended-area {
             overflow-y: auto; padding-right: 4px;
             transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.4s ease;
-            max-height: 350px; opacity: 1; margin-top: 10px; display: flex; flex-direction: column; gap: 12px;
+            max-height: 300px; opacity: 1; margin-top: 10px; display: flex; flex-direction: column; gap: 10px;
         }
         .dp-extended-area.collapsed {
             max-height: 0; opacity: 0; margin-top: 0; overflow: hidden; padding-top: 0; padding-bottom: 0;
@@ -152,41 +153,41 @@
         .dp-extended-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
 
         .dp-comments-box {
-            background: rgba(0, 0, 0, 0.5); border-radius: 8px; padding: 12px 14px;
-            font-size: 13px; line-height: 1.5; color: #e5e5ea;
+            background: rgba(0, 0, 0, 0.5); border-radius: 8px; padding: 10px 12px;
+            font-size: 12px; line-height: 1.5; color: #e5e5ea;
             border-left: 4px solid var(--tsunami-none);
             position: relative; transition: background-color 0.2s;
         }
         .dp-comments-box.clickable { cursor: pointer; }
         .dp-comments-box.clickable:hover { background: rgba(255, 255, 255, 0.1); }
         .dp-comments-hint {
-            display: none; position: absolute; right: 14px; bottom: 12px;
-            font-size: 11px; font-weight: bold; color: var(--text-secondary);
+            display: none; position: absolute; right: 12px; bottom: 8px;
+            font-size: 10px; font-weight: bold; color: var(--text-secondary);
         }
         .dp-comments-box.clickable .dp-comments-hint { display: block; }
 
         .dp-stations-container { display: flex; flex-direction: column; }
         .dp-station-item {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.04);
+            padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,0.04);
         }
         .dp-station-item:last-child { border-bottom: none; }
-        .dp-station-name { font-size: 14px; color: #e5e5ea; }
+        .dp-station-name { font-size: 13px; color: #e5e5ea; }
         .dp-station-scale {
-            font-size: 13px; font-weight: 700; color: #fff; padding: 2px 10px; border-radius: 6px;
+            font-size: 12px; font-weight: 700; color: #fff; padding: 2px 8px; border-radius: 6px;
         }
 
         /* -------------------------------------
            津波詳細サブパネル (右上に配置)
            ------------------------------------- */
         #tsunami-panel {
-            position: absolute; top: 70px; right: 20px; 
-            width: 320px;
-            max-width: calc(100vw - 40px); /* スマホ用横幅制限 */
-            max-height: calc(100vh - 220px); /* 凡例との被り防止 */
+            position: absolute; top: 60px; right: 10px; /* ★top, right調整 */
+            width: 280px; /* ★320pxから280pxに縮小 */
+            max-width: calc(100vw - 20px);
+            max-height: 40vh; /* ★画面高の40%に制限して地図領域を確保 */
             background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
-            border: 0.5px solid var(--border-color); border-radius: 20px;
-            padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            border: 0.5px solid var(--border-color); border-radius: 16px;
+            padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
             z-index: 1000; 
             opacity: 0; transform: translateX(20px); pointer-events: none;
             transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -197,25 +198,26 @@
         }
         
         .tp-header {
-            font-size: 15px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding-bottom: 10px; margin-bottom: 10px; color: #fff;
+            font-size: 14px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 8px; margin-bottom: 8px; color: #fff;
             padding-right: 24px; flex-shrink: 0;
         }
         .tp-list {
             overflow-y: auto; padding-right: 4px;
-            flex-grow: 1; /* 空きスペースを使用 */
+            flex-grow: 1;
         }
         .tp-list::-webkit-scrollbar { width: 4px; }
         .tp-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
         
         .tp-item {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+            padding: 6px 0; /* ★8pxから6pxに詰める */
+            border-bottom: 1px solid rgba(255,255,255,0.04);
         }
         .tp-item:last-child { border-bottom: none; }
-        .tp-area { font-size: 14px; font-weight: 600; color: #e5e5ea; }
-        .tp-details { font-size: 12px; color: var(--text-secondary); text-align: right;}
-        .tp-height { font-size: 14px; font-weight: bold; margin-left: 8px;}
+        .tp-area { font-size: 13px; font-weight: 600; color: #e5e5ea; } /* ★フォント縮小 */
+        .tp-details { font-size: 11px; color: var(--text-secondary); text-align: right;} /* ★フォント縮小 */
+        .tp-height { font-size: 13px; font-weight: bold; margin-left: 6px;}
 
         /* マーカー等の既存スタイル */
         .epicenter-cross { color: #ff3b30; font-size: 24px; font-weight: bold; line-height: 24px; text-align: center; text-shadow: 0 0 5px #000; position: absolute; top: -12px; left: -12px; width: 24px; height: 24px; }
@@ -302,7 +304,6 @@
         }
     });
 
-    // ★修正: 正式な津波アーカイブAPI（/v2/jma/tsunami）を使用して、過去300件を一気に取得！
     Promise.all([
         fetch('./japan.geo.json').then(res => res.json()).catch(() => null),
         fetch('./stations_with_amp_revised.json').then(res => res.json()).catch(() => []),
@@ -321,7 +322,6 @@
         stationsData = stations || [];
         tsunamiGeoData = tGeo; 
         
-        // 3回分の取得結果を合体させて、300件の履歴を作る
         const combinedTsunamiData = [...(tData1||[]), ...(tData2||[]), ...(tData3||[])];
         
         if (combinedTsunamiData.length === 0 && (!tData1 || tData1.length === 0)) {
@@ -333,7 +333,6 @@
         fetchEarthquakeHistory();
     }).catch(err => console.error("データ読み込みエラー:", err));
 
-    // 日時パースの補助関数（Safari NaN対策）
     function safeFormatDateString(rawTimeStr) {
         if (!rawTimeStr) return "--/-- --:--";
         const safeStr = rawTimeStr.replace(/-/g, '/').replace(/T/, ' ').replace(/\+.*/, '').replace(/Z/, '');
