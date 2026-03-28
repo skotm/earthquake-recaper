@@ -182,8 +182,8 @@
         #tsunami-panel {
             position: absolute; top: 70px; right: 20px; 
             width: 320px;
-            max-width: calc(100vw - 40px); /* 画面幅が狭いスマホ用 */
-            max-height: calc(100vh - 220px); /* ★修正：下の凡例と被らないように最大高さを動的制御 */
+            max-width: calc(100vw - 40px); /* スマホ用横幅制限 */
+            max-height: calc(100vh - 220px); /* 凡例との被り防止 */
             background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
             border: 0.5px solid var(--border-color); border-radius: 20px;
             padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
@@ -203,7 +203,7 @@
         }
         .tp-list {
             overflow-y: auto; padding-right: 4px;
-            flex-grow: 1; /* ★修正：固定の高さをやめて空きスペース全体を使う */
+            flex-grow: 1; /* 空きスペースを使用 */
         }
         .tp-list::-webkit-scrollbar { width: 4px; }
         .tp-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
@@ -290,6 +290,7 @@
     let tsunamiDataList = []; 
     let tsunamiGeoData = null; 
     let isTsunamiListRendered = false; 
+    let isTsunamiFetchError = false; 
 
     const ZOOM_THRESHOLD = 9;
     map.on('zoomend', function() {
@@ -301,12 +302,19 @@
         }
     });
 
-    // ★修正：津波情報の安定取得のためエンドポイントを `/v2/history?codes=552` に変更
+    // API取得（アーカイブである /v2/jma/tsunami を使用して、確実に過去データを引っ張る）
     Promise.all([
         fetch('./japan.geo.json').then(res => res.json()).catch(() => null),
         fetch('./stations_with_amp_revised.json').then(res => res.json()).catch(() => []),
         fetch('./津波予報区.json').then(res => res.json()).catch(() => null),
-        fetch('https://api.p2pquake.net/v2/history?codes=552&limit=100').then(res => res.json()).catch(() => []) 
+        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100').then(res => {
+            if (!res.ok) throw new Error("APIレスポンスエラー");
+            return res.json();
+        }).catch(err => {
+            console.error("津波データの取得に失敗:", err);
+            isTsunamiFetchError = true; 
+            return [];
+        }) 
     ]).then(([geoData, stations, tGeo, tsunamiHistory]) => {
         if (geoData) {
             L.geoJSON(geoData, {
@@ -322,13 +330,12 @@
         fetchEarthquakeHistory();
     }).catch(err => console.error("データ読み込みエラー:", err));
 
-    // --- 日時パースの補助関数（SafariのNaN対策用） ---
+    // 日時パースの補助関数（Safari NaN対策）
     function safeFormatDateString(rawTimeStr) {
         if (!rawTimeStr) return "--/-- --:--";
-        // ハイフンをスラッシュに置換、Tを空白に置換しブラウザのパース失敗を防ぐ
         const safeStr = rawTimeStr.replace(/-/g, '/').replace(/T/, ' ').replace(/\+.*/, '').replace(/Z/, '');
         const d = new Date(safeStr);
-        if (isNaN(d.getTime())) return rawTimeStr; // パース失敗時は生の文字列を返す
+        if (isNaN(d.getTime())) return rawTimeStr; 
         
         return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     }
@@ -372,7 +379,7 @@
             legendDiv.innerHTML = html;
         } else if (type === 'tsunami') {
             const colors = ['#BF5AF2', '#FF453A', '#FFD60A', '#64D2FF', '#8E8E93'];
-            const labels = ['大津波警報', '津波警報', '津波注意報', '若干の海面変動', '調査中等・解除'];
+            const labels = ['大津波警報', '津波警報', '津波注意報', '若干の海面変動', '調査中・解除'];
             let html = '<strong>津波予報</strong>';
             for (let i = 0; i < colors.length; i++) {
                 html += '<div><i style="background:' + colors[i] + '"></i> ' + labels[i] + '</div>';
@@ -533,6 +540,14 @@
         const container = document.getElementById('tsunami-list-container');
         container.innerHTML = '';
 
+        if (isTsunamiFetchError) {
+            container.innerHTML = `
+                <div style="padding: 20px; text-align: center; color: var(--tsunami-warning); font-size: 13px; line-height: 1.5;">
+                    津波データの取得に失敗しました。<br>通信環境を確認して再読み込みしてください。
+                </div>`;
+            return;
+        }
+
         if (!tsunamiDataList || tsunamiDataList.length === 0) {
             container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary); font-size: 13px;">津波情報はありません</div>';
             return;
@@ -569,7 +584,6 @@
                 else { color = "var(--tsunami-none)"; title = "津波情報 (調査中等)"; }
             }
 
-            // ★修正: 安全な日時パース処理を通す
             const rawTime = tInfo.time || (tInfo.issue && tInfo.issue.time) || tInfo.created_at;
             const timeStr = safeFormatDateString(rawTime);
 
@@ -618,7 +632,6 @@
         tsunamiDataList.forEach(tInfo => {
             if (tInfo.cancelled) return; 
             
-            // ★修正: 安全な日時パース処理を通す
             const rawTime = tInfo.time || (tInfo.issue && tInfo.issue.time) || tInfo.created_at;
             const tTime = getSafeDateObj(rawTime).getTime();
             
@@ -673,7 +686,6 @@
                 if (area.firstHeight.condition) {
                     timeText = area.firstHeight.condition;
                 } else if (area.firstHeight.time) {
-                    // ★修正: 安全な日時パース
                     const d = getSafeDateObj(area.firstHeight.time);
                     if (!isNaN(d.getTime())) {
                         timeText = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
