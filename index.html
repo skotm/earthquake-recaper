@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>地震情報可視化ツール - NERV List & HIG Map</title>
+    <title>地震情報可視化ツール - サーバーレス版</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -19,11 +19,11 @@
             --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
             
             /* Tsunami Colors */
-            --tsunami-major: #BF5AF2;  /* 紫: 大津波警報 */
-            --tsunami-warning: #FF453A; /* 赤: 津波警報 */
-            --tsunami-watch: #FFD60A;   /* 黄: 津波注意報 */
-            --tsunami-slight: #64D2FF;  /* 水色: 若干の海面変動 */
-            --tsunami-none: #8E8E93;    /* 灰: なし・調査中 */
+            --tsunami-major: #BF5AF2;
+            --tsunami-warning: #FF453A;
+            --tsunami-watch: #FFD60A;
+            --tsunami-slight: #64D2FF;
+            --tsunami-none: #8E8E93;
         }
 
         body { 
@@ -87,19 +87,12 @@
             margin-right: 6px; box-shadow: 0 0 8px #30D158; animation: pulse 1.5s infinite;
         }
         .live-indicator.error {
-            background-color: #FF453A; box-shadow: 0 0 8px #FF453A;
+            background-color: #FF453A; box-shadow: 0 0 8px #FF453A; animation: none;
         }
         @keyframes pulse {
             0% { transform: scale(0.95); opacity: 0.5; }
             50% { transform: scale(1.2); opacity: 1; }
             100% { transform: scale(0.95); opacity: 0.5; }
-        }
-
-        #kmoni-debug-canvas {
-            display: none; /* デバッグ時はブロックにして表示できます */
-            position: absolute; bottom: 10px; left: 10px; z-index: 9999;
-            border: 1px solid #fff; background: #000;
-            width: 176px; height: 200px; /* 元画像は352x400 */
         }
 
         /* -------------------------------------
@@ -116,161 +109,71 @@
         .legend strong { display: block; margin-bottom: 6px; font-size: 13px; }
         .legend i { width: 12px; height: 12px; float: left; margin-top: 4px; margin-right: 8px; border-radius: 50%; }
 
-        /* -------------------------------------
-           パネル共通 閉じるボタン
-           ------------------------------------- */
-        .dp-close, .tp-close {
+        /* パネル共通 閉じるボタン */
+        .dp-close, .tp-close, .sp-close {
             position: absolute; top: 12px; right: 12px; width: 28px; height: 28px;
             background: rgba(255,255,255,0.1); border-radius: 50%; text-align: center;
             line-height: 28px; font-size: 14px; cursor: pointer; color: #fff; z-index: 10;
         }
-        .dp-close:hover, .tp-close:hover { background: rgba(255,255,255,0.2); }
+        .dp-close:hover, .tp-close:hover, .sp-close:hover { background: rgba(255,255,255,0.2); }
 
-        /* -------------------------------------
-           Leaflet UI (設定ボタン＆ズーム)
-           ------------------------------------- */
-        .leaflet-bar {
-            border: 0.5px solid var(--border-color) !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6) !important;
-            border-radius: 10px !important;
-            overflow: hidden;
-        }
-        .leaflet-bar a {
-            background-color: var(--surface-color) !important;
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            color: var(--text-primary) !important;
-            border-bottom: 0.5px solid var(--border-color) !important;
-            width: 36px !important; height: 36px !important;
-            line-height: 36px !important;
-            transition: background-color 0.2s, color 0.2s;
-        }
-        .leaflet-bar a:hover {
-            background-color: rgba(255, 255, 255, 0.15) !important;
-        }
-        .leaflet-bar a:last-child {
-            border-bottom: none !important;
-        }
-        .leaflet-bar a.leaflet-disabled {
-            color: rgba(255, 255, 255, 0.3) !important;
-            background-color: var(--surface-color) !important;
-            cursor: default;
-        }
-        .leaflet-control-zoom-in, .leaflet-control-zoom-out {
-            font-size: 18px !important; font-weight: 500 !important;
-        }
-
+        /* Leaflet UI */
+        .leaflet-bar { border: 0.5px solid var(--border-color) !important; box-shadow: 0 4px 15px rgba(0,0,0,0.6) !important; border-radius: 10px !important; overflow: hidden; }
+        .leaflet-bar a { background-color: var(--surface-color) !important; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: var(--text-primary) !important; border-bottom: 0.5px solid var(--border-color) !important; width: 36px !important; height: 36px !important; line-height: 36px !important; transition: background-color 0.2s, color 0.2s; }
+        .leaflet-bar a:hover { background-color: rgba(255, 255, 255, 0.15) !important; }
+        .leaflet-bar a:last-child { border-bottom: none !important; }
         .custom-settings-btn { margin-bottom: 12px !important; }
         .custom-settings-btn a { display: flex !important; align-items: center; justify-content: center; }
 
-        /* -------------------------------------
-           メイン詳細パネル (地震用)
-           ------------------------------------- */
-        #detail-panel {
-            position: absolute; bottom: -600px; left: 10px;
-            width: 280px; max-width: calc(100vw - 20px);
-            background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
-            border: 0.5px solid var(--border-color); border-radius: 16px;
-            padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-            z-index: 1000; transition: bottom 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-            pointer-events: none; display: flex; flex-direction: column;
+        /* 設定・システム情報パネル */
+        #settings-panel {
+            position: absolute; top: 60px; right: 10px; width: 320px; max-width: calc(100vw - 20px); max-height: 70vh; 
+            background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+            border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            z-index: 2000; opacity: 0; transform: translateX(20px); pointer-events: none;
+            transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column;
         }
+        #settings-panel.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
+        
+        .sp-header { font-size: 16px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 12px; color: #fff; padding-right: 28px; flex-shrink: 0; }
+        .sp-content { overflow-y: auto; flex-grow: 1; padding-right: 4px; }
+        .sp-content::-webkit-scrollbar { width: 4px; } .sp-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        
+        .sp-section { margin-bottom: 18px; }
+        .sp-title { font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .sp-info { font-size: 13px; color: #e5e5ea; margin-bottom: 6px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; }
+        .sp-info span { font-family: monospace; color: #64D2FF; text-align: right; word-break: break-all; max-width: 65%; font-weight: bold;}
+        
+        .sp-log-box { background: rgba(0,0,0,0.6); border-radius: 8px; padding: 10px; font-family: monospace; font-size: 11px; color: #0A84FF; height: 180px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.05); }
+        .sp-log-box::-webkit-scrollbar { width: 4px; } .sp-log-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        .sp-log-box div { margin-bottom: 4px; border-bottom: 1px dotted rgba(255,255,255,0.1); padding-bottom: 4px; line-height: 1.3;}
+        .sp-log-box div:last-child { margin-bottom: 0; border-bottom: none; }
+        .sp-log-box .log-err { color: #FF453A; } .sp-log-box .log-succ { color: #30D158; } .sp-log-box .log-warn { color: #FFD60A; } .sp-log-box .log-info { color: #e5e5ea; }
+
+        /* 詳細パネル等 */
+        #detail-panel { position: absolute; bottom: -600px; left: 10px; width: 280px; max-width: calc(100vw - 20px); background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; transition: bottom 0.5s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none; display: flex; flex-direction: column; }
         #detail-panel.show { bottom: 20px; pointer-events: auto; }
-
         .dp-main { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-        .dp-scale-box {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            border-radius: 12px; padding: 10px 8px; min-width: 64px;
-            background: rgba(0,0,0,0.3); border: 2px solid transparent;
-        }
-        .dp-scale-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; } 
-        .dp-scale-value { font-size: 34px; font-weight: 700; line-height: 1; } 
-        
+        .dp-scale-box { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 10px 8px; min-width: 64px; background: rgba(0,0,0,0.3); border: 2px solid transparent; }
+        .dp-scale-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; } .dp-scale-value { font-size: 34px; font-weight: 700; line-height: 1; } 
         .dp-info { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding-right: 24px; }
-        .dp-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } 
-        .dp-time { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; } 
-        .dp-meta { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } 
-        .dp-meta strong { font-size: 15px; color: #fff; }
+        .dp-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .dp-time { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; } .dp-meta { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .dp-meta strong { font-size: 15px; color: #fff; }
+        .dp-toggle-btn { margin-top: 12px; padding: 10px 0 4px 0; text-align: center; font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); transition: color 0.2s; } .dp-toggle-btn:hover { color: #fff; }
+        .dp-extended-area { overflow-y: auto; padding-right: 4px; transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.4s ease; max-height: 300px; opacity: 1; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; } .dp-extended-area.collapsed { max-height: 0; opacity: 0; margin-top: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; } .dp-extended-area::-webkit-scrollbar { width: 4px; } .dp-extended-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        .dp-comments-box { background: rgba(0, 0, 0, 0.5); border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.5; color: #e5e5ea; border-left: 4px solid var(--tsunami-none); position: relative; transition: background-color 0.2s; } .dp-comments-box.clickable { cursor: pointer; } .dp-comments-box.clickable:hover { background: rgba(255, 255, 255, 0.1); } .dp-comments-hint { display: none; position: absolute; right: 12px; bottom: 8px; font-size: 11px; font-weight: bold; color: var(--text-secondary); } .dp-comments-box.clickable .dp-comments-hint { display: block; }
+        .dp-stations-container { display: flex; flex-direction: column; } .dp-station-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.04); } .dp-station-item:last-child { border-bottom: none; } .dp-station-name { font-size: 14px; color: #e5e5ea; } .dp-station-scale { font-size: 13px; font-weight: 700; color: #fff; padding: 4px 10px; border-radius: 6px; }
 
-        .dp-toggle-btn {
-            margin-top: 12px; padding: 10px 0 4px 0; text-align: center;
-            font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer;
-            border-top: 1px solid rgba(255,255,255,0.1); transition: color 0.2s;
-        }
-        .dp-toggle-btn:hover { color: #fff; }
+        /* 津波詳細パネル */
+        #tsunami-panel { position: absolute; top: 60px; right: 10px; width: 280px; max-width: calc(100vw - 20px); max-height: 40vh; background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; opacity: 0; transform: translateX(20px); pointer-events: none; transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; } #tsunami-panel.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
+        .tp-header { font-size: 16px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px; color: #fff; padding-right: 28px; flex-shrink: 0; } .tp-list { overflow-y: auto; padding-right: 4px; flex-grow: 1; } .tp-list::-webkit-scrollbar { width: 4px; } .tp-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        .tp-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); } .tp-item:last-child { border-bottom: none; } .tp-area { font-size: 15px; font-weight: 600; color: #e5e5ea; } .tp-details { font-size: 13px; color: var(--text-secondary); text-align: right;} .tp-height { font-size: 15px; font-weight: bold; margin-left: 8px;} 
 
-        .dp-extended-area {
-            overflow-y: auto; padding-right: 4px;
-            transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.4s ease;
-            max-height: 300px; opacity: 1; margin-top: 10px; display: flex; flex-direction: column; gap: 10px;
-        }
-        .dp-extended-area.collapsed {
-            max-height: 0; opacity: 0; margin-top: 0; overflow: hidden; padding-top: 0; padding-bottom: 0;
-        }
-        .dp-extended-area::-webkit-scrollbar { width: 4px; }
-        .dp-extended-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-
-        .dp-comments-box {
-            background: rgba(0, 0, 0, 0.5); border-radius: 8px; padding: 12px 14px;
-            font-size: 13px; line-height: 1.5; color: #e5e5ea; 
-            border-left: 4px solid var(--tsunami-none);
-            position: relative; transition: background-color 0.2s;
-        }
-        .dp-comments-box.clickable { cursor: pointer; }
-        .dp-comments-box.clickable:hover { background: rgba(255, 255, 255, 0.1); }
-        .dp-comments-hint {
-            display: none; position: absolute; right: 12px; bottom: 8px;
-            font-size: 11px; font-weight: bold; color: var(--text-secondary);
-        }
-        .dp-comments-box.clickable .dp-comments-hint { display: block; }
-
-        .dp-stations-container { display: flex; flex-direction: column; }
-        .dp-station-item {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.04);
-        }
-        .dp-station-item:last-child { border-bottom: none; }
-        .dp-station-name { font-size: 14px; color: #e5e5ea; } 
-        .dp-station-scale { font-size: 13px; font-weight: 700; color: #fff; padding: 4px 10px; border-radius: 6px; }
-
-        /* -------------------------------------
-           津波詳細サブパネル
-           ------------------------------------- */
-        #tsunami-panel {
-            position: absolute; top: 60px; right: 10px;
-            width: 280px; max-width: calc(100vw - 20px); max-height: 40vh; 
-            background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
-            border: 0.5px solid var(--border-color); border-radius: 16px;
-            padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-            z-index: 1000; opacity: 0; transform: translateX(20px); pointer-events: none;
-            transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            display: flex; flex-direction: column;
-        }
-        #tsunami-panel.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
-        
-        .tp-header {
-            font-size: 16px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); 
-            padding-bottom: 10px; margin-bottom: 10px; color: #fff; padding-right: 28px; flex-shrink: 0;
-        }
-        .tp-list { overflow-y: auto; padding-right: 4px; flex-grow: 1; }
-        .tp-list::-webkit-scrollbar { width: 4px; }
-        .tp-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-        
-        .tp-item {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
-        }
-        .tp-item:last-child { border-bottom: none; }
-        .tp-area { font-size: 15px; font-weight: 600; color: #e5e5ea; } 
-        .tp-details { font-size: 13px; color: var(--text-secondary); text-align: right;} 
-        .tp-height { font-size: 15px; font-weight: bold; margin-left: 8px;} 
-
-        /* マーカー等の既存スタイル */
+        /* マーカー等 */
         .epicenter-cross { color: #ff3b30; font-size: 24px; font-weight: bold; line-height: 24px; text-align: center; text-shadow: 0 0 5px #000; position: absolute; top: -12px; left: -12px; width: 24px; height: 24px; }
         .custom-div-icon { overflow: visible; }
         .station-dot { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 50%; border: 1.5px solid #ffffff; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.6); width: 14px; height: 14px; transition: width 0.3s, height 0.3s; }
         .station-scale-text { display: none; color: #ffffff; font-weight: 800; font-size: 12px; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.6); letter-spacing: -0.5px; line-height: 1; transform: translateY(0.5px); }
-        .map-zoomed .station-dot { width: 24px; height: 24px; border-width: 1.5px; }
-        .map-zoomed .station-scale-text { display: block; }
+        .map-zoomed .station-dot { width: 24px; height: 24px; border-width: 1.5px; } .map-zoomed .station-scale-text { display: block; }
     </style>
 </head>
 <body>
@@ -285,18 +188,61 @@
     <div id="tsunami-list-container" style="display: none;"></div>
     <div id="kyoshin-list-container" style="display: none;">
         <div class="kyoshin-status-box">
-            <span id="kmoni-indicator" class="live-indicator"></span><strong id="kmoni-status-text">リアルタイム監視中</strong><br><br>
+            <span id="kmoni-indicator" class="live-indicator error"></span><strong id="kmoni-status-text">データ待機中...</strong><br><br>
             <span id="kmoni-time" style="font-family: monospace; font-size: 14px; color: #fff;">----/--/-- --:--:--</span><br><br>
-            画像解析方式でデータを取得・プロットしています。<br>
-            <span style="font-size: 10px; color: #888;">※CORSプロキシを経由しています</span>
+            ブラウザで防災科研画像を直接解析中<br>
+            <span style="font-size: 10px; color: #888;">※完全サーバーレス・CORSプロキシ経由</span>
+            
+            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <label style="display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; color: #fff; font-weight: bold;">
+                    <input type="checkbox" id="kmoni-color-mode-toggle" onchange="toggleKyoshinColorMode(this)" style="margin-right: 8px; cursor: pointer; transform: scale(1.2);">
+                    震度自動計算・履歴カラーモード
+                </label>
+                <div style="font-size: 10px; color: #aaa; margin-top: 6px; line-height: 1.4; margin-bottom: 15px;">
+                    ※RGBから計測震度を逆算し、履歴モードの色で表示します。<br>震度1以上の点はリッチなビジュアルで強調されます。
+                </div>
+            </div>
+
+            <div style="padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); text-align: left;">
+                <div style="font-size: 12px; font-weight: bold; margin-bottom: 8px; color: #fff;">
+                    表示下限：<span style="color: #64D2FF; font-size: 14px;">震度 <span id="intensity-filter-val">-3.0</span></span> 以上
+                </div>
+                <input type="range" id="intensity-slider" min="-3.0" max="7.0" step="0.1" value="-3.0" 
+                       style="width: 100%; cursor: pointer;" 
+                       oninput="updateIntensityFilter(this.value)">
+                <div style="display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-top: 4px;">
+                    <span>-3.0</span>
+                    <span>0</span>
+                    <span>3</span>
+                    <span>7.0</span>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <div id="map-container">
     <div id="map"></div>
-    <canvas id="kmoni-debug-canvas" width="352" height="400"></canvas>
     
+    <div id="settings-panel">
+        <div class="sp-close" onclick="closeSettingsPanel()">✕</div>
+        <div class="sp-header">システム情報 ＆ ログ</div>
+        <div class="sp-content">
+            <div class="sp-section">
+                <div class="sp-title">フロントエンド解析ステータス</div>
+                <div class="sp-info">状態: <span id="sys-status">停止中</span></div>
+                <div class="sp-info">サーバー遅延: <span id="sys-delay">--</span></div>
+                <div class="sp-info">通信成功: <span id="sys-success" style="color:#30D158;">0</span> / エラー: <span id="sys-error" style="color:#FF453A;">0</span></div>
+            </div>
+            <div class="sp-section">
+                <div class="sp-title">フロントエンド受信ログ</div>
+                <div id="sys-log-container" class="sp-log-box">
+                    <div class="log-info">[System] ログの記録を開始しました</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="detail-panel">
         <div class="dp-close" onclick="closeDetailPanel()">✕</div>
         <div class="dp-main">
@@ -332,13 +278,54 @@
 <script>
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([38.0, 137.0], 5);
 
-    // カスタム設定ボタン
+    // ==========================================
+    // システム情報可視化用 ロジック
+    // ==========================================
+    let sysStats = { success: 0, error: 0 };
+    let currentDelay = 0;
+    
+    function addSystemLog(msg, type = 'info') {
+        const box = document.getElementById('sys-log-container');
+        if (!box) return;
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        const el = document.createElement('div');
+        if (type === 'error') el.className = 'log-err';
+        else if (type === 'success') el.className = 'log-succ';
+        else if (type === 'warn') el.className = 'log-warn';
+        else el.className = 'log-info';
+        
+        el.innerText = `[${timeStr}] ${msg}`;
+        box.prepend(el);
+        if (box.children.length > 50) box.removeChild(box.lastChild);
+    }
+
+    function updateSettingsUI() {
+        document.getElementById('sys-status').innerText = isKyoshinActive ? "リアルタイム監視中" : "停止中";
+        document.getElementById('sys-status').style.color = isKyoshinActive ? "#30D158" : "#8E8E93";
+        document.getElementById('sys-delay').innerText = `${currentDelay} 秒`;
+        document.getElementById('sys-success').innerText = sysStats.success;
+        document.getElementById('sys-error').innerText = sysStats.error;
+    }
+
+    window.toggleSettingsPanel = function() {
+        const panel = document.getElementById('settings-panel');
+        if (panel.classList.contains('show')) {
+            panel.classList.remove('show');
+        } else {
+            updateSettingsUI();
+            panel.classList.add('show');
+            closeTsunamiPanel(); 
+        }
+    }
+    window.closeSettingsPanel = function() { document.getElementById('settings-panel').classList.remove('show'); }
+
     const SettingsControl = L.Control.extend({
         options: { position: 'topright' },
         onAdd: function (map) {
             const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-settings-btn');
-            container.innerHTML = `<a href="#" title="設定" role="button"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></a>`;
-            container.onclick = function(e){ e.preventDefault(); alert("設定は今後のアップデートで実装予定です！"); }
+            container.innerHTML = `<a href="#" title="設定・システム情報" role="button"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></a>`;
+            container.onclick = function(e){ e.preventDefault(); toggleSettingsPanel(); }
             return container;
         }
     });
@@ -353,48 +340,70 @@
     const tsunamiLineLayer = L.layerGroup().addTo(map); 
 
     // ==========================================
-    // 【強震モニタ】 解析用ロジック ＆ レイヤー
+    // 計測震度 逆算ロジック (RGB -> Hue -> Intensity)
     // ==========================================
-    function rgbToShindo(r, g, b) {
-        if (r === 0 && g === 0 && b === 0) return -999;
-        const max = Math.max(r, g, b);
-        const min = Math.min(r, g, b);
-        if (max === min) return -999;
-        
-        let h = 0;
+    function rgbToHue(r, g, b) {
+        let max = Math.max(r, g, b), min = Math.min(r, g, b);
+        if (max === min) return 0;
+        let h;
         if (max === r) h = 60 * ((g - b) / (max - min)) + (g < b ? 360 : 0);
         else if (max === g) h = 60 * ((b - r) / (max - min)) + 120;
-        else if (max === b) h = 60 * ((r - g) / (max - min)) + 240;
-        
-        let shindo = -3;
-        if (h > 240) shindo = -3;
-        else if (h > 180) shindo = -3 + (240 - h) / 60 * 1.5;
-        else if (h > 120) shindo = -1.5 + (180 - h) / 60 * 1.5;
-        else if (h > 60) shindo = 0 + (120 - h) / 60 * 2.0;
-        else if (h > 30) shindo = 2.0 + (60 - h) / 30 * 2.0;
-        else shindo = 4.0 + (30 - h) / 30 * 3.0;
-        
-        return shindo;
+        else h = 60 * ((r - g) / (max - min)) + 240;
+        return h;
     }
 
-    function latLngToKmoniPixel(lat, lng) {
-        const minLat = 30.0, maxLat = 46.0;
-        const minLng = 128.0, maxLng = 146.0;
-        const width = 352, height = 400;
+    function calcIntensityFromColor(colorStr) {
+        if (!colorStr) return -3.0;
+        const match = colorStr.match(/\d+/g);
+        if (!match || match.length < 3) return -3.0;
+        const r = parseInt(match[0]), g = parseInt(match[1]), b = parseInt(match[2]);
+        let h = rgbToHue(r, g, b);
         
-        let x = ((lng - minLng) / (maxLng - minLng)) * width;
-        let y = height - (((lat - minLat) / (maxLat - minLat)) * height);
+        if (h >= 280) h = h - 360; 
+
+        let intensity = -3.0;
+        if (h > 240) intensity = -3.0;
+        else if (h > 180) intensity = -3.0 + ((240 - h) / 60) * 3.0; 
+        else if (h > 120) intensity = 0.0 + ((180 - h) / 60) * 1.5;  
+        else if (h > 60)  intensity = 1.5 + ((120 - h) / 60) * 1.5;  
+        else if (h > 30)  intensity = 3.0 + ((60 - h) / 30) * 1.0;   
+        else if (h > 0)   intensity = 4.0 + ((30 - h) / 30) * 1.5;   
+        else              intensity = 5.5 + ((0 - h) / 80) * 1.5;    
         
-        return { x: Math.round(x), y: Math.round(y) };
+        return intensity;
     }
 
+    // ==========================================
+    // 震度下限フィルターの管理状態
+    // ==========================================
+    let currentIntensityFilterThreshold = -3.0;
+
+    window.updateIntensityFilter = function(val) {
+        let displayVal = parseFloat(val).toFixed(1);
+        if (displayVal > 0) displayVal = "+" + displayVal;
+        
+        document.getElementById('intensity-filter-val').innerText = displayVal;
+        currentIntensityFilterThreshold = parseFloat(val);
+        
+        if (kyoshinLayer && map.hasLayer(kyoshinLayer)) {
+            kyoshinLayer.redraw();
+        }
+    };
+
+    // ==========================================
+    // 【強震モニタ】 描画レイヤー
+    // ==========================================
     L.KyoshinMonitorLayer = L.Layer.extend({
-        initialize: function (stations, options) {
+        initialize: function (options) {
             L.setOptions(this, options);
-            this._stations = stations.map(st => {
-                const px = latLngToKmoniPixel(parseFloat(st.lat), parseFloat(st.lon));
-                return { ...st, kx: px.x, ky: px.y, currentShindo: -999 };
-            });
+            this._data = []; 
+            this._isCalcMode = false; 
+        },
+        setCalcMode: function (isCalc) {
+            this._isCalcMode = isCalc;
+            if (this._data.length > 0) {
+                this.updateData([...this._data]);
+            }
         },
         onAdd: function (map) {
             this._map = map;
@@ -415,110 +424,266 @@
             L.DomUtil.setPosition(this._canvas, topLeft);
             this._canvas.width = size.x;
             this._canvas.height = size.y;
-            for (let i = 0; i < this._stations.length; i++) {
-                const st = this._stations[i];
-                const p = this._map.latLngToContainerPoint([parseFloat(st.lat), parseFloat(st.lon)]);
-                st.cx = p.x; st.cy = p.y;
-            }
             this.redraw();
         },
-        updateFromImageData: function(imgData) {
-            if (!imgData) return;
-            const data = imgData.data;
-            const width = imgData.width;
+        updateData: function(dataArray) {
+            if (!dataArray || !Array.isArray(dataArray)) return;
             
-            for(let i = 0; i < this._stations.length; i++){
-                const st = this._stations[i];
-                if(st.kx < 0 || st.kx >= width || st.ky < 0 || st.ky >= imgData.height) continue;
-                
-                const idx = (st.ky * width + st.kx) * 4;
-                const r = data[idx];
-                const g = data[idx+1];
-                const b = data[idx+2];
-                
-                st.currentShindo = rgbToShindo(r, g, b);
+            function getOriginalIntensityScore(colorStr) {
+                if (!colorStr) return 0;
+                const match = colorStr.match(/\d+/g);
+                if (!match || match.length < 3) return 0;
+                let h = rgbToHue(parseInt(match[0]), parseInt(match[1]), parseInt(match[2]));
+                return h >= 280 ? h + 360 : (360 - h);
             }
+
+            this._data = dataArray.sort((a, b) => {
+                const scoreA = this._isCalcMode ? calcIntensityFromColor(a.color) : getOriginalIntensityScore(a.color);
+                const scoreB = this._isCalcMode ? calcIntensityFromColor(b.color) : getOriginalIntensityScore(b.color);
+                return scoreA - scoreB;
+            });
             this.redraw();
         },
         redraw: function () {
             if (!this._ctx) return;
             const ctx = this._ctx;
             ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
-            for (let i = 0; i < this._stations.length; i++) {
-                const st = this._stations[i];
-                if (st.currentShindo <= -3) continue;
-                if (st.cx < 0 || st.cy < 0 || st.cx > this._canvas.width || st.cy > this._canvas.height) continue;
+            
+            const zoom = this._map.getZoom();
+            
+            for (let i = 0; i < this._data.length; i++) {
+                const item = this._data[i];
+                if (item.lat === undefined || item.lon === undefined || !item.color) continue;
                 
-                ctx.beginPath();
-                ctx.arc(st.cx, st.cy, this._getRadius(st.currentShindo), 0, Math.PI * 2);
-                ctx.fillStyle = this._getColor(st.currentShindo);
-                ctx.fill();
+                const intensity = calcIntensityFromColor(item.color);
+                if (intensity < currentIntensityFilterThreshold) continue;
+
+                const p = this._map.latLngToContainerPoint([parseFloat(item.lat), parseFloat(item.lon)]);
+                if (p.x < -10 || p.y < -10 || p.x > this._canvas.width + 10 || p.y > this._canvas.height + 10) continue;
+                
+                if (this._isCalcMode) {
+                    if (intensity < -2.9 && currentIntensityFilterThreshold <= -2.9) continue; 
+                    
+                    if (intensity < 0.5) {
+                        const radius = zoom >= 8 ? 5.5 : (zoom >= 6 ? 3.5 : 2.0); 
+                        let alpha = 0;
+                        if (intensity > 0) alpha = 0.3 + (intensity / 0.5) * 0.4;
+                        else if (intensity > -1.0) alpha = 0.1 + ((intensity + 1.0) / 1.0) * 0.2;
+                        else alpha = 0.05;
+                        
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
+                        ctx.shadowColor = 'transparent'; 
+                        ctx.fill();
+                    } else {
+                        let scale = 10;
+                        if (intensity >= 6.5) scale = 70;
+                        else if (intensity >= 6.0) scale = 60;
+                        else if (intensity >= 5.5) scale = 55;
+                        else if (intensity >= 5.0) scale = 50;
+                        else if (intensity >= 4.5) scale = 45;
+                        else if (intensity >= 3.5) scale = 40;
+                        else if (intensity >= 2.5) scale = 30;
+                        else if (intensity >= 1.5) scale = 20;
+
+                        const hexColor = getIntensityColor(scale);
+                        const radius = zoom >= 9 ? 12 : 6;
+                        
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+                        ctx.fillStyle = hexColor;
+                        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+                        ctx.shadowBlur = 6;
+                        ctx.shadowOffsetX = 0;
+                        ctx.shadowOffsetY = 2;
+                        ctx.fill();
+                        
+                        ctx.shadowColor = 'transparent';
+                        ctx.lineWidth = 1.5;
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.stroke();
+                        
+                        if (zoom >= 9) {
+                            const text = getShortIntensityString(scale);
+                            ctx.fillStyle = '#ffffff';
+                            ctx.font = '800 12px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif'; 
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            
+                            if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '-0.5px';
+                            
+                            ctx.shadowColor = 'rgba(0,0,0,0.6)';
+                            ctx.shadowBlur = 3;
+                            ctx.shadowOffsetX = 0;
+                            ctx.shadowOffsetY = 0;
+                            ctx.fillText(text, p.x, p.y + 0.5);
+                            
+                            ctx.shadowColor = 'rgba(0,0,0,0.9)';
+                            ctx.shadowBlur = 2;
+                            ctx.shadowOffsetX = 0;
+                            ctx.shadowOffsetY = 1;
+                            ctx.fillText(text, p.x, p.y + 0.5);
+                            
+                            ctx.shadowColor = 'transparent';
+                            if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '0px';
+                        }
+                    }
+                } else {
+                    const radius = zoom >= 8 ? 4.5 : (zoom >= 6 ? 2.8 : 1.6);
+                    const lineWidth = zoom >= 8 ? 1.0 : (zoom >= 6 ? 0.8 : 0.4); 
+                    
+                    let drawColor = item.color;
+                    if (typeof item.color === 'string' && item.color.startsWith('rgb')) {
+                        drawColor = item.color.replace('rgb', 'rgba').replace(')', ', 0.9)');
+                    }
+                    
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+                    ctx.fillStyle = drawColor;
+                    ctx.shadowColor = 'transparent'; 
+                    ctx.fill();
+
+                    if (lineWidth > 0) {
+                        ctx.lineWidth = lineWidth;
+                        ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+                        ctx.stroke();
+                    }
+                }
             }
-        },
-        _getColor: function(v) {
-            if (v < 0.5) return 'rgba(100, 210, 255, 0.4)';  
-            if (v < 1.5) return 'rgba(10, 132, 255, 0.6)';  
-            if (v < 2.5) return 'rgba(48, 209, 88, 0.8)';   
-            if (v < 3.5) return 'rgba(255, 214, 10, 0.9)';  
-            if (v < 4.5) return 'rgba(255, 159, 10, 0.9)';  
-            if (v < 5.5) return 'rgba(255, 69, 58, 1)';     
-            return 'rgba(191, 90, 242, 1)';                 
-        },
-        _getRadius: function(v) { return Math.max(2, (v+1) * 1.5); }
+            ctx.shadowColor = 'transparent';
+        }
     });
 
-    let kyoshinLayer = null;
-    let kmoniInterval = null;
+    let kyoshinLayer = new L.KyoshinMonitorLayer();
+    let kmoniTimeout = null;
     let isKyoshinActive = false;
-    const debugCanvas = document.getElementById('kmoni-debug-canvas');
-    const debugCtx = debugCanvas.getContext('2d', { willReadFrequently: true });
+
+    // ==========================================
+    // サーバーレス完全フロントエンド画像解析処理
+    // ==========================================
+    let currentKmoniTimeOffset = 2000; // 強震モニタのラグを考慮（2秒前）
+    let intensityPointsData = []; // 座標変換マップ（正しくパースされたデータが入る）
+
+    function getFormatTimeStr(date) {
+        const yyyy = date.getFullYear();
+        const MM = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const HH = String(date.getHours()).padStart(2, '0');
+        const mm = String(date.getMinutes()).padStart(2, '0');
+        const ss = String(date.getSeconds()).padStart(2, '0');
+        return {
+            date: `${yyyy}${MM}${dd}`,
+            time: `${yyyy}${MM}${dd}${HH}${mm}${ss}`,
+            display: `${yyyy}/${MM}/${dd} ${HH}:${mm}:${ss}`
+        };
+    }
+
+    function extractColorsFromImage(img, targetTimeDisplay) {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        
+        const dataArray = [];
+        let extractedCount = 0;
+        
+        // 正しくパースされた intensityPointsData から色を抽出
+        intensityPointsData.forEach(pt => {
+            const x = Math.floor(pt.x);
+            const y = Math.floor(pt.y);
+
+            if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+                const index = (y * canvas.width + x) * 4;
+                const r = imageData[index];
+                const g = imageData[index + 1];
+                const b = imageData[index + 2];
+                
+                // 真っ黒（背景）や透明部分はスキップ
+                if (r === 0 && g === 0 && b === 0) return;
+                
+                dataArray.push({
+                    lat: pt.lat,
+                    lon: pt.lon,
+                    color: `rgb(${r}, ${g}, ${b})`
+                });
+                extractedCount++;
+            }
+        });
+
+        if (kyoshinLayer) kyoshinLayer.updateData(dataArray);
+        
+        document.getElementById('kmoni-indicator').classList.remove('error');
+        document.getElementById('kmoni-status-text').innerText = "リアルタイム監視中";
+        document.getElementById('kmoni-time').innerText = targetTimeDisplay;
+        
+        addSystemLog(`Res: [${targetTimeDisplay}] 解析完了 (${extractedCount}件)`, 'success');
+        console.log(`抽出データ件数: ${extractedCount}件`);
+    }
 
     function fetchKmoniImage() {
         if (!isKyoshinActive) return;
 
-        const now = new Date(Date.now() - 2000);
-        const yyyy = now.getFullYear();
-        const MM = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const hh = String(now.getHours()).padStart(2, '0');
-        const mm = String(now.getMinutes()).padStart(2, '0');
-        const ss = String(now.getSeconds()).padStart(2, '0');
-        const timeStr = `${yyyy}${MM}${dd}${hh}${mm}${ss}`;
-        const dateStr = `${yyyy}${MM}${dd}`;
+        const now = new Date();
+        const targetTime = new Date(now.getTime() - currentKmoniTimeOffset);
+        const t = getFormatTimeStr(targetTime);
         
-        document.getElementById('kmoni-time').innerText = `${yyyy}/${MM}/${dd} ${hh}:${mm}:${ss}`;
-
-        const imgUrl = `http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/${dateStr}/${timeStr}.png`;
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(imgUrl)}`;
-
+        // 防災科研の画像URL（プロキシのキャッシュ回避用ミリ秒パラメータ付き）
+        const baseUrl = `http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/${t.date}/${t.time}.jma_s.gif?_=${Date.now()}`;
+        
+        // 無料CORSプロキシ
+        const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(baseUrl)}`;
+        
         const img = new Image();
-        img.crossOrigin = "Anonymous";
-        img.onload = () => {
-            document.getElementById('kmoni-indicator').classList.remove('error');
-            document.getElementById('kmoni-status-text').innerText = "リアルタイム監視中";
+        img.crossOrigin = "Anonymous"; // CORS必須
+        
+        img.onload = function() {
+            sysStats.success++;
+            currentDelay = Math.floor((Date.now() - targetTime.getTime()) / 1000);
             
-            debugCtx.clearRect(0, 0, 352, 400);
-            debugCtx.drawImage(img, 0, 0);
-            const imgData = debugCtx.getImageData(0, 0, 352, 400);
+            extractColorsFromImage(img, t.display);
             
-            if(kyoshinLayer) kyoshinLayer.updateFromImageData(imgData);
+            if (document.getElementById('settings-panel').classList.contains('show')) updateSettingsUI();
+            
+            currentKmoniTimeOffset = 2000;
+            kmoniTimeout = setTimeout(fetchKmoniImage, 1000);
         };
-        img.onerror = () => {
+        
+        img.onerror = function() {
+            sysStats.error++;
             document.getElementById('kmoni-indicator').classList.add('error');
-            document.getElementById('kmoni-status-text').innerText = "データ待機中...";
+            document.getElementById('kmoni-status-text').innerText = "画像取得エラー (ラグ調整中...)";
+            addSystemLog(`Err: 画像取得失敗 [${t.time}]`, 'error');
+            
+            if (document.getElementById('settings-panel').classList.contains('show')) updateSettingsUI();
+            
+            currentKmoniTimeOffset += 1000; 
+            if (currentKmoniTimeOffset > 10000) currentKmoniTimeOffset = 2000; 
+            
+            kmoniTimeout = setTimeout(fetchKmoniImage, 500); 
         };
+        
         img.src = proxyUrl;
     }
 
     function startKyoshinMonitor() {
+        if(isKyoshinActive) return;
         isKyoshinActive = true;
+        addSystemLog(`Info: フロントエンド単体での強震モニタ解析を開始しました`, 'info');
+        if(document.getElementById('settings-panel').classList.contains('show')) updateSettingsUI();
+        
+        if(kmoniTimeout) clearTimeout(kmoniTimeout);
         fetchKmoniImage();
-        kmoniInterval = setInterval(fetchKmoniImage, 1000);
     }
     
     function stopKyoshinMonitor() {
+        if(!isKyoshinActive) return;
         isKyoshinActive = false;
-        if(kmoniInterval) clearInterval(kmoniInterval);
+        if(kmoniTimeout) clearTimeout(kmoniTimeout);
+        addSystemLog(`Info: 強震モニタ解析を停止しました`, 'warn');
+        if(document.getElementById('settings-panel').classList.contains('show')) updateSettingsUI();
     }
 
 
@@ -538,30 +703,52 @@
         else container.classList.remove('map-zoomed');
     });
 
+    // ★ 修正ポイント: intensity-points.json の中身を正しく展開（パース）して配列に格納する
     Promise.all([
         fetch('./japan.geo.json').then(res => res.json()).catch(() => null),
         fetch('./stations_with_amp_revised.json').then(res => res.json()).catch(() => []),
         fetch('./津波予報区.json').then(res => res.json()).catch(() => null),
         fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=0').then(res => res.ok ? res.json() : []).catch(() => []),
         fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=100').then(res => res.ok ? res.json() : []).catch(() => []),
-        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=200').then(res => res.ok ? res.json() : []).catch(() => [])
-    ]).then(([geoData, stations, tGeo, tData1, tData2, tData3]) => {
+        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=200').then(res => res.ok ? res.json() : []).catch(() => []),
+        fetch('./intensity-points.json').then(res => res.json()).catch(() => []) 
+    ]).then(([geoData, stations, tGeo, tData1, tData2, tData3, intPoints]) => {
         if (geoData) {
             L.geoJSON(geoData, { pane: 'baseMapPane', style: { color: "#3A3A3C", weight: 1, fillColor: "#1C1C1E", fillOpacity: 1 } }).addTo(map);
         }
-        stationsData = stations || [];
+        
+        stationsData = stations || []; 
         tsunamiGeoData = tGeo; 
         
+        // ★ 強震モニタ用のデータ抽出ロジックを追加
+        intensityPointsData = [];
+        if (intPoints && intPoints.length > 0) {
+            intPoints.forEach(st => {
+                // intensity-points.json 特有の深い階層構造から値を取り出す
+                if (st.location && st.point && st.point.center_point) {
+                    intensityPointsData.push({
+                        name: st.name || st.code,
+                        lat: st.location.latitude,
+                        lon: st.location.longitude,
+                        x: st.point.center_point.x,
+                        y: st.point.center_point.y
+                    });
+                }
+            });
+            console.log(`✅ 強震モニタ観測点ロード成功: ${intensityPointsData.length}件`);
+        } else {
+            console.warn("⚠️ intensity-points.json が読み込めませんでした");
+        }
+
         const combinedTsunamiData = [...(tData1||[]), ...(tData2||[]), ...(tData3||[])];
         if (combinedTsunamiData.length === 0 && (!tData1 || tData1.length === 0)) isTsunamiFetchError = true;
         tsunamiDataList = combinedTsunamiData;
         
-        if(stationsData.length > 0) {
-            kyoshinLayer = new L.KyoshinMonitorLayer(stationsData);
-        }
-
         fetchEarthquakeHistory();
-    }).catch(err => console.error("データ読み込みエラー:", err));
+    }).catch(err => {
+        console.error("データ読み込みエラー:", err);
+        addSystemLog(`Err: 初期データの読み込みに失敗しました`, 'error');
+    });
 
     function safeFormatDateString(rawTimeStr) {
         if (!rawTimeStr) return "--/-- --:--";
@@ -608,10 +795,20 @@
             html = '<strong>津波予報</strong>';
             for (let i = 0; i < colors.length; i++) html += '<div><i style="background:' + colors[i] + '"></i> ' + labels[i] + '</div>';
         } else if (type === 'kyoshin') {
-            const colors = ['#64D2FF', '#0A84FF', '#30D158', '#FFD60A', '#FF9F0A', '#FF453A', '#BF5AF2'];
-            const labels = ['0', '1', '2', '3', '4', '5', '6強'];
-            html = '<strong>リアルタイム震度</strong>';
-            for (let i = 0; i < colors.length; i++) html += '<div><i style="background:' + colors[i] + '"></i> ' + labels[i] + '</div>';
+            html = `
+                <div style="display: flex;">
+                    <div style="width: 15px; height: 180px; background: linear-gradient(to top, #0000cd 0%, #00bfff 15%, #00ff00 30%, #ffff00 50%, #ffa500 65%, #ff0000 80%, #b22222 90%, #800080 100%); border: 1px solid #555; border-radius: 3px; margin-right: 10px;"></div>
+                    <div style="display: flex; flex-direction: column; justify-content: space-between; font-size: 11px; font-weight: bold; height: 180px;">
+                        <span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span><span>0</span><span>-3</span>
+                    </div>
+                </div>
+            `;
+        } else if (type === 'kyoshin-calc') {
+            const grades = [10, 20, 30, 40, 45, 50, 55, 60, 70];
+            const labels = ['1', '2', '3', '4', '5-', '5+', '6-', '6+', '7'];
+            html = '<strong style="margin-bottom:6px;">推定計測震度</strong>';
+            for (let i = 0; i < grades.length; i++) html += '<div><i style="background:' + getIntensityColor(grades[i]) + '"></i> ' + labels[i] + '</div>';
+            html += '<div style="margin-top: 8px; font-size: 10px; color: #aaa; line-height:1.2;">※震度1未満は白色<br>（透過）で表示されます</div>';
         }
         legendDiv.innerHTML = html;
     }
@@ -636,7 +833,9 @@
             if (map.hasLayer(allEarthquakesLayer)) map.removeLayer(allEarthquakesLayer);
             if (kyoshinLayer && !map.hasLayer(kyoshinLayer)) map.addLayer(kyoshinLayer);
             startKyoshinMonitor();
-            updateLegend('kyoshin');
+            
+            const toggle = document.getElementById('kmoni-color-mode-toggle');
+            updateLegend(toggle && toggle.checked ? 'kyoshin-calc' : 'kyoshin');
         } else {
             stopKyoshinMonitor();
             if (kyoshinLayer && map.hasLayer(kyoshinLayer)) map.removeLayer(kyoshinLayer);
@@ -650,6 +849,13 @@
                 updateLegend('earthquake');
             }
         }
+    };
+
+    window.toggleKyoshinColorMode = function(checkbox) {
+        if (kyoshinLayer) {
+            kyoshinLayer.setCalcMode(checkbox.checked);
+        }
+        updateLegend(checkbox.checked ? 'kyoshin-calc' : 'kyoshin');
     };
 
     window.toggleExtendedArea = function() {
