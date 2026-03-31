@@ -144,10 +144,12 @@
         .sp-info { font-size: 13px; color: #e5e5ea; margin-bottom: 6px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; }
         .sp-info span { font-family: monospace; color: #64D2FF; text-align: right; word-break: break-all; max-width: 65%; font-weight: bold;}
         
-        .sp-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; flex: 1; transition: 0.2s; }
+        .sp-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; flex: 1; transition: 0.2s; white-space: nowrap; }
         .sp-btn:hover { background: rgba(255,255,255,0.2); }
         .sp-btn-danger { background: rgba(255,69,58,0.2); border-color: rgba(255,69,58,0.5); color: #FF453A; }
         .sp-btn-danger:hover { background: rgba(255,69,58,0.4); }
+        .sp-btn-plum { background: rgba(142,68,173,0.2); border-color: rgba(142,68,173,0.5); color: #D291BC; }
+        .sp-btn-plum:hover { background: rgba(142,68,173,0.4); }
 
         .sp-log-box { background: rgba(0,0,0,0.6); border-radius: 8px; padding: 10px; font-family: monospace; font-size: 11px; color: #0A84FF; height: 180px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.05); }
         .sp-log-box::-webkit-scrollbar { width: 4px; } .sp-log-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
@@ -155,13 +157,87 @@
         .sp-log-box div:last-child { margin-bottom: 0; border-bottom: none; }
         .sp-log-box .log-err { color: #FF453A; } .sp-log-box .log-succ { color: #30D158; } .sp-log-box .log-warn { color: #FFD60A; } .sp-log-box .log-info { color: #e5e5ea; }
 
-        /* 詳細パネル等 (スマホ対応版) */
-        #detail-panel { position: absolute; bottom: 20px; left: 10px; width: 280px; max-width: calc(100vw - 20px); background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; display: flex; flex-direction: column; opacity: 0; transform: translateY(150%); transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s; pointer-events: none; }
+        /* =========================================================
+           EEW コンテナ & フローティングパネル (マルチ対応)
+           ========================================================= */
+        .eew-container {
+            position: absolute;
+            bottom: 20px;
+            left: 10px;
+            display: flex;
+            flex-direction: column-reverse; /* 新しいものが上に積まれる */
+            gap: 12px;
+            max-height: 75vh;
+            overflow-y: auto;
+            z-index: 1500;
+            pointer-events: none; /* コンテナ自体はクリックを透過 */
+            width: 290px;
+            max-width: calc(100vw - 20px);
+        }
+        .eew-container::-webkit-scrollbar { width: 0px; }
+
+        .eew-panel {
+            pointer-events: auto; /* パネル部分はクリック有効 */
+            background: rgba(35, 30, 10, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 214, 10, 0.5);
+            border-radius: 12px;
+            padding: 14px;
+            color: #FFFFFF;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+            animation: slideInEew 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: background-color 0.3s, border-color 0.3s, opacity 0.3s, transform 0.3s;
+        }
+
+        .plum-badge {
+            background-color: #8E44AD;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            margin-left: 8px;
+            font-weight: bold;
+            vertical-align: 1px;
+            box-shadow: 0 0 5px rgba(142,68,173,0.8);
+        }
+
+        @keyframes slideInEew {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Leaflet用マーカー：通常（赤い×） */
+        .eew-marker-cross { position: relative; width: 24px; height: 24px; }
+        .eew-marker-cross::before, .eew-marker-cross::after {
+            content: ''; position: absolute;
+            top: 2px; left: 11px;
+            width: 3px; height: 20px;
+            background-color: #FF453A;
+            box-shadow: 0 0 8px #FF453A;
+        }
+        .eew-marker-cross::before { transform: rotate(45deg); }
+        .eew-marker-cross::after { transform: rotate(-45deg); }
+
+        /* Leaflet用マーカー：PLUM法（赤い中抜き○） */
+        .eew-marker-plum {
+            width: 24px; height: 24px;
+            border: 4px solid #FF453A;
+            border-radius: 50%;
+            box-sizing: border-box;
+            background-color: transparent;
+            box-shadow: 0 0 10px rgba(255, 69, 58, 0.8), inset 0 0 10px rgba(255, 69, 58, 0.8);
+        }
+
+        /* -------------------------------------
+           履歴用 詳細パネル (EEWとは分離)
+           ------------------------------------- */
+        #detail-panel { position: absolute; bottom: 20px; left: 10px; width: 280px; max-width: calc(100vw - 20px); background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; display: flex; flex-direction: column; opacity: 0; transform: translateY(150%); transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none; }
         #detail-panel.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
         
         .dp-main { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-        .dp-scale-box { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 10px 8px; min-width: 64px; background: rgba(0,0,0,0.3); border: 2px solid transparent; transition: border-color 0.3s; }
-        .dp-scale-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; } .dp-scale-value { font-size: 34px; font-weight: 700; line-height: 1; transition: color 0.3s;} 
+        .dp-scale-box { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 10px 8px; min-width: 64px; background: rgba(0,0,0,0.3); border: 2px solid transparent; }
+        .dp-scale-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; } .dp-scale-value { font-size: 34px; font-weight: 700; line-height: 1;} 
         .dp-info { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding-right: 24px; }
         .dp-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .dp-time { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; } .dp-meta { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .dp-meta strong { font-size: 15px; color: #fff; }
         .dp-toggle-btn { margin-top: 12px; padding: 10px 0 4px 0; text-align: center; font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); transition: color 0.2s; } .dp-toggle-btn:hover { color: #fff; }
@@ -181,16 +257,8 @@
         .station-scale-text { display: none; color: #ffffff; font-weight: 800; font-size: 12px; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.6); letter-spacing: -0.5px; line-height: 1; transform: translateY(0.5px); }
         .map-zoomed .station-dot { width: 24px; height: 24px; border-width: 1.5px; } .map-zoomed .station-scale-text { display: block; }
 
-        /* EEW アニメーション */
-        .eew-epicenter-marker {
-            width: 20px; height: 20px;
-            background: rgba(255, 69, 58, 0.85);
-            border: 2px solid #fff;
-            border-radius: 50%;
-            box-shadow: 0 0 15px rgba(255, 69, 58, 1);
-        }
         .eew-epicenter-pulse {
-            position: absolute; top: -15px; left: -15px;
+            position: absolute; top: -13px; left: -13px;
             width: 50px; height: 50px;
             background: rgba(255, 69, 58, 0.5);
             border-radius: 50%;
@@ -251,6 +319,8 @@
 <div id="map-container">
     <div id="map"></div>
     
+    <div id="eew-container" class="eew-container"></div>
+    
     <div id="settings-panel">
         <div class="sp-close" onclick="closeSettingsPanel()">✕</div>
         <div class="sp-header">システム情報 ＆ ログ</div>
@@ -265,11 +335,14 @@
             <div class="sp-section">
                 <div class="sp-title">EEW デモ・テスト実行</div>
                 <div style="display: flex; gap: 6px; margin-bottom: 6px;">
-                    <button class="sp-btn" onclick="startEEWMockTest('forecast')">予報テスト</button>
-                    <button class="sp-btn sp-btn-danger" onclick="startEEWMockTest('warning')">警報テスト</button>
-                    <button class="sp-btn" onclick="startEEWMockTest('cancel')">取消テスト</button>
+                    <button class="sp-btn" onclick="runEEWTest('normal')">通常テスト</button>
+                    <button class="sp-btn sp-btn-plum" onclick="runEEWTest('plum')">PLUM法</button>
+                    <button class="sp-btn" onclick="runEEWTest('cancel')">取消</button>
                 </div>
-                <button class="sp-btn" style="width: 100%;" onclick="stopEEWMockTest()">シミュレーション強制リセット</button>
+                <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+                    <button class="sp-btn sp-btn-danger" style="flex:2;" onclick="runEEWTest('multiple')">複数同時発生（スタックテスト）</button>
+                </div>
+                <button class="sp-btn" style="width: 100%;" onclick="clearAllEEWs()">シミュレーション強制クリア</button>
             </div>
 
             <div class="sp-section">
@@ -376,7 +449,7 @@
     const allEarthquakesLayer = L.layerGroup().addTo(map);
     const detailLayer = L.layerGroup();
     const tsunamiLineLayer = L.layerGroup().addTo(map); 
-    const eewLayer = L.layerGroup(); // EEW専用のレイヤー
+    const eewLayer = L.layerGroup().addTo(map);
 
     // ==========================================
     // 計測震度 逆算ロジック (RGB -> Hue -> Intensity)
@@ -397,12 +470,9 @@
         if (!match || match.length < 3) return -3.0;
         const r = parseInt(match[0]), g = parseInt(match[1]), b = parseInt(match[2]);
 
-        // ★ 修正箇所：グレー・白黒のノイズを弾く処理（彩度チェック）
         const max = Math.max(r, g, b);
         const min = Math.min(r, g, b);
-        if (max - min < 20) {
-            return -999; // 無彩色は極端なマイナスにして描画をスキップさせる
-        }
+        if (max - min < 20) return -999; 
 
         let h = rgbToHue(r, g, b);
         if (h >= 280) h = h - 360; 
@@ -419,21 +489,13 @@
         return intensity;
     }
 
-    // ==========================================
-    // 震度下限フィルターの管理状態
-    // ==========================================
     let currentIntensityFilterThreshold = -3.0;
-
     window.updateIntensityFilter = function(val) {
         let displayVal = parseFloat(val).toFixed(1);
         if (displayVal > 0) displayVal = "+" + displayVal;
-        
         document.getElementById('intensity-filter-val').innerText = displayVal;
         currentIntensityFilterThreshold = parseFloat(val);
-        
-        if (kyoshinLayer && map.hasLayer(kyoshinLayer)) {
-            kyoshinLayer.redraw();
-        }
+        if (kyoshinLayer && map.hasLayer(kyoshinLayer)) kyoshinLayer.redraw();
     };
 
     // ==========================================
@@ -447,9 +509,7 @@
         },
         setCalcMode: function (isCalc) {
             this._isCalcMode = isCalc;
-            if (this._data.length > 0) {
-                this.updateData([...this._data]);
-            }
+            if (this._data.length > 0) this.updateData([...this._data]);
         },
         onAdd: function (map) {
             this._map = map;
@@ -474,7 +534,6 @@
         },
         updateData: function(dataArray) {
             if (!dataArray || !Array.isArray(dataArray)) return;
-            
             function getOriginalIntensityScore(colorStr) {
                 if (!colorStr) return 0;
                 const match = colorStr.match(/\d+/g);
@@ -482,7 +541,6 @@
                 let h = rgbToHue(parseInt(match[0]), parseInt(match[1]), parseInt(match[2]));
                 return h >= 280 ? h + 360 : (360 - h);
             }
-
             this._data = dataArray.sort((a, b) => {
                 const scoreA = this._isCalcMode ? calcIntensityFromColor(a.color) : getOriginalIntensityScore(a.color);
                 const scoreB = this._isCalcMode ? calcIntensityFromColor(b.color) : getOriginalIntensityScore(b.color);
@@ -494,7 +552,6 @@
             if (!this._ctx) return;
             const ctx = this._ctx;
             ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
-            
             const zoom = this._map.getZoom();
             
             for (let i = 0; i < this._data.length; i++) {
@@ -502,7 +559,6 @@
                 if (item.lat === undefined || item.lon === undefined || !item.color) continue;
                 
                 const intensity = calcIntensityFromColor(item.color);
-                // フィルターおよびノイズ判定(-999)でのスキップ処理
                 if (intensity < currentIntensityFilterThreshold) continue;
 
                 const p = this._map.latLngToContainerPoint([parseFloat(item.lat), parseFloat(item.lon)]);
@@ -510,95 +566,42 @@
                 
                 if (this._isCalcMode) {
                     if (intensity < -2.9 && currentIntensityFilterThreshold <= -2.9) continue; 
-                    
                     if (intensity < 0.5) {
                         const radius = zoom >= 8 ? 5.5 : (zoom >= 6 ? 3.5 : 2.0); 
                         let alpha = 0;
                         if (intensity > 0) alpha = 0.3 + (intensity / 0.5) * 0.4;
                         else if (intensity > -1.0) alpha = 0.1 + ((intensity + 1.0) / 1.0) * 0.2;
                         else alpha = 0.05;
-                        
-                        ctx.beginPath();
-                        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
-                        ctx.shadowColor = 'transparent'; 
-                        ctx.fill();
+                        ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`; ctx.fill();
                     } else {
                         let scale = 10;
-                        if (intensity >= 6.5) scale = 70;
-                        else if (intensity >= 6.0) scale = 60;
-                        else if (intensity >= 5.5) scale = 55;
-                        else if (intensity >= 5.0) scale = 50;
-                        else if (intensity >= 4.5) scale = 45;
-                        else if (intensity >= 3.5) scale = 40;
-                        else if (intensity >= 2.5) scale = 30;
-                        else if (intensity >= 1.5) scale = 20;
+                        if (intensity >= 6.5) scale = 70; else if (intensity >= 6.0) scale = 60; else if (intensity >= 5.5) scale = 55;
+                        else if (intensity >= 5.0) scale = 50; else if (intensity >= 4.5) scale = 45; else if (intensity >= 3.5) scale = 40;
+                        else if (intensity >= 2.5) scale = 30; else if (intensity >= 1.5) scale = 20;
 
                         const hexColor = getIntensityColor(scale);
                         const radius = zoom >= 9 ? 12 : 6;
-                        
-                        ctx.beginPath();
-                        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-                        ctx.fillStyle = hexColor;
-                        ctx.shadowColor = 'rgba(0,0,0,0.6)';
-                        ctx.shadowBlur = 6;
-                        ctx.shadowOffsetX = 0;
-                        ctx.shadowOffsetY = 2;
-                        ctx.fill();
-                        
-                        ctx.shadowColor = 'transparent';
-                        ctx.lineWidth = 1.5;
-                        ctx.strokeStyle = '#ffffff';
-                        ctx.stroke();
+                        ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+                        ctx.fillStyle = hexColor; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2; ctx.fill();
+                        ctx.shadowColor = 'transparent'; ctx.lineWidth = 1.5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
                         
                         if (zoom >= 9) {
                             const text = getShortIntensityString(scale);
-                            ctx.fillStyle = '#ffffff';
-                            ctx.font = '800 12px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif'; 
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            
-                            if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '-0.5px';
-                            
-                            ctx.shadowColor = 'rgba(0,0,0,0.6)';
-                            ctx.shadowBlur = 3;
-                            ctx.shadowOffsetX = 0;
-                            ctx.shadowOffsetY = 0;
-                            ctx.fillText(text, p.x, p.y + 0.5);
-                            
-                            ctx.shadowColor = 'rgba(0,0,0,0.9)';
-                            ctx.shadowBlur = 2;
-                            ctx.shadowOffsetX = 0;
-                            ctx.shadowOffsetY = 1;
-                            ctx.fillText(text, p.x, p.y + 0.5);
-                            
-                            ctx.shadowColor = 'transparent';
-                            if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '0px';
+                            ctx.fillStyle = '#ffffff'; ctx.font = '800 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                            ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
+                            ctx.fillText(text, p.x, p.y + 0.5); ctx.shadowColor = 'transparent';
                         }
                     }
                 } else {
                     const radius = zoom >= 8 ? 4.5 : (zoom >= 6 ? 2.8 : 1.6);
                     const lineWidth = zoom >= 8 ? 1.0 : (zoom >= 6 ? 0.8 : 0.4); 
-                    
                     let drawColor = item.color;
-                    if (typeof item.color === 'string' && item.color.startsWith('rgb')) {
-                        drawColor = item.color.replace('rgb', 'rgba').replace(')', ', 0.9)');
-                    }
-                    
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-                    ctx.fillStyle = drawColor;
-                    ctx.shadowColor = 'transparent'; 
-                    ctx.fill();
-
-                    if (lineWidth > 0) {
-                        ctx.lineWidth = lineWidth;
-                        ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
-                        ctx.stroke();
-                    }
+                    if (typeof item.color === 'string' && item.color.startsWith('rgb')) drawColor = item.color.replace('rgb', 'rgba').replace(')', ', 0.9)');
+                    ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2); ctx.fillStyle = drawColor; ctx.fill();
+                    if (lineWidth > 0) { ctx.lineWidth = lineWidth; ctx.strokeStyle = "rgba(255, 255, 255, 0.95)"; ctx.stroke(); }
                 }
             }
-            ctx.shadowColor = 'transparent';
         }
     });
 
@@ -607,229 +610,259 @@
     let isKyoshinActive = false;
 
     // ==========================================
-    // 緊急地震速報 (EEW) テスト・シミュレーション機能
+    // 緊急地震速報 (EEW) 統合管理（マルチ・PLUM対応）
     // ==========================================
+    const activeEEWs = new Map();
     let isEEWMockActive = false;
-    let mockEEWType = '';
-    let mockEEWStep = 1;
-    let mockEEWTick = 0;
-    let mockEEWData = null;
+    let mockEEWTimers = [];
 
-    window.startEEWMockTest = function(type) {
-        if (!isKyoshinActive) switchTab('kyoshin'); // 強震モニタモードで実行
-
-        isEEWMockActive = true;
-        mockEEWType = type;
-        mockEEWStep = 1;
-        mockEEWTick = 0;
-        
-        const isWarning = type === 'warning';
-        mockEEWData = {
-            result: { status: "success", message: "" },
-            is_cancel: false, is_final: false, is_training: false,
-            report_num: "1",
-            alertflg: isWarning ? "警報" : "予報",
-            region_name: isWarning ? "南海トラフ周辺" : "東京湾",
-            latitude: isWarning ? "32.0" : "35.6",
-            longitude: isWarning ? "134.0" : "139.8",
-            depth: "30km",
-            magunitude: isWarning ? "7.5" : "4.0",
-            calcintensity: isWarning ? "5弱" : "3",
-            origin_time: getFormatTimeStr(new Date()).time // 発生時刻を現在に
-        };
-        
-        closeDetailPanel();
-        addSystemLog(`[EEW Test] ${type} テストを開始しました`, 'warn');
-    };
-
-    window.stopEEWMockTest = function() {
-        isEEWMockActive = false;
-        mockEEWData = null;
-        clearEEWUI();
-        addSystemLog(`[EEW Test] シミュレーションを強制終了しました`, 'info');
-    };
-
-    function getMockEEWStep() {
-        if (!isEEWMockActive || !mockEEWData) return { result: { message: "データがありません" } };
-        
-        mockEEWTick++;
-        let data = { ...mockEEWData };
-        
-        // 3秒（3Tick）ごとに報数を進め、リアリティを出すために値を変動させる
-        if (mockEEWTick % 3 === 0 && mockEEWStep < 5) {
-            mockEEWStep++;
-            if (mockEEWType === 'warning' && mockEEWStep === 3) {
-                data.calcintensity = "6弱"; // 途中で予測震度が上がる演出
-                data.magunitude = "7.8";
-                mockEEWData.calcintensity = data.calcintensity;
-                mockEEWData.magunitude = data.magunitude;
-            }
-        }
-        
-        data.report_num = mockEEWStep.toString();
-        
-        if (mockEEWType === 'cancel' && mockEEWStep >= 3) {
-            data.is_cancel = true;
-            setTimeout(() => { if (isEEWMockActive) stopEEWMockTest(); }, 5000); // 5秒後にパネルを消す
-        } else if (mockEEWStep >= 5) {
-            data.is_final = true;
-            setTimeout(() => { if (isEEWMockActive) stopEEWMockTest(); }, 10000); // 10秒後にパネルを消す
-        }
-        
-        return data;
+    function formatEEWTime(timeStr) {
+        if (!timeStr || timeStr.length < 14) return "時刻不明";
+        return `${timeStr.slice(8, 10)}:${timeStr.slice(10, 12)}:${timeStr.slice(12, 14)}`;
     }
 
-    // ==========================================
-    // 緊急地震速報 (EEW) 本番UI制御処理
-    // ==========================================
-    let lastEEWJsonStr = "";
-    let eewClearTimer = null;
-    let eewEpicenterMarker = null;
-
     async function fetchKmoniEEW(timeFmt) {
-        if (isEEWMockActive) return getMockEEWStep(); // テストモード中はモックデータを返す
-
+        if (isEEWMockActive) return null; // モックモード時はローカルタイマーで処理
         try {
             const baseUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${timeFmt.time}.json?_=${Date.now()}`;
             const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(baseUrl)}`;
             const res = await fetch(proxyUrl);
-            return await res.json();
-        } catch (e) {
-            return null;
-        }
+            const data = await res.json();
+            processEEWData(data);
+        } catch (e) {}
     }
 
     function processEEWData(data) {
-        if (!data || !data.result) return;
-        
-        if (data.result.message === "データがありません" || data.result.message === "対象外") {
-            // 受信データが無い場合、保持タイマーが動いていなければUIをクリア
-            if (!eewClearTimer && lastEEWJsonStr !== "") {
-                clearEEWUI();
-                lastEEWJsonStr = "";
+        if (!data || !data.result || data.result.message === "データがありません" || data.result.message === "対象外") return;
+
+        const eventId = data.report_id || data.origin_time; 
+        const isCancel = data.is_cancel === true;
+        const isPlum = data.is_plum === true || (data.region_name === "" && data.calcintensity); 
+
+        // 1. 発生時刻の「頃発生」表記
+        const timeStr = `${formatEEWTime(data.origin_time)} 頃発生`;
+
+        // キャンセル処理
+        if (isCancel) {
+            updateEEWPanelUI(eventId, data, isPlum, timeStr, true);
+            if (activeEEWs.has(eventId)) {
+                eewLayer.removeLayer(activeEEWs.get(eventId).layerGroup);
+                activeEEWs.delete(eventId);
             }
+            setTimeout(() => removeEEWDOM(eventId), 8000);
             return;
         }
 
-        const currentJsonStr = JSON.stringify(data);
-        if (currentJsonStr === lastEEWJsonStr) return; // 内容に変更がなければ再描画しない（チラつき防止）
-        lastEEWJsonStr = currentJsonStr;
-        
-        renderEEWPanel(data);
-
-        // 終了判定（キャンセル報、または最終報の時は数秒後にパネルを自動で消す）
-        if (data.is_cancel) {
-            if (!eewClearTimer) eewClearTimer = setTimeout(clearEEWUI, 8000);
-        } else if (data.is_final) {
-            if (!eewClearTimer) eewClearTimer = setTimeout(clearEEWUI, 20000); // 最終報から20秒保持
-        }
-    }
-
-    function renderEEWPanel(eew) {
-        const detailPanel = document.getElementById('detail-panel');
-        const dpBox = document.getElementById('dp-box');
-        const scaleLabel = document.getElementById('dp-scale-label');
-        const scaleValue = document.getElementById('dp-scale');
-        const dpName = document.getElementById('dp-name');
-        const dpTime = document.getElementById('dp-time');
-        const dpMag = document.getElementById('dp-mag');
-        const dpDepth = document.getElementById('dp-depth');
-        const commentsText = document.getElementById('dp-comments-text');
-        
-        detailPanel.classList.add('show');
-        document.getElementById('dp-extended-area').classList.remove('collapsed');
-        document.getElementById('dp-toggle-btn').innerHTML = '詳細情報を閉じる ▲';
-        
-        // 過去の観測点リストは非表示に
-        document.getElementById('dp-stations-list').innerHTML = '';
-
-        if (eew.is_cancel) {
-            dpBox.style.background = "rgba(0,0,0,0.5)"; dpBox.style.borderColor = "#8E8E93";
-            scaleLabel.innerText = "緊急速報"; scaleValue.innerText = "取消"; scaleValue.style.color = "#8E8E93";
-            dpName.innerHTML = `<span style="color:#FF453A;">【緊急地震速報】 キャンセル</span>`;
-            dpTime.innerText = "この緊急地震速報は取り消されました。";
-            commentsText.innerHTML = "<strong>【誤報・取消】</strong><br>先ほどの緊急地震速報は取り消されました。今後の情報に注意してください。";
-            document.getElementById('dp-comments').style.borderLeftColor = "#8E8E93";
-            return;
-        }
-
-        const isWarning = eew.alertflg === "警報";
-        const titleColor = isWarning ? "#FF453A" : "#FFD60A";
-        const reportText = eew.is_final ? "最終報" : `第${eew.report_num}報`;
-        
-        // 全体の枠色を危険度によって変更
-        detailPanel.style.backgroundColor = isWarning ? "rgba(45, 10, 10, 0.8)" : "rgba(35, 30, 10, 0.8)";
-        
-        dpName.innerHTML = `<span style="color:${titleColor}; font-weight:800; font-size:18px;">【緊急地震速報】 ${reportText}</span><br><span style="font-size:15px;">${eew.region_name}</span>`;
-        dpName.title = eew.region_name;
-        
-        let t = eew.origin_time || "";
-        let timeStr = t.length === 14 ? `${t.slice(0,4)}/${t.slice(4,6)}/${t.slice(6,8)} ${t.slice(8,10)}:${t.slice(10,12)}:${t.slice(12,14)} 発生` : t;
-        dpTime.innerText = timeStr;
-        dpMag.innerText = eew.magunitude || "-.-";
-        dpDepth.innerText = eew.depth || "--";
-        
-        // 震度マッピング
-        let intensityStr = eew.calcintensity || "?";
-        scaleLabel.innerText = "最大予測";
-        scaleValue.innerText = intensityStr;
-        
-        let intNum = 0;
-        if(intensityStr.includes("1")) intNum=10;
-        if(intensityStr.includes("2")) intNum=20;
-        if(intensityStr.includes("3")) intNum=30;
-        if(intensityStr.includes("4")) intNum=40;
-        if(intensityStr.includes("5弱")) intNum=45;
-        if(intensityStr.includes("5強")) intNum=50;
-        if(intensityStr.includes("6弱")) intNum=55;
-        if(intensityStr.includes("6強")) intNum=60;
-        if(intensityStr.includes("7")) intNum=70;
-        
-        let color = getIntensityColor(intNum);
-        dpBox.style.background = isWarning ? "rgba(255,0,0,0.2)" : "rgba(0,0,0,0.5)";
-        dpBox.style.borderColor = color;
-        scaleValue.style.color = color;
-
-        commentsText.innerHTML = `<strong>【地震予測情報】</strong><br>強い揺れに警戒してください。${isWarning ? '<br><span style="color:#FF453A;">※これは緊急地震速報（警報）です。</span>' : ''}`;
-        document.getElementById('dp-comments').style.borderLeftColor = color;
-        document.getElementById('dp-comments').classList.remove('clickable'); // EEW中はクリック無効
-
-        // 地図上に震央を描画
-        if (eew.latitude && eew.longitude) {
-            drawEEWEpicenter(parseFloat(eew.latitude), parseFloat(eew.longitude));
-        }
-    }
-
-    function drawEEWEpicenter(lat, lon) {
-        if (!eewEpicenterMarker) {
-            const icon = L.divIcon({
-                className: 'custom-div-icon',
-                html: `<div class="eew-epicenter-pulse"></div><div class="eew-epicenter-marker"></div>`,
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
+        // Map登録とレイヤー初期化
+        if (!activeEEWs.has(eventId)) {
+            activeEEWs.set(eventId, {
+                data: data,
+                layerGroup: L.layerGroup().addTo(eewLayer),
+                clearTimer: null
             });
-            eewEpicenterMarker = L.marker([lat, lon], { icon: icon, zIndexOffset: 30000 }).addTo(eewLayer);
+        }
+        const eewState = activeEEWs.get(eventId);
+        eewState.data = data;
+        eewState.layerGroup.clearLayers(); 
+
+        // 2. 地図マーカーの描画（PLUM法による分岐）
+        if (data.latitude && data.longitude) {
+            const iconClass = isPlum ? 'eew-marker-plum' : 'eew-marker-cross';
+            const epicenterMarker = L.marker([parseFloat(data.latitude), parseFloat(data.longitude)], {
+                icon: L.divIcon({ className: iconClass, iconSize: [24, 24], iconAnchor: [12, 12] }),
+                zIndexOffset: 30000
+            });
+            eewState.layerGroup.addLayer(epicenterMarker);
             
-            // 最初の1報で震央へカメラを移動（ユーザーが操作していない場合のみ）
-            map.setView([lat, lon], 6, { animate: true, duration: 1.0 });
-        } else {
-            eewEpicenterMarker.setLatLng([lat, lon]);
+            if (!isPlum) {
+                const pulseIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="eew-epicenter-pulse"></div>`, iconSize: [0, 0] });
+                L.marker([parseFloat(data.latitude), parseFloat(data.longitude)], { icon: pulseIcon }).addTo(eewState.layerGroup);
+            }
+            
+            // 初報の時にカメラ移動
+            if (data.report_num === "1" || data.report_num === 1) {
+                map.setView([parseFloat(data.latitude), parseFloat(data.longitude)], 6, { animate: true, duration: 1.0 });
+            }
+        }
+
+        // 3. UIの生成と更新（コンテナへスタック）
+        updateEEWPanelUI(eventId, data, isPlum, timeStr, false);
+
+        // 終了判定
+        if (data.is_final) {
+            if (!eewState.clearTimer) {
+                eewState.clearTimer = setTimeout(() => {
+                    eewLayer.removeLayer(eewState.layerGroup);
+                    activeEEWs.delete(eventId);
+                    removeEEWDOM(eventId);
+                }, 20000);
+            }
         }
     }
 
-    function clearEEWUI() {
-        document.getElementById('detail-panel').classList.remove('show');
-        document.getElementById('detail-panel').style.backgroundColor = "rgba(28, 28, 30, 0.45)"; // 色を元に戻す
-        
-        if (eewEpicenterMarker) {
-            eewLayer.removeLayer(eewEpicenterMarker);
-            eewEpicenterMarker = null;
+    function updateEEWPanelUI(eventId, data, isPlum, timeStr, isCancel) {
+        const container = document.getElementById('eew-container');
+        let panel = document.getElementById(`eew-panel-${eventId}`);
+
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = `eew-panel-${eventId}`;
+            panel.className = 'eew-panel';
+            container.appendChild(panel); 
         }
-        if (eewClearTimer) {
-            clearTimeout(eewClearTimer);
-            eewClearTimer = null;
+
+        if (isCancel) {
+            panel.style.background = "rgba(40, 40, 40, 0.9)";
+            panel.style.borderColor = "#8E8E93";
+            panel.innerHTML = `
+                <div style="font-weight: 800; font-size: 1.1em; margin-bottom: 6px; color: #FF453A; display: flex; align-items: center; white-space: nowrap;">
+                    【緊急地震速報】 取消
+                </div>
+                <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px; white-space: nowrap;">
+                    この速報は取り消されました
+                </div>
+                <div style="font-size: 0.85em; color: #e5e5ea; background: rgba(0,0,0,0.5); padding: 8px; border-radius: 6px; border-left: 3px solid #8E8E93;">
+                    <strong>【誤報・取消】</strong><br>先ほどの緊急地震速報は取り消されました。今後の情報に注意してください。
+                </div>
+            `;
+            return;
+        }
+
+        const isWarning = data.alertflg === "警報";
+        panel.style.background = isWarning ? "rgba(45, 10, 10, 0.85)" : "rgba(35, 30, 10, 0.85)";
+        panel.style.borderColor = isWarning ? "rgba(255, 69, 58, 0.5)" : "rgba(255, 214, 10, 0.5)";
+
+        const badgeHtml = isPlum ? `<span class="plum-badge">PLUM法</span>` : '';
+        const reportText = data.is_final ? "最終報" : `第${data.report_num}報`;
+        const titleColor = isWarning ? "#FF453A" : "#FFD60A";
+        
+        const regionName = data.region_name || '調査中';
+        const magnitude = data.magunitude ? `M${data.magunitude}` : '不明';
+        let depth = data.depth ? data.depth.replace('km', '') + 'km' : '不明'; 
+        if(depth === "ごく浅いkm") depth = "ごく浅い";
+
+        let intensityStr = data.calcintensity || "?";
+        let intNum = 0;
+        if(intensityStr.includes("1")) intNum=10; if(intensityStr.includes("2")) intNum=20; if(intensityStr.includes("3")) intNum=30;
+        if(intensityStr.includes("4")) intNum=40; if(intensityStr.includes("5弱")) intNum=45; if(intensityStr.includes("5強")) intNum=50;
+        if(intensityStr.includes("6弱")) intNum=55; if(intensityStr.includes("6強")) intNum=60; if(intensityStr.includes("7")) intNum=70;
+        let color = getIntensityColor(intNum);
+
+        panel.innerHTML = `
+            <div style="font-weight: 800; font-size: 1.1em; margin-bottom: 6px; color: ${titleColor}; display: flex; align-items: center; white-space: nowrap;">
+                【緊急地震速報】 ${reportText} ${badgeHtml}
+            </div>
+            <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px; white-space: nowrap;">
+                ${timeStr}
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: stretch; margin-bottom: 8px;">
+                <div style="flex-grow: 1; overflow: hidden; padding-right: 8px;">
+                    <div style="font-size: 1.1em; font-weight: bold; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${regionName}</div>
+                    <div style="font-size: 0.85em; color: #e5e5ea; line-height: 1.4; white-space: nowrap;">
+                        <span style="color:var(--text-secondary);">深さ:</span> <strong style="color:#fff;">${depth}</strong><br>
+                        <span style="color:var(--text-secondary);">規模:</span> <strong style="color:#fff;">${magnitude}</strong>
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); padding: 6px 12px; border-radius: 8px; border: 1px solid ${color}; flex-shrink: 0; min-width: 60px;">
+                    <span style="font-size: 0.7em; color: var(--text-secondary); margin-bottom: 2px; white-space: nowrap;">最大予測</span>
+                    <span style="font-size: 1.8em; font-weight: 800; color: ${color}; line-height: 1; white-space: nowrap;">${intensityStr}</span>
+                </div>
+            </div>
+            <div style="font-size: 0.85em; color: #e5e5ea; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; border-left: 3px solid ${color};">
+                <strong>【予測情報】</strong><br>強い揺れに警戒してください。${isPlum ? '<br><span style="font-size: 0.9em; color: #aaa;">※観測点の揺れから予測しています。</span>' : ''}
+            </div>
+        `;
+    }
+
+    function removeEEWDOM(eventId) {
+        const panel = document.getElementById(`eew-panel-${eventId}`);
+        if (panel) {
+            panel.style.opacity = '0';
+            panel.style.transform = 'translateX(-30px)';
+            setTimeout(() => panel.remove(), 300);
         }
     }
+
+    function clearAllEEWs() {
+        mockEEWTimers.forEach(t => clearInterval(t));
+        mockEEWTimers = [];
+        isEEWMockActive = false;
+        activeEEWs.forEach((state, eventId) => {
+            if (state.clearTimer) clearTimeout(state.clearTimer);
+            eewLayer.removeLayer(state.layerGroup);
+            removeEEWDOM(eventId);
+        });
+        activeEEWs.clear();
+        addSystemLog(`[EEW Test] 全てのシミュレーションとUIを強制クリアしました`, 'info');
+    }
+
+    // --- EEW テスト・シミュレータ ---
+    window.runEEWTest = function(type) {
+        if (!isKyoshinActive) switchTab('kyoshin'); 
+        isEEWMockActive = true;
+        closeDetailPanel();
+        
+        const baseTime = getFormatTimeStr(new Date()).time;
+        addSystemLog(`[EEW Test] ${type} テストを開始しました`, 'warn');
+
+        if (type === 'normal') {
+            startMockEEWSequence("TEST_001", false, "東京湾", 35.5, 139.8, 30, 4.5, ["3", "4", "4"], baseTime, 0);
+        } else if (type === 'plum') {
+            startMockEEWSequence("TEST_PLUM_01", true, "関東地方", 36.0, 140.0, null, null, ["3", "5弱", "5弱"], baseTime, 0);
+        } else if (type === 'cancel') {
+            startMockEEWSequence("TEST_CAN_01", false, "紀伊水道", 33.8, 134.8, 10, 5.5, ["3"], baseTime, 0, true);
+        } else if (type === 'multiple') {
+            startMockEEWSequence("TEST_MULTI_1", false, "東京湾", 35.5, 139.8, 30, 4.5, ["3", "4", "4"], baseTime, 0);
+            setTimeout(() => {
+                startMockEEWSequence("TEST_MULTI_2", false, "南海トラフ周辺", 32.0, 134.0, 10, 7.8, ["5弱", "6弱", "6強", "6強"], "20260331151503", 0);
+            }, 4000);
+        }
+    };
+
+    function startMockEEWSequence(id, isPlum, region, lat, lon, depth, mag, intensities, originTime, delayMs, forceCancel = false) {
+        let step = 0;
+        let isWarning = false;
+        
+        const interval = setInterval(() => {
+            if (step >= intensities.length) { 
+                clearInterval(interval);
+                return;
+            }
+
+            let isFinal = (step === intensities.length - 1);
+            let intensity = intensities[Math.min(step, intensities.length - 1)];
+            if (intensity.includes("4") || intensity.includes("5") || intensity.includes("6") || intensity.includes("7")) {
+                isWarning = true;
+            }
+
+            let isCancel = forceCancel && step === 0; // キャンセルテスト用
+            if (isCancel) isFinal = false;
+
+            let data = {
+                result: { status: "success", message: "" },
+                report_id: id,
+                report_num: (step + 1).toString(),
+                is_final: isFinal,
+                is_cancel: isCancel,
+                is_plum: isPlum,
+                alertflg: isWarning ? "警報" : "予報",
+                region_name: region,
+                latitude: lat ? lat.toString() : "",
+                longitude: lon ? lon.toString() : "",
+                depth: depth ? depth + "km" : "",
+                magunitude: mag ? mag.toString() : "",
+                calcintensity: intensity,
+                origin_time: originTime
+            };
+
+            processEEWData(data);
+            step++;
+            if(isCancel) clearInterval(interval);
+        }, 3000);
+        
+        mockEEWTimers.push(interval);
+    }
+
 
     // ==========================================
     // サーバーレス完全フロントエンド画像解析処理
@@ -853,38 +886,23 @@
 
     function extractColorsFromImage(img, targetTimeDisplay) {
         const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = img.width; canvas.height = img.height;
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
         
         const dataArray = [];
-        let extractedCount = 0;
-        
         intensityPointsData.forEach(pt => {
-            const x = Math.floor(pt.x);
-            const y = Math.floor(pt.y);
-
+            const x = Math.floor(pt.x); const y = Math.floor(pt.y);
             if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
                 const index = (y * canvas.width + x) * 4;
-                const r = imageData[index];
-                const g = imageData[index + 1];
-                const b = imageData[index + 2];
-                
+                const r = imageData[index]; const g = imageData[index + 1]; const b = imageData[index + 2];
                 if (r === 0 && g === 0 && b === 0) return;
-                
-                dataArray.push({
-                    lat: pt.lat,
-                    lon: pt.lon,
-                    color: `rgb(${r}, ${g}, ${b})`
-                });
-                extractedCount++;
+                dataArray.push({ lat: pt.lat, lon: pt.lon, color: `rgb(${r}, ${g}, ${b})` });
             }
         });
 
         if (kyoshinLayer) kyoshinLayer.updateData(dataArray);
-        
         document.getElementById('kmoni-indicator').classList.remove('error');
         document.getElementById('kmoni-status-text').innerText = "リアルタイム監視中";
         document.getElementById('kmoni-time').innerText = targetTimeDisplay;
@@ -892,46 +910,33 @@
 
     function fetchKmoniImage() {
         if (!isKyoshinActive) return;
-
         const now = new Date();
         const targetTime = new Date(now.getTime() - currentKmoniTimeOffset);
         const t = getFormatTimeStr(targetTime);
         
-        // ★画像の取得と同時に、EEWデータを取得する
-        fetchKmoniEEW(t).then(eewData => {
-            processEEWData(eewData);
-        });
+        fetchKmoniEEW(t); // EEWのポーリング
 
         const baseUrl = `http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/${t.date}/${t.time}.jma_s.gif?_=${Date.now()}`;
         const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(baseUrl)}`;
-        
-        const img = new Image();
-        img.crossOrigin = "Anonymous"; 
+        const img = new Image(); img.crossOrigin = "Anonymous"; 
         
         img.onload = function() {
             sysStats.success++;
             currentDelay = Math.floor((Date.now() - targetTime.getTime()) / 1000);
-            
             extractColorsFromImage(img, t.display);
             if (document.getElementById('settings-panel').classList.contains('show')) updateSettingsUI();
-            
             currentKmoniTimeOffset = 2000;
             kmoniTimeout = setTimeout(fetchKmoniImage, 1000);
         };
-        
         img.onerror = function() {
             sysStats.error++;
             document.getElementById('kmoni-indicator').classList.add('error');
             document.getElementById('kmoni-status-text').innerText = "画像取得エラー (ラグ調整中...)";
-            
             if (document.getElementById('settings-panel').classList.contains('show')) updateSettingsUI();
-            
             currentKmoniTimeOffset += 1000; 
             if (currentKmoniTimeOffset > 10000) currentKmoniTimeOffset = 2000; 
-            
             kmoniTimeout = setTimeout(fetchKmoniImage, 500); 
         };
-        
         img.src = proxyUrl;
     }
 
@@ -940,8 +945,6 @@
         isKyoshinActive = true;
         addSystemLog(`Info: フロントエンド単体での強震モニタ解析を開始しました`, 'info');
         if(document.getElementById('settings-panel').classList.contains('show')) updateSettingsUI();
-        if (!map.hasLayer(eewLayer)) map.addLayer(eewLayer);
-        
         if(kmoniTimeout) clearTimeout(kmoniTimeout);
         fetchKmoniImage();
     }
@@ -950,7 +953,6 @@
         if(!isKyoshinActive) return;
         isKyoshinActive = false;
         if(kmoniTimeout) clearTimeout(kmoniTimeout);
-        map.removeLayer(eewLayer);
         addSystemLog(`Info: 強震モニタ解析を停止しました`, 'warn');
         if(document.getElementById('settings-panel').classList.contains('show')) updateSettingsUI();
     }
@@ -1097,7 +1099,6 @@
             if (map.hasLayer(allEarthquakesLayer)) map.removeLayer(allEarthquakesLayer);
             if (kyoshinLayer && !map.hasLayer(kyoshinLayer)) map.addLayer(kyoshinLayer);
             startKyoshinMonitor();
-            
             const toggle = document.getElementById('kmoni-color-mode-toggle');
             updateLegend(toggle && toggle.checked ? 'kyoshin-calc' : 'kyoshin');
         } else {
@@ -1116,9 +1117,7 @@
     };
 
     window.toggleKyoshinColorMode = function(checkbox) {
-        if (kyoshinLayer) {
-            kyoshinLayer.setCalcMode(checkbox.checked);
-        }
+        if (kyoshinLayer) kyoshinLayer.setCalcMode(checkbox.checked);
         updateLegend(checkbox.checked ? 'kyoshin-calc' : 'kyoshin');
     };
 
@@ -1384,9 +1383,14 @@
         } else stationsListContainer.innerHTML = '<div style="padding: 10px; text-align: center; color: var(--text-secondary); font-size: 13px;">詳細な観測点データがありません</div>';
 
         map.setView([hypo.latitude, hypo.longitude], 7, { animate: true, duration: 0.5 });
-        document.getElementById('dp-scale-label').innerText = "最大震度"; // EEWのラベルをリセット
-        document.getElementById('dp-scale').innerText = getIntensityString(eq.earthquake.maxScale);
-        document.getElementById('dp-scale').style.color = mainColor; document.getElementById('dp-box').style.borderColor = mainColor;
+        document.getElementById('dp-scale-label').innerText = "最大震度"; 
+        
+        const scaleValue = document.getElementById('dp-scale');
+        scaleValue.innerText = getIntensityString(eq.earthquake.maxScale);
+        scaleValue.style.color = mainColor; 
+        scaleValue.style.fontSize = "34px"; 
+
+        document.getElementById('dp-box').style.borderColor = mainColor;
         document.getElementById('dp-box').style.background = "rgba(0,0,0,0.3)";
         document.getElementById('detail-panel').style.backgroundColor = "rgba(28, 28, 30, 0.45)";
         
@@ -1413,15 +1417,10 @@
         const isHistoryTab = document.querySelectorAll('.tab-btn')[0].classList.contains('active');
         const isKyoshinTab = document.querySelectorAll('.tab-btn')[2].classList.contains('active');
         
-        if (isHistoryTab) {
-            map.addLayer(allEarthquakesLayer);
-        } else {
-            map.removeLayer(allEarthquakesLayer);
-        }
+        if (isHistoryTab) map.addLayer(allEarthquakesLayer);
+        else map.removeLayer(allEarthquakesLayer);
 
-        if (isKyoshinTab) {
-            if(kyoshinLayer && !map.hasLayer(kyoshinLayer)) map.addLayer(kyoshinLayer);
-        }
+        if (isKyoshinTab && kyoshinLayer && !map.hasLayer(kyoshinLayer)) map.addLayer(kyoshinLayer);
         
         map.setView([38.0, 137.0], 5, { animate: true });
     };
