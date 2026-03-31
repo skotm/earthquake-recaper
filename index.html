@@ -158,7 +158,7 @@
         .sp-log-box .log-err { color: #FF453A; } .sp-log-box .log-succ { color: #30D158; } .sp-log-box .log-warn { color: #FFD60A; } .sp-log-box .log-info { color: #e5e5ea; }
 
         /* =========================================================
-           EEW コンテナ & フローティングパネル (マルチ対応)
+           EEW コンテナ & フローティングパネル (マルチ・元のデザイン復旧版)
            ========================================================= */
         .eew-container {
             position: absolute;
@@ -170,22 +170,25 @@
             max-height: 75vh;
             overflow-y: auto;
             z-index: 1500;
-            pointer-events: none; /* コンテナ自体はクリックを透過 */
-            width: 290px;
+            pointer-events: none; /* コンテナ自体はクリック透過 */
+            width: 280px;
             max-width: calc(100vw - 20px);
         }
         .eew-container::-webkit-scrollbar { width: 0px; }
 
+        /* EEWパネル（履歴用詳細パネルと同じ見た目に統合） */
         .eew-panel {
             pointer-events: auto; /* パネル部分はクリック有効 */
-            background: rgba(35, 30, 10, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 214, 10, 0.5);
-            border-radius: 12px;
-            padding: 14px;
+            box-sizing: border-box;
+            width: 100%;
+            background: rgba(28, 28, 30, 0.45);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 0.5px solid var(--border-color);
+            border-radius: 16px;
+            padding: 16px 14px 12px 14px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
             color: #FFFFFF;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
             animation: slideInEew 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             transition: background-color 0.3s, border-color 0.3s, opacity 0.3s, transform 0.3s;
         }
@@ -196,9 +199,9 @@
             padding: 2px 6px;
             border-radius: 4px;
             font-size: 0.75em;
-            margin-left: 8px;
+            margin-left: 6px;
             font-weight: bold;
-            vertical-align: 1px;
+            vertical-align: 2px;
             box-shadow: 0 0 5px rgba(142,68,173,0.8);
         }
 
@@ -230,20 +233,26 @@
         }
 
         /* -------------------------------------
-           履歴用 詳細パネル (EEWとは分離)
+           パネル共通の中身デザイン (EEW・履歴共用)
            ------------------------------------- */
-        #detail-panel { position: absolute; bottom: 20px; left: 10px; width: 280px; max-width: calc(100vw - 20px); background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; display: flex; flex-direction: column; opacity: 0; transform: translateY(150%); transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none; }
-        #detail-panel.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
-        
         .dp-main { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-        .dp-scale-box { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 10px 8px; min-width: 64px; background: rgba(0,0,0,0.3); border: 2px solid transparent; }
-        .dp-scale-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; } .dp-scale-value { font-size: 34px; font-weight: 700; line-height: 1;} 
-        .dp-info { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding-right: 24px; }
-        .dp-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .dp-time { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; } .dp-meta { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .dp-meta strong { font-size: 15px; color: #fff; }
+        .dp-scale-box { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 10px 8px; min-width: 64px; background: rgba(0,0,0,0.3); border: 2px solid transparent; transition: border-color 0.3s, background-color 0.3s; white-space: nowrap; }
+        .dp-scale-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; white-space: nowrap; } 
+        .dp-scale-value { font-size: 34px; font-weight: 700; line-height: 1; transition: color 0.3s, font-size 0.3s; white-space: nowrap; } 
+        
+        .dp-info { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding-right: 4px; }
+        .dp-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; line-height: 1.3; } 
+        .dp-time { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; } 
+        .dp-meta { font-size: 13px; line-height: 1.4; } .dp-meta strong { font-size: 15px; color: #fff; }
+        
         .dp-toggle-btn { margin-top: 12px; padding: 10px 0 4px 0; text-align: center; font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); transition: color 0.2s; } .dp-toggle-btn:hover { color: #fff; }
         .dp-extended-area { overflow-y: auto; padding-right: 4px; transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.4s ease; max-height: 300px; opacity: 1; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; } .dp-extended-area.collapsed { max-height: 0; opacity: 0; margin-top: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; } .dp-extended-area::-webkit-scrollbar { width: 4px; } .dp-extended-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-        .dp-comments-box { background: rgba(0, 0, 0, 0.5); border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.5; color: #e5e5ea; border-left: 4px solid var(--tsunami-none); position: relative; transition: background-color 0.2s; } .dp-comments-box.clickable { cursor: pointer; } .dp-comments-box.clickable:hover { background: rgba(255, 255, 255, 0.1); } .dp-comments-hint { display: none; position: absolute; right: 12px; bottom: 8px; font-size: 11px; font-weight: bold; color: var(--text-secondary); } .dp-comments-box.clickable .dp-comments-hint { display: block; }
+        .dp-comments-box { background: rgba(0, 0, 0, 0.5); border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.5; color: #e5e5ea; border-left: 4px solid var(--tsunami-none); position: relative; transition: background-color 0.2s, border-color 0.3s; } .dp-comments-box.clickable { cursor: pointer; } .dp-comments-box.clickable:hover { background: rgba(255, 255, 255, 0.1); } .dp-comments-hint { display: none; position: absolute; right: 12px; bottom: 8px; font-size: 11px; font-weight: bold; color: var(--text-secondary); } .dp-comments-box.clickable .dp-comments-hint { display: block; }
         .dp-stations-container { display: flex; flex-direction: column; } .dp-station-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.04); } .dp-station-item:last-child { border-bottom: none; } .dp-station-name { font-size: 14px; color: #e5e5ea; } .dp-station-scale { font-size: 13px; font-weight: 700; color: #fff; padding: 4px 10px; border-radius: 6px; }
+
+        /* 履歴用 詳細パネル (非表示アニメーション等) */
+        #detail-panel { position: absolute; bottom: 20px; left: 10px; width: 280px; max-width: calc(100vw - 20px); background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; display: flex; flex-direction: column; opacity: 0; transform: translateY(150%); transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s; pointer-events: none; box-sizing: border-box; }
+        #detail-panel.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
 
         /* 津波詳細パネル */
         #tsunami-panel { position: absolute; top: 60px; right: 10px; width: 280px; max-width: calc(100vw - 20px); max-height: 40vh; background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; opacity: 0; transform: translateX(20px); pointer-events: none; transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; } #tsunami-panel.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
@@ -610,7 +619,7 @@
     let isKyoshinActive = false;
 
     // ==========================================
-    // 緊急地震速報 (EEW) 統合管理（マルチ・PLUM対応）
+    // 緊急地震速報 (EEW) 統合管理（マルチ・PLUM対応・デザイン復元版）
     // ==========================================
     const activeEEWs = new Map();
     let isEEWMockActive = false;
@@ -622,7 +631,7 @@
     }
 
     async function fetchKmoniEEW(timeFmt) {
-        if (isEEWMockActive) return null; // モックモード時はローカルタイマーで処理
+        if (isEEWMockActive) return null; 
         try {
             const baseUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${timeFmt.time}.json?_=${Date.now()}`;
             const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(baseUrl)}`;
@@ -639,10 +648,8 @@
         const isCancel = data.is_cancel === true;
         const isPlum = data.is_plum === true || (data.region_name === "" && data.calcintensity); 
 
-        // 1. 発生時刻の「頃発生」表記
         const timeStr = `${formatEEWTime(data.origin_time)} 頃発生`;
 
-        // キャンセル処理
         if (isCancel) {
             updateEEWPanelUI(eventId, data, isPlum, timeStr, true);
             if (activeEEWs.has(eventId)) {
@@ -653,7 +660,6 @@
             return;
         }
 
-        // Map登録とレイヤー初期化
         if (!activeEEWs.has(eventId)) {
             activeEEWs.set(eventId, {
                 data: data,
@@ -665,7 +671,6 @@
         eewState.data = data;
         eewState.layerGroup.clearLayers(); 
 
-        // 2. 地図マーカーの描画（PLUM法による分岐）
         if (data.latitude && data.longitude) {
             const iconClass = isPlum ? 'eew-marker-plum' : 'eew-marker-cross';
             const epicenterMarker = L.marker([parseFloat(data.latitude), parseFloat(data.longitude)], {
@@ -679,16 +684,13 @@
                 L.marker([parseFloat(data.latitude), parseFloat(data.longitude)], { icon: pulseIcon }).addTo(eewState.layerGroup);
             }
             
-            // 初報の時にカメラ移動
             if (data.report_num === "1" || data.report_num === 1) {
                 map.setView([parseFloat(data.latitude), parseFloat(data.longitude)], 6, { animate: true, duration: 1.0 });
             }
         }
 
-        // 3. UIの生成と更新（コンテナへスタック）
         updateEEWPanelUI(eventId, data, isPlum, timeStr, false);
 
-        // 終了判定
         if (data.is_final) {
             if (!eewState.clearTimer) {
                 eewState.clearTimer = setTimeout(() => {
@@ -700,6 +702,7 @@
         }
     }
 
+    // ★ 修正ポイント: 履歴パネルと同じDOM構造・CSSクラスを使って構築する
     function updateEEWPanelUI(eventId, data, isPlum, timeStr, isCancel) {
         const container = document.getElementById('eew-container');
         let panel = document.getElementById(`eew-panel-${eventId}`);
@@ -712,34 +715,43 @@
         }
 
         if (isCancel) {
-            panel.style.background = "rgba(40, 40, 40, 0.9)";
+            panel.style.backgroundColor = "rgba(28, 28, 30, 0.45)";
             panel.style.borderColor = "#8E8E93";
             panel.innerHTML = `
-                <div style="font-weight: 800; font-size: 1.1em; margin-bottom: 6px; color: #FF453A; display: flex; align-items: center; white-space: nowrap;">
-                    【緊急地震速報】 取消
+                <div class="dp-main">
+                    <div class="dp-scale-box" style="background: rgba(0,0,0,0.5); border-color: #8E8E93;">
+                        <span class="dp-scale-label">緊急速報</span>
+                        <span class="dp-scale-value" style="color: #8E8E93; font-size: 26px;">取消</span>
+                    </div>
+                    <div class="dp-info">
+                        <div class="dp-name"><span style="color:#FF453A; font-weight:800; font-size:16px;">【緊急地震速報】 取消</span></div>
+                        <div class="dp-time">この速報は取り消されました</div>
+                        <div class="dp-meta"></div>
+                    </div>
                 </div>
-                <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px; white-space: nowrap;">
-                    この速報は取り消されました
-                </div>
-                <div style="font-size: 0.85em; color: #e5e5ea; background: rgba(0,0,0,0.5); padding: 8px; border-radius: 6px; border-left: 3px solid #8E8E93;">
-                    <strong>【誤報・取消】</strong><br>先ほどの緊急地震速報は取り消されました。今後の情報に注意してください。
+                <div class="dp-extended-area" style="opacity: 1; max-height: none; margin-top: 10px;">
+                    <div class="dp-comments-box" style="border-left-color: #8E8E93;">
+                        <strong>【誤報・取消】</strong><br>先ほどの緊急地震速報は取り消されました。今後の情報に注意してください。
+                    </div>
                 </div>
             `;
             return;
         }
 
         const isWarning = data.alertflg === "警報";
-        panel.style.background = isWarning ? "rgba(45, 10, 10, 0.85)" : "rgba(35, 30, 10, 0.85)";
-        panel.style.borderColor = isWarning ? "rgba(255, 69, 58, 0.5)" : "rgba(255, 214, 10, 0.5)";
+        panel.style.backgroundColor = isWarning ? "rgba(45, 10, 10, 0.85)" : "rgba(28, 28, 30, 0.45)";
+        panel.style.borderColor = isWarning ? "rgba(255, 69, 58, 0.5)" : "var(--border-color)";
 
         const badgeHtml = isPlum ? `<span class="plum-badge">PLUM法</span>` : '';
         const reportText = data.is_final ? "最終報" : `第${data.report_num}報`;
         const titleColor = isWarning ? "#FF453A" : "#FFD60A";
         
         const regionName = data.region_name || '調査中';
-        const magnitude = data.magunitude ? `M${data.magunitude}` : '不明';
-        let depth = data.depth ? data.depth.replace('km', '') + 'km' : '不明'; 
-        if(depth === "ごく浅いkm") depth = "ごく浅い";
+        const magnitude = data.magunitude ? data.magunitude : '-.-';
+        
+        // 深さのkm処理
+        let depth = data.depth ? data.depth.replace('km', '') : '--'; 
+        if(depth === "ごく浅いkm" || depth === "ごく浅い") depth = "ごく浅い";
 
         let intensityStr = data.calcintensity || "?";
         let intNum = 0;
@@ -748,28 +760,30 @@
         if(intensityStr.includes("6弱")) intNum=55; if(intensityStr.includes("6強")) intNum=60; if(intensityStr.includes("7")) intNum=70;
         let color = getIntensityColor(intNum);
 
+        let plumNotice = isPlum ? '<br><span style="font-size: 11px; color: #aaa;">※観測点の揺れから予測しています。</span>' : '';
+
+        // ★ 完全なオリジナルデザインの復元
         panel.innerHTML = `
-            <div style="font-weight: 800; font-size: 1.1em; margin-bottom: 6px; color: ${titleColor}; display: flex; align-items: center; white-space: nowrap;">
-                【緊急地震速報】 ${reportText} ${badgeHtml}
-            </div>
-            <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px; white-space: nowrap;">
-                ${timeStr}
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: stretch; margin-bottom: 8px;">
-                <div style="flex-grow: 1; overflow: hidden; padding-right: 8px;">
-                    <div style="font-size: 1.1em; font-weight: bold; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${regionName}</div>
-                    <div style="font-size: 0.85em; color: #e5e5ea; line-height: 1.4; white-space: nowrap;">
-                        <span style="color:var(--text-secondary);">深さ:</span> <strong style="color:#fff;">${depth}</strong><br>
-                        <span style="color:var(--text-secondary);">規模:</span> <strong style="color:#fff;">${magnitude}</strong>
+            <div class="dp-main">
+                <div class="dp-scale-box" style="background: rgba(0,0,0,0.3); border-color: ${color};">
+                    <span class="dp-scale-label">最大予測</span>
+                    <span class="dp-scale-value" style="color: ${color}; font-size: 34px;">${intensityStr}</span>
+                </div>
+                <div class="dp-info">
+                    <div class="dp-name" title="${regionName}">
+                        <span style="color:${titleColor}; font-weight:800;">【緊急地震速報】 ${reportText}</span> ${badgeHtml}<br>
+                        <span style="font-size:14px; font-weight:normal;">${regionName}</span>
+                    </div>
+                    <div class="dp-time">${timeStr}</div>
+                    <div class="dp-meta">
+                        M <strong style="color:#fff;">${magnitude}</strong> / 深さ <strong style="color:#fff;">${depth}</strong>${depth !== 'ごく浅い' && depth !== '--' ? 'km' : ''}
                     </div>
                 </div>
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); padding: 6px 12px; border-radius: 8px; border: 1px solid ${color}; flex-shrink: 0; min-width: 60px;">
-                    <span style="font-size: 0.7em; color: var(--text-secondary); margin-bottom: 2px; white-space: nowrap;">最大予測</span>
-                    <span style="font-size: 1.8em; font-weight: 800; color: ${color}; line-height: 1; white-space: nowrap;">${intensityStr}</span>
-                </div>
             </div>
-            <div style="font-size: 0.85em; color: #e5e5ea; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; border-left: 3px solid ${color};">
-                <strong>【予測情報】</strong><br>強い揺れに警戒してください。${isPlum ? '<br><span style="font-size: 0.9em; color: #aaa;">※観測点の揺れから予測しています。</span>' : ''}
+            <div class="dp-extended-area" style="opacity: 1; max-height: none; margin-top: 10px;">
+                <div class="dp-comments-box" style="border-left-color: ${color};">
+                    <strong>【予測情報】</strong><br>強い揺れに警戒してください。${isWarning ? '<br><span style="color:#FF453A;">※これは緊急地震速報（警報）です。</span>' : ''}${plumNotice}
+                </div>
             </div>
         `;
     }
@@ -835,7 +849,7 @@
                 isWarning = true;
             }
 
-            let isCancel = forceCancel && step === 0; // キャンセルテスト用
+            let isCancel = forceCancel && step === 0; 
             if (isCancel) isFinal = false;
 
             let data = {
@@ -914,7 +928,7 @@
         const targetTime = new Date(now.getTime() - currentKmoniTimeOffset);
         const t = getFormatTimeStr(targetTime);
         
-        fetchKmoniEEW(t); // EEWのポーリング
+        fetchKmoniEEW(t); 
 
         const baseUrl = `http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/${t.date}/${t.time}.jma_s.gif?_=${Date.now()}`;
         const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(baseUrl)}`;
@@ -1388,7 +1402,6 @@
         const scaleValue = document.getElementById('dp-scale');
         scaleValue.innerText = getIntensityString(eq.earthquake.maxScale);
         scaleValue.style.color = mainColor; 
-        scaleValue.style.fontSize = "34px"; 
 
         document.getElementById('dp-box').style.borderColor = mainColor;
         document.getElementById('dp-box').style.background = "rgba(0,0,0,0.3)";
