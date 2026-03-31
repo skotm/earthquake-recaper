@@ -170,17 +170,24 @@
             max-height: 75vh;
             overflow-y: auto;
             z-index: 1500;
-            pointer-events: none; /* コンテナ自体はクリック透過 */
-            width: 280px;
+            pointer-events: auto; /* ★ スクロール操作を可能にする */
+            width: 295px; /* ★ パネル幅(280) + スクロールバー余白 */
             max-width: calc(100vw - 20px);
+            padding-right: 10px;
         }
-        .eew-container::-webkit-scrollbar { width: 0px; }
+        .eew-container:empty {
+            display: none; /* ★ 空の時は非表示にしてマップのクリックを妨げない */
+        }
+        .eew-container::-webkit-scrollbar { width: 6px; }
+        .eew-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
 
         /* EEWパネル（履歴用詳細パネルと同じ見た目に統合） */
         .eew-panel {
             pointer-events: auto; /* パネル部分はクリック有効 */
+            position: relative; /* ★ .dp-close用 */
             box-sizing: border-box;
-            width: 100%;
+            width: 280px; /* ★ 固定幅 */
+            flex-shrink: 0; /* ★ スタック時に潰れないようにする */
             background: rgba(28, 28, 30, 0.45);
             backdrop-filter: blur(40px);
             -webkit-backdrop-filter: blur(40px);
@@ -619,7 +626,7 @@
     let isKyoshinActive = false;
 
     // ==========================================
-    // 緊急地震速報 (EEW) 統合管理（マルチ・PLUM対応・デザイン復元版）
+    // 緊急地震速報 (EEW) 統合管理
     // ==========================================
     const activeEEWs = new Map();
     let isEEWMockActive = false;
@@ -694,15 +701,12 @@
         if (data.is_final) {
             if (!eewState.clearTimer) {
                 eewState.clearTimer = setTimeout(() => {
-                    eewLayer.removeLayer(eewState.layerGroup);
-                    activeEEWs.delete(eventId);
-                    removeEEWDOM(eventId);
+                    closeEEW(eventId);
                 }, 20000);
             }
         }
     }
 
-    // ★ 修正ポイント: 履歴パネルと同じDOM構造・CSSクラスを使って構築する
     function updateEEWPanelUI(eventId, data, isPlum, timeStr, isCancel) {
         const container = document.getElementById('eew-container');
         let panel = document.getElementById(`eew-panel-${eventId}`);
@@ -718,6 +722,7 @@
             panel.style.backgroundColor = "rgba(28, 28, 30, 0.45)";
             panel.style.borderColor = "#8E8E93";
             panel.innerHTML = `
+                <div class="dp-close" onclick="closeEEW('${eventId}')">✕</div>
                 <div class="dp-main">
                     <div class="dp-scale-box" style="background: rgba(0,0,0,0.5); border-color: #8E8E93;">
                         <span class="dp-scale-label">緊急速報</span>
@@ -729,7 +734,8 @@
                         <div class="dp-meta"></div>
                     </div>
                 </div>
-                <div class="dp-extended-area" style="opacity: 1; max-height: none; margin-top: 10px;">
+                <div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')">詳細情報を表示 ▼</div>
+                <div id="eew-extended-${eventId}" class="dp-extended-area collapsed">
                     <div class="dp-comments-box" style="border-left-color: #8E8E93;">
                         <strong>【誤報・取消】</strong><br>先ほどの緊急地震速報は取り消されました。今後の情報に注意してください。
                     </div>
@@ -739,8 +745,9 @@
         }
 
         const isWarning = data.alertflg === "警報";
-        panel.style.backgroundColor = isWarning ? "rgba(45, 10, 10, 0.85)" : "rgba(28, 28, 30, 0.45)";
-        panel.style.borderColor = isWarning ? "rgba(255, 69, 58, 0.5)" : "var(--border-color)";
+        // 警報時は背景を赤く透かす (rgba 120, 20, 20, 0.45)
+        panel.style.backgroundColor = isWarning ? "rgba(120, 20, 20, 0.45)" : "rgba(28, 28, 30, 0.45)";
+        panel.style.borderColor = isWarning ? "rgba(255, 69, 58, 0.6)" : "var(--border-color)";
 
         const badgeHtml = isPlum ? `<span class="plum-badge">PLUM法</span>` : '';
         const reportText = data.is_final ? "最終報" : `第${data.report_num}報`;
@@ -749,7 +756,6 @@
         const regionName = data.region_name || '調査中';
         const magnitude = data.magunitude ? data.magunitude : '-.-';
         
-        // 深さのkm処理
         let depth = data.depth ? data.depth.replace('km', '') : '--'; 
         if(depth === "ごく浅いkm" || depth === "ごく浅い") depth = "ごく浅い";
 
@@ -762,8 +768,8 @@
 
         let plumNotice = isPlum ? '<br><span style="font-size: 11px; color: #aaa;">※観測点の揺れから予測しています。</span>' : '';
 
-        // ★ 完全なオリジナルデザインの復元
         panel.innerHTML = `
+            <div class="dp-close" onclick="closeEEW('${eventId}')">✕</div>
             <div class="dp-main">
                 <div class="dp-scale-box" style="background: rgba(0,0,0,0.3); border-color: ${color};">
                     <span class="dp-scale-label">最大予測</span>
@@ -780,13 +786,39 @@
                     </div>
                 </div>
             </div>
-            <div class="dp-extended-area" style="opacity: 1; max-height: none; margin-top: 10px;">
+            <div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')">詳細情報を表示 ▼</div>
+            <div id="eew-extended-${eventId}" class="dp-extended-area collapsed">
                 <div class="dp-comments-box" style="border-left-color: ${color};">
                     <strong>【予測情報】</strong><br>強い揺れに警戒してください。${isWarning ? '<br><span style="color:#FF453A;">※これは緊急地震速報（警報）です。</span>' : ''}${plumNotice}
                 </div>
             </div>
         `;
     }
+
+    // パネルの折りたたみトグル機能
+    window.toggleEEWExtendedArea = function(eventId) {
+        const area = document.getElementById(`eew-extended-${eventId}`);
+        const btn = document.getElementById(`eew-toggle-${eventId}`);
+        if (!area || !btn) return;
+        if (area.classList.contains('collapsed')) {
+            area.classList.remove('collapsed'); 
+            btn.innerHTML = '詳細情報を閉じる ▲';
+        } else {
+            area.classList.add('collapsed'); 
+            btn.innerHTML = '詳細情報を表示 ▼';
+        }
+    };
+
+    // ばつ印で閉じる機能
+    window.closeEEW = function(eventId) {
+        if (activeEEWs.has(eventId)) {
+            const state = activeEEWs.get(eventId);
+            if (state.clearTimer) clearTimeout(state.clearTimer);
+            eewLayer.removeLayer(state.layerGroup);
+            activeEEWs.delete(eventId);
+        }
+        removeEEWDOM(eventId);
+    };
 
     function removeEEWDOM(eventId) {
         const panel = document.getElementById(`eew-panel-${eventId}`);
@@ -1402,6 +1434,7 @@
         const scaleValue = document.getElementById('dp-scale');
         scaleValue.innerText = getIntensityString(eq.earthquake.maxScale);
         scaleValue.style.color = mainColor; 
+        scaleValue.style.fontSize = "34px"; 
 
         document.getElementById('dp-box').style.borderColor = mainColor;
         document.getElementById('dp-box').style.background = "rgba(0,0,0,0.3)";
