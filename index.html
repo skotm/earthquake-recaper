@@ -349,14 +349,15 @@
             </div>
             
             <div class="sp-section">
-                <div class="sp-title">EEW デモ・テスト実行</div>
+                <div class="sp-title">デモ・テスト実行</div>
                 <div style="display: flex; gap: 6px; margin-bottom: 6px;">
-                    <button class="sp-btn" onclick="runEEWTest('normal')">通常テスト</button>
+                    <button class="sp-btn" onclick="runEEWTest('normal')">通常EEW</button>
                     <button class="sp-btn sp-btn-plum" onclick="runEEWTest('plum')">PLUM法</button>
                     <button class="sp-btn" onclick="runEEWTest('cancel')">取消</button>
                 </div>
                 <div style="display: flex; gap: 6px; margin-bottom: 6px;">
-                    <button class="sp-btn sp-btn-danger" style="flex:2;" onclick="runEEWTest('multiple')">複数同時発生（スタックテスト）</button>
+                    <button class="sp-btn sp-btn-danger" style="flex:1;" onclick="runEEWTest('multiple')">複数EEW</button>
+                    <button class="sp-btn" style="flex:1; background: rgba(255, 69, 58, 0.4); border-color: #FF453A;" onclick="runTsunamiTest()">津波自動受信</button>
                 </div>
                 <button class="sp-btn" style="width: 100%;" onclick="clearAllEEWs()">シミュレーション強制クリア</button>
             </div>
@@ -745,8 +746,8 @@
         }
 
         const isWarning = data.alertflg === "警報";
-        // 警報時は背景を赤く透かす (rgba 120, 20, 20, 0.45)
-        panel.style.backgroundColor = isWarning ? "rgba(120, 20, 20, 0.45)" : "rgba(28, 28, 30, 0.45)";
+        // 警報時は背景を赤く透かす
+        panel.style.backgroundColor = isWarning ? "rgba(100, 20, 20, 0.45)" : "rgba(28, 28, 30, 0.45)";
         panel.style.borderColor = isWarning ? "rgba(255, 69, 58, 0.6)" : "var(--border-color)";
 
         const badgeHtml = isPlum ? `<span class="plum-badge">PLUM法</span>` : '';
@@ -909,6 +910,34 @@
         mockEEWTimers.push(interval);
     }
 
+    // --- 津波 自動受信テスト ---
+    window.runTsunamiTest = function() {
+        addSystemLog(`[Tsunami Test] 津波自動受信テストを開始しました`, 'warn');
+        
+        const mockTsunami = {
+            id: "mock_tsunami_" + Date.now(),
+            created_at: new Date().toISOString(),
+            cancelled: false,
+            areas: [
+                { name: "東京湾内", grade: "Warning", maxHeight: { description: "1m" } },
+                { name: "千葉県内房", grade: "Warning", maxHeight: { description: "1m" } },
+                { name: "相模湾・三浦半島", grade: "Watch", maxHeight: { description: "0.2m" } },
+                { name: "伊豆諸島", grade: "Watch", maxHeight: { description: "0.2m" } }
+            ]
+        };
+        
+        lastTsunamiId = mockTsunami.id;
+        tsunamiDataList.unshift(mockTsunami);
+        if (document.getElementById('tsunami-list-container').style.display !== 'none') {
+            renderTsunamiList();
+        }
+        
+        drawTsunamiCoastlines(mockTsunami);
+        updateTsunamiPanelUI(mockTsunami);
+        document.getElementById('tp-main-header').innerText = "津波警報 (自動受信テスト)";
+        document.getElementById('tsunami-panel').classList.add('show');
+    };
+
 
     // ==========================================
     // サーバーレス完全フロントエンド画像解析処理
@@ -1005,7 +1034,7 @@
 
 
     // ==========================================
-    // データ読み込み ＆ 初期化
+    // データ読み込み ＆ 初期化 ＆ 自動監視
     // ==========================================
     let stationsData = [];
     let tsunamiDataList = []; 
@@ -1013,12 +1042,49 @@
     let isTsunamiListRendered = false; 
     let isTsunamiFetchError = false; 
 
+    let lastTsunamiId = null;
+    let tsunamiPollingTimer = null;
+
     const ZOOM_THRESHOLD = 9;
     map.on('zoomend', function() {
         const container = document.getElementById('map-container');
         if (map.getZoom() >= ZOOM_THRESHOLD) container.classList.add('map-zoomed');
         else container.classList.remove('map-zoomed');
     });
+
+    // 津波情報の自動ポーリング監視機能
+    function startTsunamiPolling() {
+        if (tsunamiPollingTimer) return;
+        // 20秒ごとに最新1件をチェック
+        tsunamiPollingTimer = setInterval(async () => {
+            try {
+                const res = await fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=1');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    const latest = data[0];
+                    // 新しい津波情報が発表された場合
+                    if (lastTsunamiId && latest.id !== lastTsunamiId) {
+                        lastTsunamiId = latest.id;
+                        tsunamiDataList.unshift(latest);
+                        if (document.getElementById('tsunami-list-container').style.display !== 'none') {
+                            renderTsunamiList();
+                        }
+                        // 地図への描画とパネルポップアップ
+                        drawTsunamiCoastlines(latest);
+                        updateTsunamiPanelUI(latest);
+                        document.getElementById('tp-main-header').innerText = latest.cancelled ? "津波予報・警報 (解除等)" : "津波情報 (自動受信)";
+                        document.getElementById('tsunami-panel').classList.add('show');
+                        addSystemLog(`[自動受信] 新しい津波情報を検知・表示しました`, 'warn');
+                    } else if (!lastTsunamiId) {
+                        lastTsunamiId = latest.id;
+                    }
+                }
+            } catch (e) {
+                // エラーは無視して次回に再試行
+            }
+        }, 20000); 
+    }
 
     Promise.all([
         fetch('./japan.geo.json').then(res => res.json()).catch(() => null),
@@ -1056,7 +1122,12 @@
         if (combinedTsunamiData.length === 0 && (!tData1 || tData1.length === 0)) isTsunamiFetchError = true;
         tsunamiDataList = combinedTsunamiData;
         
+        if (tsunamiDataList.length > 0) {
+            lastTsunamiId = tsunamiDataList[0].id;
+        }
+        
         fetchEarthquakeHistory();
+        startTsunamiPolling(); // バックグラウンドで津波監視を開始
     }).catch(err => {
         console.error("データ読み込みエラー:", err);
         addSystemLog(`Err: 初期データの読み込みに失敗しました`, 'error');
