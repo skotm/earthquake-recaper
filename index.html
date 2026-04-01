@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>地震情報可視化ツール - サーバーレス版</title>
-    
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        /* Base Variables */
         :root {
             --bg-color: #000000;
             --surface-color: rgba(28, 28, 30, 0.75);
@@ -17,25 +16,21 @@
             --text-secondary: rgba(235, 235, 245, 0.6);
             --border-color: rgba(84, 84, 88, 0.5);
             --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-            
-            /* Tsunami Colors */
             --tsunami-major: #BF5AF2;
             --tsunami-warning: #FF453A;
             --tsunami-watch: #FFD60A;
             --tsunami-slight: #64D2FF;
             --tsunami-none: #8E8E93;
+            /* 追加: P波・S波カラー */
+            --p-wave-color: #32ADE6;
+            --s-wave-color: #FF3B30;
         }
-
         body { 
             margin: 0; padding: 0; display: flex; height: 100vh; 
             background-color: var(--bg-color); color: var(--text-primary); 
             font-family: var(--font-family); overflow: hidden; 
             -webkit-font-smoothing: antialiased;
         }
-        
-        /* -------------------------------------
-           サイドバー ＆ タブUI
-           ------------------------------------- */
         #sidebar {
             width: 260px; min-width: 260px;
             background: var(--surface-color);
@@ -44,7 +39,6 @@
             display: flex; flex-direction: column;
             z-index: 1000; box-shadow: 2px 0 20px rgba(0,0,0,0.8);
         }
-
         .sidebar-header {
             display: flex; padding: 12px 10px; gap: 6px;
             border-bottom: 1px solid var(--border-color);
@@ -60,12 +54,10 @@
             color: #fff; background: rgba(255, 255, 255, 0.2);
             box-shadow: 0 2px 5px rgba(0,0,0,0.5);
         }
-
         #list-container, #tsunami-list-container, #kyoshin-list-container { 
             flex-grow: 1; overflow-y: auto; padding: 8px; scroll-behavior: smooth; 
         }
         #list-container::-webkit-scrollbar, #tsunami-list-container::-webkit-scrollbar, #kyoshin-list-container::-webkit-scrollbar { width: 0px; }
-
         .list-item, .t-list-item {
             padding: 10px; margin-bottom: 4px;
             border-radius: 8px; cursor: pointer;
@@ -75,12 +67,10 @@
         }
         .list-item:hover, .t-list-item:hover { background-color: rgba(255, 255, 255, 0.08); }
         .list-item.active, .t-list-item.active { background-color: rgba(255, 255, 255, 0.15); }
-        
         .list-item-title, .t-list-item-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; display: flex; justify-content: space-between;}
         .list-item-details, .t-list-item-details { font-size: 11px; color: var(--text-secondary); }
-
         .kyoshin-status-box {
-            padding: 20px; text-align: center; color: var(--text-secondary); font-size: 13px; line-height: 1.6;
+            padding: 16px; text-align: center; color: var(--text-secondary); font-size: 13px; line-height: 1.6;
         }
         .live-indicator {
             display: inline-block; width: 8px; height: 8px; background-color: #30D158; border-radius: 50%;
@@ -95,12 +85,33 @@
             100% { transform: scale(0.95); opacity: 0.5; }
         }
 
-        /* -------------------------------------
-           メインマップ＆凡例
-           ------------------------------------- */
+        /* ── S-net ステータスボックス ── */
+        .snet-box {
+            margin-top: 14px;
+            padding: 12px;
+            background: rgba(0, 180, 255, 0.05);
+            border: 1px solid rgba(0, 180, 255, 0.2);
+            border-radius: 10px;
+        }
+        .snet-box-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .snet-box-title {
+            font-size: 12px; font-weight: 700; color: #64D2FF;
+        }
+        .snet-status-row {
+            font-size: 11px; color: var(--text-secondary);
+            display: flex; align-items: center; gap: 4px;
+            margin-top: 6px;
+        }
+        .snet-time-row {
+            font-family: monospace; font-size: 12px;
+            color: #64D2FF; margin-top: 4px; text-align: center;
+        }
+
         #map-container { flex-grow: 1; position: relative; }
         #map { width: 100%; height: 100%; background-color: #0c0c0e; }
-
         .legend {
             background: var(--surface-color); backdrop-filter: blur(20px);
             padding: 10px 14px; border-radius: 12px; border: 0.5px solid var(--border-color);
@@ -108,24 +119,18 @@
         }
         .legend strong { display: block; margin-bottom: 6px; font-size: 13px; }
         .legend i { width: 12px; height: 12px; float: left; margin-top: 4px; margin-right: 8px; border-radius: 50%; }
-
-        /* パネル共通 閉じるボタン */
         .dp-close, .tp-close, .sp-close {
             position: absolute; top: 12px; right: 12px; width: 28px; height: 28px;
             background: rgba(255,255,255,0.1); border-radius: 50%; text-align: center;
             line-height: 28px; font-size: 14px; cursor: pointer; color: #fff; z-index: 10;
         }
         .dp-close:hover, .tp-close:hover, .sp-close:hover { background: rgba(255,255,255,0.2); }
-
-        /* Leaflet UI */
         .leaflet-bar { border: 0.5px solid var(--border-color) !important; box-shadow: 0 4px 15px rgba(0,0,0,0.6) !important; border-radius: 10px !important; overflow: hidden; }
         .leaflet-bar a { background-color: var(--surface-color) !important; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: var(--text-primary) !important; border-bottom: 0.5px solid var(--border-color) !important; width: 36px !important; height: 36px !important; line-height: 36px !important; transition: background-color 0.2s, color 0.2s; }
         .leaflet-bar a:hover { background-color: rgba(255, 255, 255, 0.15) !important; }
         .leaflet-bar a:last-child { border-bottom: none !important; }
         .custom-settings-btn { margin-bottom: 12px !important; }
         .custom-settings-btn a { display: flex !important; align-items: center; justify-content: center; }
-
-        /* 設定・システム情報パネル */
         #settings-panel {
             position: absolute; top: 60px; right: 10px; width: 320px; max-width: calc(100vw - 20px); max-height: 70vh; 
             background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
@@ -134,152 +139,89 @@
             transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column;
         }
         #settings-panel.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
-        
         .sp-header { font-size: 16px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 12px; color: #fff; padding-right: 28px; flex-shrink: 0; }
         .sp-content { overflow-y: auto; flex-grow: 1; padding-right: 4px; }
         .sp-content::-webkit-scrollbar { width: 4px; } .sp-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-        
         .sp-section { margin-bottom: 18px; }
         .sp-title { font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
         .sp-info { font-size: 13px; color: #e5e5ea; margin-bottom: 6px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; }
         .sp-info span { font-family: monospace; color: #64D2FF; text-align: right; word-break: break-all; max-width: 65%; font-weight: bold;}
-        
         .sp-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; flex: 1; transition: 0.2s; white-space: nowrap; }
         .sp-btn:hover { background: rgba(255,255,255,0.2); }
         .sp-btn-danger { background: rgba(255,69,58,0.2); border-color: rgba(255,69,58,0.5); color: #FF453A; }
         .sp-btn-danger:hover { background: rgba(255,69,58,0.4); }
         .sp-btn-plum { background: rgba(142,68,173,0.2); border-color: rgba(142,68,173,0.5); color: #D291BC; }
         .sp-btn-plum:hover { background: rgba(142,68,173,0.4); }
-
         .sp-log-box { background: rgba(0,0,0,0.6); border-radius: 8px; padding: 10px; font-family: monospace; font-size: 11px; color: #0A84FF; height: 180px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.05); }
         .sp-log-box::-webkit-scrollbar { width: 4px; } .sp-log-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
         .sp-log-box div { margin-bottom: 4px; border-bottom: 1px dotted rgba(255,255,255,0.1); padding-bottom: 4px; line-height: 1.3;}
         .sp-log-box div:last-child { margin-bottom: 0; border-bottom: none; }
         .sp-log-box .log-err { color: #FF453A; } .sp-log-box .log-succ { color: #30D158; } .sp-log-box .log-warn { color: #FFD60A; } .sp-log-box .log-info { color: #e5e5ea; }
-
-        /* =========================================================
-           EEW コンテナ & フローティングパネル (マルチ・元のデザイン復旧版)
-           ========================================================= */
         .eew-container {
-            position: absolute;
-            bottom: 20px;
-            left: 10px;
-            display: flex;
-            flex-direction: column-reverse; /* 新しいものが上に積まれる */
-            gap: 12px;
-            max-height: 75vh;
-            overflow-y: auto;
-            z-index: 1500;
-            pointer-events: auto; /* ★ スクロール操作を可能にする */
-            width: 295px; /* ★ パネル幅(280) + スクロールバー余白 */
-            max-width: calc(100vw - 20px);
-            padding-right: 10px;
+            position: absolute; bottom: 20px; left: 10px;
+            display: flex; flex-direction: column-reverse;
+            gap: 12px; max-height: 75vh; overflow-y: auto;
+            z-index: 1500; pointer-events: auto;
+            width: 295px; max-width: calc(100vw - 20px); padding-right: 10px;
         }
-        .eew-container:empty {
-            display: none; /* ★ 空の時は非表示にしてマップのクリックを妨げない */
-        }
+        .eew-container:empty { display: none; }
         .eew-container::-webkit-scrollbar { width: 6px; }
         .eew-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
-
-        /* EEWパネル（履歴用詳細パネルと同じ見た目に統合） */
         .eew-panel {
-            pointer-events: auto; /* パネル部分はクリック有効 */
-            position: relative; /* ★ .dp-close用 */
-            box-sizing: border-box;
-            width: 280px; /* ★ 固定幅 */
-            flex-shrink: 0; /* ★ スタック時に潰れないようにする */
-            background: rgba(28, 28, 30, 0.45);
-            backdrop-filter: blur(40px);
-            -webkit-backdrop-filter: blur(40px);
-            border: 0.5px solid var(--border-color);
-            border-radius: 16px;
-            padding: 16px 14px 12px 14px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-            color: #FFFFFF;
+            pointer-events: auto; position: relative; box-sizing: border-box;
+            width: 280px; flex-shrink: 0;
+            background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+            border: 0.5px solid var(--border-color); border-radius: 16px;
+            padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); color: #FFFFFF;
             animation: slideInEew 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             transition: background-color 0.3s, border-color 0.3s, opacity 0.3s, transform 0.3s;
         }
-
         .plum-badge {
-            background-color: #8E44AD;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.75em;
-            margin-left: 6px;
-            font-weight: bold;
-            vertical-align: 2px;
-            box-shadow: 0 0 5px rgba(142,68,173,0.8);
+            background-color: #8E44AD; color: white; padding: 2px 6px; border-radius: 4px;
+            font-size: 0.75em; margin-left: 6px; font-weight: bold; vertical-align: 2px; box-shadow: 0 0 5px rgba(142,68,173,0.8);
         }
-
         @keyframes slideInEew {
             from { opacity: 0; transform: translateX(-30px); }
             to { opacity: 1; transform: translateX(0); }
         }
-
-        /* Leaflet用マーカー：通常（赤い×） */
         .eew-marker-cross { position: relative; width: 24px; height: 24px; }
         .eew-marker-cross::before, .eew-marker-cross::after {
-            content: ''; position: absolute;
-            top: 2px; left: 11px;
-            width: 3px; height: 20px;
-            background-color: #FF453A;
-            box-shadow: 0 0 8px #FF453A;
+            content: ''; position: absolute; top: 2px; left: 11px;
+            width: 3px; height: 20px; background-color: #FF453A; box-shadow: 0 0 8px #FF453A;
         }
         .eew-marker-cross::before { transform: rotate(45deg); }
         .eew-marker-cross::after { transform: rotate(-45deg); }
-
-        /* Leaflet用マーカー：PLUM法（赤い中抜き○） */
         .eew-marker-plum {
-            width: 24px; height: 24px;
-            border: 4px solid #FF453A;
-            border-radius: 50%;
-            box-sizing: border-box;
-            background-color: transparent;
+            width: 24px; height: 24px; border: 4px solid #FF453A; border-radius: 50%;
+            box-sizing: border-box; background-color: transparent;
             box-shadow: 0 0 10px rgba(255, 69, 58, 0.8), inset 0 0 10px rgba(255, 69, 58, 0.8);
         }
-
-        /* -------------------------------------
-           パネル共通の中身デザイン (EEW・履歴共用)
-           ------------------------------------- */
         .dp-main { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
         .dp-scale-box { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 10px 8px; min-width: 64px; background: rgba(0,0,0,0.3); border: 2px solid transparent; transition: border-color 0.3s, background-color 0.3s; white-space: nowrap; }
         .dp-scale-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; white-space: nowrap; } 
         .dp-scale-value { font-size: 34px; font-weight: 700; line-height: 1; transition: color 0.3s, font-size 0.3s; white-space: nowrap; } 
-        
         .dp-info { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding-right: 4px; }
         .dp-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; line-height: 1.3; } 
         .dp-time { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; } 
         .dp-meta { font-size: 13px; line-height: 1.4; } .dp-meta strong { font-size: 15px; color: #fff; }
-        
         .dp-toggle-btn { margin-top: 12px; padding: 10px 0 4px 0; text-align: center; font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); transition: color 0.2s; } .dp-toggle-btn:hover { color: #fff; }
         .dp-extended-area { overflow-y: auto; padding-right: 4px; transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.4s ease; max-height: 300px; opacity: 1; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; } .dp-extended-area.collapsed { max-height: 0; opacity: 0; margin-top: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; } .dp-extended-area::-webkit-scrollbar { width: 4px; } .dp-extended-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
         .dp-comments-box { background: rgba(0, 0, 0, 0.5); border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.5; color: #e5e5ea; border-left: 4px solid var(--tsunami-none); position: relative; transition: background-color 0.2s, border-color 0.3s; } .dp-comments-box.clickable { cursor: pointer; } .dp-comments-box.clickable:hover { background: rgba(255, 255, 255, 0.1); } .dp-comments-hint { display: none; position: absolute; right: 12px; bottom: 8px; font-size: 11px; font-weight: bold; color: var(--text-secondary); } .dp-comments-box.clickable .dp-comments-hint { display: block; }
         .dp-stations-container { display: flex; flex-direction: column; } .dp-station-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.04); } .dp-station-item:last-child { border-bottom: none; } .dp-station-name { font-size: 14px; color: #e5e5ea; } .dp-station-scale { font-size: 13px; font-weight: 700; color: #fff; padding: 4px 10px; border-radius: 6px; }
-
-        /* 履歴用 詳細パネル (非表示アニメーション等) */
         #detail-panel { position: absolute; bottom: 20px; left: 10px; width: 280px; max-width: calc(100vw - 20px); background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; display: flex; flex-direction: column; opacity: 0; transform: translateY(150%); transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s; pointer-events: none; box-sizing: border-box; }
         #detail-panel.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
-
-        /* 津波詳細パネル */
         #tsunami-panel { position: absolute; top: 60px; right: 10px; width: 280px; max-width: calc(100vw - 20px); max-height: 40vh; background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; opacity: 0; transform: translateX(20px); pointer-events: none; transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; } #tsunami-panel.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
         .tp-header { font-size: 16px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px; color: #fff; padding-right: 28px; flex-shrink: 0; } .tp-list { overflow-y: auto; padding-right: 4px; flex-grow: 1; } .tp-list::-webkit-scrollbar { width: 4px; } .tp-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
         .tp-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); } .tp-item:last-child { border-bottom: none; } .tp-area { font-size: 15px; font-weight: 600; color: #e5e5ea; } .tp-details { font-size: 13px; color: var(--text-secondary); text-align: right;} .tp-height { font-size: 15px; font-weight: bold; margin-left: 8px;} 
-
-        /* マーカー等 */
         .epicenter-cross { color: #ff3b30; font-size: 24px; font-weight: bold; line-height: 24px; text-align: center; text-shadow: 0 0 5px #000; position: absolute; top: -12px; left: -12px; width: 24px; height: 24px; }
         .custom-div-icon { overflow: visible; }
         .station-dot { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 50%; border: 1.5px solid #ffffff; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.6); width: 14px; height: 14px; transition: width 0.3s, height 0.3s; }
         .station-scale-text { display: none; color: #ffffff; font-weight: 800; font-size: 12px; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.6); letter-spacing: -0.5px; line-height: 1; transform: translateY(0.5px); }
         .map-zoomed .station-dot { width: 24px; height: 24px; border-width: 1.5px; } .map-zoomed .station-scale-text { display: block; }
-
         .eew-epicenter-pulse {
             position: absolute; top: -13px; left: -13px;
-            width: 50px; height: 50px;
-            background: rgba(255, 69, 58, 0.5);
-            border-radius: 50%;
-            animation: eew-pulse 1.5s infinite cubic-bezier(0.2, 0.8, 0.2, 1);
-            pointer-events: none;
+            width: 50px; height: 50px; background: rgba(255, 69, 58, 0.5);
+            border-radius: 50%; animation: eew-pulse 1.5s infinite cubic-bezier(0.2, 0.8, 0.2, 1); pointer-events: none;
         }
         @keyframes eew-pulse {
             0% { transform: scale(0.2); opacity: 1; }
@@ -299,12 +241,13 @@
     <div id="tsunami-list-container" style="display: none;"></div>
     <div id="kyoshin-list-container" style="display: none;">
         <div class="kyoshin-status-box">
-            <span id="kmoni-indicator" class="live-indicator error"></span><strong id="kmoni-status-text">データ待機中...</strong><br><br>
+            <span id="kmoni-indicator" class="live-indicator error"></span>
+            <strong id="kmoni-status-text">データ待機中...</strong><br><br>
             <span id="kmoni-time" style="font-family: monospace; font-size: 14px; color: #fff;">----/--/-- --:--:--</span><br><br>
             ブラウザで防災科研画像を直接解析中<br>
             <span style="font-size: 10px; color: #888;">※完全サーバーレス・EEW同時受信</span>
-            
-            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+
+            <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1);">
                 <label style="display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; color: #fff; font-weight: bold;">
                     <input type="checkbox" id="kmoni-color-mode-toggle" onchange="toggleKyoshinColorMode(this)" style="margin-right: 8px; cursor: pointer; transform: scale(1.2);">
                     震度自動計算・履歴カラーモード
@@ -314,7 +257,7 @@
                 </div>
             </div>
 
-            <div style="padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); text-align: left;">
+            <div style="padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); text-align: left;">
                 <div style="font-size: 12px; font-weight: bold; margin-bottom: 8px; color: #fff;">
                     表示下限：<span style="color: #64D2FF; font-size: 14px;">震度 <span id="intensity-filter-val">-3.0</span></span> 以上
                 </div>
@@ -322,21 +265,53 @@
                        style="width: 100%; cursor: pointer;" 
                        oninput="updateIntensityFilter(this.value)">
                 <div style="display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-top: 4px;">
-                    <span>-3.0</span>
-                    <span>0</span>
-                    <span>3</span>
-                    <span>7.0</span>
+                    <span>-3.0</span><span>0</span><span>3</span><span>7.0</span>
                 </div>
             </div>
-        </div>
+
+            <div class="snet-box">
+                <div class="snet-box-header">
+                    <span class="snet-box-title">◆ 海底震度 (S-net/DONET)</span>
+                    <label style="display: flex; align-items: center; cursor: pointer; gap: 6px;">
+                        <span style="font-size: 11px; color: var(--text-secondary);">表示</span>
+                        <input type="checkbox" id="snet-toggle" onchange="toggleSnetMonitor(this)"
+                               style="cursor: pointer; transform: scale(1.2);">
+                    </label>
+                </div>
+                <div class="snet-status-row">
+                    <span id="snet-indicator" class="live-indicator error"></span>
+                    <span id="snet-status" style="font-size: 11px; color: var(--text-secondary);">停止中</span>
+                </div>
+                <div class="snet-time-row" id="snet-time">----/--/-- --:--</div>
+                <div style="font-size: 10px; color: #888; margin-top: 6px; line-height: 1.5; text-align: left;">
+                    海しる(MSIL)の強震動画像から<br>
+                    S-net観測点の震度を抽出します。<br>
+                    <span style="color: #64D2FF;">◆ = 海底観測点</span>　
+                    <span style="color: #fff;">● = 陸上観測点</span><br>
+                    ※ 毎分更新・自己責任でご利用ください<br>
+                    <span style="color: rgba(255,200,0,0.7);">出典: 海洋状況表示システム (msil.go.jp)</span>
+                </div>
+
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); text-align: left;">
+                    <div style="font-size: 11px; font-weight: bold; color: #fff; margin-bottom: 6px;">
+                        海底表示下限：震度 <span id="snet-filter-val">-3.0</span> 以上
+                    </div>
+                    <input type="range" id="snet-intensity-slider" min="-3.0" max="7.0" step="0.1" value="-3.0"
+                           style="width: 100%; cursor: pointer;"
+                           oninput="updateSnetFilter(this.value)">
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-top: 2px;">
+                        <span>-3</span><span>0</span><span>3</span><span>7</span>
+                    </div>
+                </div>
+            </div>
+            </div>
     </div>
 </div>
 
 <div id="map-container">
     <div id="map"></div>
-    
     <div id="eew-container" class="eew-container"></div>
-    
+
     <div id="settings-panel">
         <div class="sp-close" onclick="closeSettingsPanel()">✕</div>
         <div class="sp-header">システム情報 ＆ ログ</div>
@@ -346,8 +321,8 @@
                 <div class="sp-info">状態: <span id="sys-status">停止中</span></div>
                 <div class="sp-info">サーバー遅延: <span id="sys-delay">--</span></div>
                 <div class="sp-info">通信成功: <span id="sys-success" style="color:#30D158;">0</span> / エラー: <span id="sys-error" style="color:#FF453A;">0</span></div>
+                <div class="sp-info">S-net観測点: <span id="sys-snet-count">未取得</span></div>
             </div>
-            
             <div class="sp-section">
                 <div class="sp-title">デモ・テスト実行</div>
                 <div style="display: flex; gap: 6px; margin-bottom: 6px;">
@@ -361,7 +336,6 @@
                 </div>
                 <button class="sp-btn" style="width: 100%;" onclick="clearAllEEWs()">シミュレーション強制クリア</button>
             </div>
-
             <div class="sp-section">
                 <div class="sp-title">フロントエンド受信ログ</div>
                 <div id="sys-log-container" class="sp-log-box">
@@ -381,9 +355,7 @@
             <div class="dp-info">
                 <div class="dp-name" id="dp-name" title="----">----</div>
                 <div class="dp-time" id="dp-time">--/-- --:-- 発生</div>
-                <div class="dp-meta">
-                    M <strong id="dp-mag">-.-</strong> / 深さ <strong id="dp-depth">--</strong>km
-                </div>
+                <div class="dp-meta">M <strong id="dp-mag">-.-</strong> / 深さ <strong id="dp-depth">--</strong>km</div>
             </div>
         </div>
         <div class="dp-toggle-btn" id="dp-toggle-btn" onclick="toggleExtendedArea()">詳細情報を表示 ▼</div>
@@ -407,7 +379,7 @@
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([38.0, 137.0], 5);
 
     // ==========================================
-    // システム情報可視化用 ロジック
+    // システム情報可視化用ロジック
     // ==========================================
     let sysStats = { success: 0, error: 0 };
     let currentDelay = 0;
@@ -422,7 +394,6 @@
         else if (type === 'success') el.className = 'log-succ';
         else if (type === 'warn') el.className = 'log-warn';
         else el.className = 'log-info';
-        
         el.innerText = `[${timeStr}] ${msg}`;
         box.prepend(el);
         if (box.children.length > 50) box.removeChild(box.lastChild);
@@ -434,6 +405,7 @@
         document.getElementById('sys-delay').innerText = `${currentDelay} 秒`;
         document.getElementById('sys-success').innerText = sysStats.success;
         document.getElementById('sys-error').innerText = sysStats.error;
+        document.getElementById('sys-snet-count').innerText = isSnetLoaded ? `${snetStations.length}点` : '未取得';
     }
 
     window.toggleSettingsPanel = function() {
@@ -486,27 +458,25 @@
         const match = colorStr.match(/\d+/g);
         if (!match || match.length < 3) return -3.0;
         const r = parseInt(match[0]), g = parseInt(match[1]), b = parseInt(match[2]);
-
         const max = Math.max(r, g, b);
         const min = Math.min(r, g, b);
         if (max - min < 20) return -999; 
-
         let h = rgbToHue(r, g, b);
         if (h >= 280) h = h - 360; 
-
         let intensity = -3.0;
         if (h > 240) intensity = -3.0;
-        else if (h > 180) intensity = -3.0 + ((240 - h) / 60) * 3.0; 
-        else if (h > 120) intensity = 0.0 + ((180 - h) / 60) * 1.5;  
-        else if (h > 60)  intensity = 1.5 + ((120 - h) / 60) * 1.5;  
-        else if (h > 30)  intensity = 3.0 + ((60 - h) / 30) * 1.0;   
-        else if (h > 0)   intensity = 4.0 + ((30 - h) / 30) * 1.5;   
-        else              intensity = 5.5 + ((0 - h) / 80) * 1.5;    
-        
+        else if (h > 180) intensity = -3.0 + ((240 - h) / 60) * 3.0;
+        else if (h > 120) intensity = 0.0 + ((180 - h) / 60) * 1.5;
+        else if (h > 60)  intensity = 1.5 + ((120 - h) / 60) * 1.5;
+        else if (h > 30)  intensity = 3.0 + ((60 - h) / 30) * 1.0;
+        else if (h > 0)   intensity = 4.0 + ((30 - h) / 30) * 1.5;
+        else              intensity = 5.5 + ((0 - h) / 80) * 1.5;
         return intensity;
     }
 
     let currentIntensityFilterThreshold = -3.0;
+    let currentSnetFilterThreshold = -3.0;
+
     window.updateIntensityFilter = function(val) {
         let displayVal = parseFloat(val).toFixed(1);
         if (displayVal > 0) displayVal = "+" + displayVal;
@@ -515,18 +485,27 @@
         if (kyoshinLayer && map.hasLayer(kyoshinLayer)) kyoshinLayer.redraw();
     };
 
+    window.updateSnetFilter = function(val) {
+        let displayVal = parseFloat(val).toFixed(1);
+        if (displayVal > 0) displayVal = "+" + displayVal;
+        document.getElementById('snet-filter-val').innerText = displayVal;
+        currentSnetFilterThreshold = parseFloat(val);
+        if (kyoshinLayer && map.hasLayer(kyoshinLayer)) kyoshinLayer.redraw();
+    };
+
     // ==========================================
-    // 【強震モニタ】 描画レイヤー
+    // 【強震モニタ】 描画レイヤー（海底震度対応拡張版）
     // ==========================================
     L.KyoshinMonitorLayer = L.Layer.extend({
         initialize: function (options) {
             L.setOptions(this, options);
-            this._data = []; 
+            this._data = [];
+            this._submarineData = [];   // ★ S-net/DONET海底観測点データ
             this._isCalcMode = false; 
         },
         setCalcMode: function (isCalc) {
             this._isCalcMode = isCalc;
-            if (this._data.length > 0) this.updateData([...this._data]);
+            this.redraw();
         },
         onAdd: function (map) {
             this._map = map;
@@ -565,26 +544,29 @@
             });
             this.redraw();
         },
+        updateSubmarineData: function(dataArray) {
+            this._submarineData = dataArray || [];
+            this.redraw();
+        },
         redraw: function () {
             if (!this._ctx) return;
             const ctx = this._ctx;
             ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
             const zoom = this._map.getZoom();
-            
+
+            // ── 陸上観測点の描画（既存ロジック）──
             for (let i = 0; i < this._data.length; i++) {
                 const item = this._data[i];
                 if (item.lat === undefined || item.lon === undefined || !item.color) continue;
-                
                 const intensity = calcIntensityFromColor(item.color);
                 if (intensity < currentIntensityFilterThreshold) continue;
-
                 const p = this._map.latLngToContainerPoint([parseFloat(item.lat), parseFloat(item.lon)]);
                 if (p.x < -10 || p.y < -10 || p.x > this._canvas.width + 10 || p.y > this._canvas.height + 10) continue;
                 
                 if (this._isCalcMode) {
-                    if (intensity < -2.9 && currentIntensityFilterThreshold <= -2.9) continue; 
+                    if (intensity < -2.9 && currentIntensityFilterThreshold <= -2.9) continue;
                     if (intensity < 0.5) {
-                        const radius = zoom >= 8 ? 5.5 : (zoom >= 6 ? 3.5 : 2.0); 
+                        const radius = zoom >= 8 ? 5.5 : (zoom >= 6 ? 3.5 : 2.0);
                         let alpha = 0;
                         if (intensity > 0) alpha = 0.3 + (intensity / 0.5) * 0.4;
                         else if (intensity > -1.0) alpha = 0.1 + ((intensity + 1.0) / 1.0) * 0.2;
@@ -596,13 +578,11 @@
                         if (intensity >= 6.5) scale = 70; else if (intensity >= 6.0) scale = 60; else if (intensity >= 5.5) scale = 55;
                         else if (intensity >= 5.0) scale = 50; else if (intensity >= 4.5) scale = 45; else if (intensity >= 3.5) scale = 40;
                         else if (intensity >= 2.5) scale = 30; else if (intensity >= 1.5) scale = 20;
-
                         const hexColor = getIntensityColor(scale);
                         const radius = zoom >= 9 ? 12 : 6;
                         ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
                         ctx.fillStyle = hexColor; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2; ctx.fill();
                         ctx.shadowColor = 'transparent'; ctx.lineWidth = 1.5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
-                        
                         if (zoom >= 9) {
                             const text = getShortIntensityString(scale);
                             ctx.fillStyle = '#ffffff'; ctx.font = '800 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -619,6 +599,67 @@
                     if (lineWidth > 0) { ctx.lineWidth = lineWidth; ctx.strokeStyle = "rgba(255, 255, 255, 0.95)"; ctx.stroke(); }
                 }
             }
+
+            // ── ★ 海底観測点の描画（ダイヤモンド形状）──
+            for (let i = 0; i < this._submarineData.length; i++) {
+                const item = this._submarineData[i];
+                if (item.lat === undefined || item.lon === undefined || !item.color) continue;
+                const intensity = calcIntensityFromColor(item.color);
+                if (intensity < currentSnetFilterThreshold) continue;
+
+                const p = this._map.latLngToContainerPoint([parseFloat(item.lat), parseFloat(item.lon)]);
+                if (p.x < -10 || p.y < -10 || p.x > this._canvas.width + 10 || p.y > this._canvas.height + 10) continue;
+
+                // ダイヤモンド（回転した正方形）を描画
+                const baseSize = zoom >= 9 ? 10 : (zoom >= 7 ? 7 : 4.5);
+
+                let fillColor = item.color;
+                let strokeColor = 'rgba(0, 200, 255, 0.9)'; // 海底点は水色枠
+
+                if (this._isCalcMode && intensity > 0.5) {
+                    let scale = 10;
+                    if (intensity >= 6.5) scale = 70; else if (intensity >= 6.0) scale = 60; else if (intensity >= 5.5) scale = 55;
+                    else if (intensity >= 5.0) scale = 50; else if (intensity >= 4.5) scale = 45; else if (intensity >= 3.5) scale = 40;
+                    else if (intensity >= 2.5) scale = 30; else if (intensity >= 1.5) scale = 20;
+                    fillColor = getIntensityColor(scale);
+                    if (scale >= 40) {
+                        ctx.shadowColor = fillColor;
+                        ctx.shadowBlur = 12;
+                    }
+                } else if (!this._isCalcMode) {
+                    if (typeof item.color === 'string' && item.color.startsWith('rgb'))
+                        fillColor = item.color.replace('rgb', 'rgba').replace(')', ', 0.85)');
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(p.x,              p.y - baseSize); // 上
+                ctx.lineTo(p.x + baseSize,   p.y);            // 右
+                ctx.lineTo(p.x,              p.y + baseSize); // 下
+                ctx.lineTo(p.x - baseSize,   p.y);            // 左
+                ctx.closePath();
+                ctx.fillStyle = fillColor;
+                ctx.fill();
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+
+                ctx.lineWidth = zoom >= 7 ? 1.2 : 0.8;
+                ctx.strokeStyle = strokeColor;
+                ctx.stroke();
+
+                if (zoom >= 9 && this._isCalcMode && intensity > 0.5) {
+                    let scale = 10;
+                    if (intensity >= 6.5) scale = 70; else if (intensity >= 6.0) scale = 60; else if (intensity >= 5.5) scale = 55;
+                    else if (intensity >= 5.0) scale = 50; else if (intensity >= 4.5) scale = 45; else if (intensity >= 3.5) scale = 40;
+                    else if (intensity >= 2.5) scale = 30; else if (intensity >= 1.5) scale = 20;
+                    const text = getShortIntensityString(scale);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = `800 ${Math.floor(baseSize * 1.1)}px sans-serif`;
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 2;
+                    ctx.fillText(text, p.x, p.y + 0.5);
+                    ctx.shadowColor = 'transparent';
+                }
+            }
         }
     });
 
@@ -627,15 +668,253 @@
     let isKyoshinActive = false;
 
     // ==========================================
-    // 緊急地震速報 (EEW) 統合管理
+    // ★ S-net / DONET 海底震度 実装
+    // ==========================================
+    let snetStations = [];
+    let isSnetLoaded = false;
+    let isSnetEnabled = false;
+    let snetPollingTimer = null;
+
+    const MSIL_BBOX   = [13409547.546603577, 2713376.239114911, 16907305.960932314, 5966536.162931148];
+    const MSIL_SIZE   = 1000;
+    const MSIL_QUERY  = 'https://www.msil.go.jp/arcgis/rest/services/Msil/DisasterPrevImg1/ImageServer/query';
+    const MSIL_EXPORT = 'https://www.msil.go.jp/arcgis/rest/services/Msil/DisasterPrevImg1/ImageServer/exportImage';
+    const CORS_PROXY  = 'https://api.codetabs.com/v1/proxy/?quest=';
+
+    function latLonToMsilPixel(lat, lon) {
+        const R = 20037508.34;
+        const mercX = lon * R / 180;
+        const sinLat = Math.sin(lat * Math.PI / 180);
+        const mercY = Math.log((1 + sinLat) / (1 - sinLat)) / 2 * R / Math.PI;
+        const [minX, minY, maxX, maxY] = MSIL_BBOX;
+        const px = Math.floor((mercX - minX) / (maxX - minX) * MSIL_SIZE);
+        const py = Math.floor((maxY - mercY) / (maxY - minY) * MSIL_SIZE);
+        return { x: px, y: py };
+    }
+
+    async function loadSnetStations() {
+        if (isSnetLoaded) return true;
+        addSystemLog('Info: S-net観測点データを取得中...', 'info');
+
+        try {
+            const url = 'https://raw.githubusercontent.com/0Quake/Zero-Quake/main/src/Resource/Snet_Points.json';
+            const res = await fetch(CORS_PROXY + encodeURIComponent(url));
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const raw = await res.json();
+
+            snetStations = [];
+            const items = Array.isArray(raw) ? raw : (raw.points || raw.stations || []);
+            items.forEach(st => {
+                const lat = parseFloat(st.latitude  ?? st.lat  ?? st.Latitude  ?? st.Lat);
+                const lon = parseFloat(st.longitude ?? st.lon  ?? st.Longitude ?? st.Lon);
+                const name = st.name ?? st.code ?? st.Code ?? 'S-net';
+                if (isNaN(lat) || isNaN(lon)) return;
+                const { x, y } = latLonToMsilPixel(lat, lon);
+                if (x < 0 || x >= MSIL_SIZE || y < 0 || y >= MSIL_SIZE) return;
+                snetStations.push({ lat, lon, name, x, y });
+            });
+
+            isSnetLoaded = true;
+            addSystemLog(`Succ: S-net観測点ロード完了 (${snetStations.length}点)`, 'success');
+            if (document.getElementById('settings-panel').classList.contains('show')) updateSettingsUI();
+            return true;
+        } catch(e) {
+            addSystemLog(`Err: S-net観測点取得失敗 - ${e.message}`, 'error');
+            document.getElementById('snet-status').innerText = '観測点取得失敗';
+            return false;
+        }
+    }
+
+    async function fetchMsilTimestamp() {
+        const params = new URLSearchParams({
+            f: 'json', where: '1=1',
+            returnGeometry: 'false',
+            outFields: 'msilstarttime',
+            _: Date.now()
+        });
+        const url = `${MSIL_QUERY}?${params}`;
+        const res = await fetch(CORS_PROXY + encodeURIComponent(url));
+        if (!res.ok) throw new Error(`MSIL query HTTP ${res.status}`);
+        const data = await res.json();
+        const features = data.features || [];
+        if (!features.length) throw new Error('MSIL featuresが空');
+        const timestamps = features
+            .map(f => f?.attributes?.msilstarttime)
+            .filter(t => t != null && !isNaN(t));
+        if (!timestamps.length) throw new Error('msilstarttimeが取得できない');
+        return Math.max(...timestamps);
+    }
+
+    async function fetchMsilAndExtract() {
+        if (!isSnetEnabled || !isSnetLoaded) return;
+
+        try {
+            document.getElementById('snet-status').innerText = '取得中...';
+            const timestamp = await fetchMsilTimestamp();
+
+            const params = new URLSearchParams({
+                f: 'image', time: `${timestamp},${timestamp}`, bbox: MSIL_BBOX.join(','), size: `${MSIL_SIZE},${MSIL_SIZE}`, _: Date.now()
+            });
+            const imageUrl = `${MSIL_EXPORT}?${params}`;
+            const proxyUrl = CORS_PROXY + encodeURIComponent(imageUrl);
+
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+
+            img.onload = function() {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width  = img.width; canvas.height = img.height;
+                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                    ctx.drawImage(img, 0, 0);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+                    const result = [];
+                    snetStations.forEach(st => {
+                        if (st.x < 0 || st.x >= canvas.width || st.y < 0 || st.y >= canvas.height) return;
+                        const idx = (st.y * canvas.width + st.x) * 4;
+                        const r = imageData[idx], g = imageData[idx+1], b = imageData[idx+2], a = imageData[idx+3];
+                        if (a < 10 || (r < 5 && g < 5 && b < 5)) return;
+                        result.push({ lat: st.lat, lon: st.lon, name: st.name, color: `rgb(${r},${g},${b})` });
+                    });
+
+                    if (kyoshinLayer) kyoshinLayer.updateSubmarineData(result);
+
+                    const t = new Date(timestamp);
+                    const pad = n => String(n).padStart(2, '0');
+                    const tStr = `${t.getFullYear()}/${pad(t.getMonth()+1)}/${pad(t.getDate())} ${pad(t.getHours())}:${pad(t.getMinutes())}`;
+                    document.getElementById('snet-time').innerText = tStr;
+                    document.getElementById('snet-indicator').classList.remove('error');
+                    document.getElementById('snet-status').innerText = `受信済 (${result.length}点)`;
+                    addSystemLog(`Succ: MSIL海底震度更新 ${result.length}点 [${tStr}]`, 'success');
+                } catch(parseErr) {
+                    addSystemLog(`Err: MSIL画像解析エラー - ${parseErr.message}`, 'error');
+                }
+                scheduleSnetUpdate();
+            };
+
+            img.onerror = function() {
+                addSystemLog('Err: MSIL画像の取得に失敗しました', 'error');
+                document.getElementById('snet-indicator').classList.add('error');
+                document.getElementById('snet-status').innerText = '画像取得失敗';
+                scheduleSnetUpdate(30000); 
+            };
+            img.src = proxyUrl;
+        } catch(e) {
+            addSystemLog(`Err: MSIL処理例外 - ${e.message}`, 'error');
+            document.getElementById('snet-indicator').classList.add('error');
+            document.getElementById('snet-status').innerText = 'エラー';
+            scheduleSnetUpdate(30000);
+        }
+    }
+
+    function scheduleSnetUpdate(forceDelayMs = null) {
+        if (!isSnetEnabled) return;
+        if (snetPollingTimer) clearTimeout(snetPollingTimer);
+        if (forceDelayMs !== null) {
+            snetPollingTimer = setTimeout(fetchMsilAndExtract, forceDelayMs);
+            return;
+        }
+        const now = new Date();
+        const sec = now.getSeconds();
+        const ms  = now.getMilliseconds();
+        let waitMs = ((60 - sec + 10) % 60) * 1000 - ms;
+        if (waitMs < 5000) waitMs += 60000; 
+        snetPollingTimer = setTimeout(fetchMsilAndExtract, waitMs);
+    }
+
+    async function startSnetMonitor() {
+        if (isSnetEnabled) return;
+        isSnetEnabled = true;
+        document.getElementById('snet-indicator').classList.remove('error');
+        document.getElementById('snet-status').innerText = '起動中...';
+        addSystemLog('Info: S-net/DONET海底震度モニタを開始します', 'info');
+        const loaded = await loadSnetStations();
+        if (loaded) await fetchMsilAndExtract();
+    }
+
+    function stopSnetMonitor() {
+        isSnetEnabled = false;
+        if (snetPollingTimer) { clearTimeout(snetPollingTimer); snetPollingTimer = null; }
+        if (kyoshinLayer) kyoshinLayer.updateSubmarineData([]);
+        document.getElementById('snet-indicator').classList.add('error');
+        document.getElementById('snet-status').innerText = '停止中';
+        document.getElementById('snet-time').innerText = '----/--/-- --:--';
+        addSystemLog('Info: S-net/DONET海底震度モニタを停止しました', 'warn');
+    }
+
+    window.toggleSnetMonitor = function(checkbox) {
+        if (checkbox.checked) {
+            if (!isKyoshinActive) startKyoshinMonitor();
+            startSnetMonitor();
+        } else stopSnetMonitor();
+    };
+
+
+    // ==========================================
+    // 緊急地震速報 (EEW) 高度化統合管理
+    // P波/S波アニメーション ＆ 警報地域ハイライト
     // ==========================================
     const activeEEWs = new Map();
     let isEEWMockActive = false;
     let mockEEWTimers = [];
+    let japanGeoData = null; // 全体用のGeoJSONキャッシュ
 
     function formatEEWTime(timeStr) {
         if (!timeStr || timeStr.length < 14) return "時刻不明";
         return `${timeStr.slice(8, 10)}:${timeStr.slice(10, 12)}:${timeStr.slice(12, 14)}`;
+    }
+
+    /**
+     * P波・S波 予報円アニメーションループ
+     */
+    function startWaveAnimation(eventId) {
+        function animate() {
+            if (!activeEEWs.has(eventId)) return; // 削除された場合停止
+            const currentState = activeEEWs.get(eventId);
+            const data = currentState.data;
+            
+            if (!data || !data.origin_time || !data.latitude || !data.longitude) {
+                currentState.animFrame = requestAnimationFrame(animate);
+                return;
+            }
+
+            // 発生時刻のパース (YYYYMMDDHHmmss)
+            const tStr = data.origin_time;
+            const originTimeMs = new Date(
+                parseInt(tStr.slice(0,4)), parseInt(tStr.slice(4,6))-1, parseInt(tStr.slice(6,8)),
+                parseInt(tStr.slice(8,10)), parseInt(tStr.slice(10,12)), parseInt(tStr.slice(12,14))
+            ).getTime();
+            
+            const nowMs = Date.now();
+            let t = (nowMs - originTimeMs) / 1000;
+            
+            let depthKm = parseInt(data.depth) || 10;
+            if (depthKm < 0 || isNaN(depthKm)) depthKm = 10;
+            if (data.depth === "ごく浅い" || data.depth === "ごく浅いkm") depthKm = 0;
+
+            if (t > 0) {
+                // P波 (約6.0 km/s)
+                const pDistance = 6.0 * t;
+                if (pDistance > depthKm) {
+                    const pRadius = Math.sqrt(Math.pow(pDistance, 2) - Math.pow(depthKm, 2)) * 1000;
+                    currentState.pCircle.setRadius(pRadius);
+                } else {
+                    currentState.pCircle.setRadius(0);
+                }
+
+                // S波 (約3.5 km/s)
+                const sDistance = 3.5 * t;
+                if (sDistance > depthKm) {
+                    const sRadius = Math.sqrt(Math.pow(sDistance, 2) - Math.pow(depthKm, 2)) * 1000;
+                    currentState.sCircle.setRadius(sRadius);
+                } else {
+                    currentState.sCircle.setRadius(0);
+                }
+            }
+            currentState.animFrame = requestAnimationFrame(animate);
+        }
+        animate();
     }
 
     async function fetchKmoniEEW(timeFmt) {
@@ -651,37 +930,61 @@
 
     function processEEWData(data) {
         if (!data || !data.result || data.result.message === "データがありません" || data.result.message === "対象外") return;
-
         const eventId = data.report_id || data.origin_time; 
         const isCancel = data.is_cancel === true;
         const isPlum = data.is_plum === true || (data.region_name === "" && data.calcintensity); 
-
         const timeStr = `${formatEEWTime(data.origin_time)} 頃発生`;
-
+        
         if (isCancel) {
             updateEEWPanelUI(eventId, data, isPlum, timeStr, true);
             if (activeEEWs.has(eventId)) {
-                eewLayer.removeLayer(activeEEWs.get(eventId).layerGroup);
+                const state = activeEEWs.get(eventId);
+                if (state.animFrame) cancelAnimationFrame(state.animFrame);
+                eewLayer.removeLayer(state.layerGroup);
                 activeEEWs.delete(eventId);
             }
             setTimeout(() => removeEEWDOM(eventId), 8000);
             return;
         }
 
+        // 初期化（レイヤー構築とアニメーション開始）
         if (!activeEEWs.has(eventId)) {
+            const layerGroup = L.layerGroup().addTo(eewLayer);
             activeEEWs.set(eventId, {
                 data: data,
-                layerGroup: L.layerGroup().addTo(eewLayer),
-                clearTimer: null
+                layerGroup: layerGroup,
+                clearTimer: null,
+                pCircle: L.circle([0,0], {radius: 0, color: 'var(--p-wave-color)', weight: 1.5, fill: true, fillOpacity: 0.05, interactive: false}),
+                sCircle: L.circle([0,0], {radius: 0, color: 'var(--s-wave-color)', weight: 2.5, fill: true, fillOpacity: 0.15, interactive: false}),
+                alertLayer: L.layerGroup(),
+                animFrame: null
             });
+            const state = activeEEWs.get(eventId);
+            state.pCircle.addTo(layerGroup);
+            state.sCircle.addTo(layerGroup);
+            state.alertLayer.addTo(layerGroup);
+            startWaveAnimation(eventId);
         }
+
         const eewState = activeEEWs.get(eventId);
         eewState.data = data;
+
+        // レイヤーをクリアしてマーカーを再描画（予報円レイヤーは維持して再追加）
         eewState.layerGroup.clearLayers(); 
+        eewState.pCircle.addTo(eewState.layerGroup);
+        eewState.sCircle.addTo(eewState.layerGroup);
+        eewState.alertLayer.addTo(eewState.layerGroup);
 
         if (data.latitude && data.longitude) {
+            const lat = parseFloat(data.latitude);
+            const lon = parseFloat(data.longitude);
+            
+            // 予報円の中心位置を更新
+            eewState.pCircle.setLatLng([lat, lon]);
+            eewState.sCircle.setLatLng([lat, lon]);
+
             const iconClass = isPlum ? 'eew-marker-plum' : 'eew-marker-cross';
-            const epicenterMarker = L.marker([parseFloat(data.latitude), parseFloat(data.longitude)], {
+            const epicenterMarker = L.marker([lat, lon], {
                 icon: L.divIcon({ className: iconClass, iconSize: [24, 24], iconAnchor: [12, 12] }),
                 zIndexOffset: 30000
             });
@@ -689,21 +992,39 @@
             
             if (!isPlum) {
                 const pulseIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="eew-epicenter-pulse"></div>`, iconSize: [0, 0] });
-                L.marker([parseFloat(data.latitude), parseFloat(data.longitude)], { icon: pulseIcon }).addTo(eewState.layerGroup);
+                L.marker([lat, lon], { icon: pulseIcon }).addTo(eewState.layerGroup);
             }
-            
             if (data.report_num === "1" || data.report_num === 1) {
-                map.setView([parseFloat(data.latitude), parseFloat(data.longitude)], 6, { animate: true, duration: 1.0 });
+                map.setView([lat, lon], 6, { animate: true, duration: 1.0 });
             }
+        }
+
+        // 警報対象地域のハイライト更新（japanGeoDataを利用）
+        eewState.alertLayer.clearLayers();
+        if (data.alertflg === "警報" && japanGeoData) {
+            let regionsToHighlight = data.alertRegions || [data.region_name]; // テスト用または正規用
+            L.geoJSON(japanGeoData, {
+                filter: function(feature) {
+                    const name = feature.properties.name || "";
+                    // 部分一致または完全一致で対象地域を特定
+                    return regionsToHighlight.some(r => name.includes(r) || r.includes(name));
+                },
+                style: {
+                    fillColor: '#FFFF00',
+                    fillOpacity: 0.35,
+                    color: '#FFFF00',
+                    weight: 2,
+                    dashArray: '3'
+                },
+                interactive: false
+            }).addTo(eewState.alertLayer);
         }
 
         updateEEWPanelUI(eventId, data, isPlum, timeStr, false);
 
         if (data.is_final) {
             if (!eewState.clearTimer) {
-                eewState.clearTimer = setTimeout(() => {
-                    closeEEW(eventId);
-                }, 20000);
+                eewState.clearTimer = setTimeout(() => { closeEEW(eventId); }, 20000);
             }
         }
     }
@@ -711,14 +1032,12 @@
     function updateEEWPanelUI(eventId, data, isPlum, timeStr, isCancel) {
         const container = document.getElementById('eew-container');
         let panel = document.getElementById(`eew-panel-${eventId}`);
-
         if (!panel) {
             panel = document.createElement('div');
             panel.id = `eew-panel-${eventId}`;
             panel.className = 'eew-panel';
             container.appendChild(panel); 
         }
-
         if (isCancel) {
             panel.style.backgroundColor = "rgba(28, 28, 30, 0.45)";
             panel.style.borderColor = "#8E8E93";
@@ -738,36 +1057,33 @@
                 <div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')">詳細情報を表示 ▼</div>
                 <div id="eew-extended-${eventId}" class="dp-extended-area collapsed">
                     <div class="dp-comments-box" style="border-left-color: #8E8E93;">
-                        <strong>【誤報・取消】</strong><br>先ほどの緊急地震速報は取り消されました。今後の情報に注意してください。
+                        <strong>【誤報・取消】</strong><br>先ほどの緊急地震速報は取り消されました。
                     </div>
                 </div>
             `;
             return;
         }
-
         const isWarning = data.alertflg === "警報";
-        // 警報時は背景を赤く透かす
         panel.style.backgroundColor = isWarning ? "rgba(100, 20, 20, 0.45)" : "rgba(28, 28, 30, 0.45)";
         panel.style.borderColor = isWarning ? "rgba(255, 69, 58, 0.6)" : "var(--border-color)";
-
         const badgeHtml = isPlum ? `<span class="plum-badge">PLUM法</span>` : '';
         const reportText = data.is_final ? "最終報" : `第${data.report_num}報`;
         const titleColor = isWarning ? "#FF453A" : "#FFD60A";
-        
         const regionName = data.region_name || '調査中';
         const magnitude = data.magunitude ? data.magunitude : '-.-';
-        
         let depth = data.depth ? data.depth.replace('km', '') : '--'; 
         if(depth === "ごく浅いkm" || depth === "ごく浅い") depth = "ごく浅い";
-
         let intensityStr = data.calcintensity || "?";
         let intNum = 0;
         if(intensityStr.includes("1")) intNum=10; if(intensityStr.includes("2")) intNum=20; if(intensityStr.includes("3")) intNum=30;
         if(intensityStr.includes("4")) intNum=40; if(intensityStr.includes("5弱")) intNum=45; if(intensityStr.includes("5強")) intNum=50;
         if(intensityStr.includes("6弱")) intNum=55; if(intensityStr.includes("6強")) intNum=60; if(intensityStr.includes("7")) intNum=70;
         let color = getIntensityColor(intNum);
-
         let plumNotice = isPlum ? '<br><span style="font-size: 11px; color: #aaa;">※観測点の揺れから予測しています。</span>' : '';
+        
+        let regionsText = data.alertRegions && data.alertRegions.length > 0 
+            ? `<div style="font-size:12px; color:#FFD60A; margin-top:2px;">警報対象: ${data.alertRegions.join(', ')}</div>` 
+            : '';
 
         panel.innerHTML = `
             <div class="dp-close" onclick="closeEEW('${eventId}')">✕</div>
@@ -782,11 +1098,10 @@
                         <span style="font-size:14px; font-weight:normal;">${regionName}</span>
                     </div>
                     <div class="dp-time">${timeStr}</div>
-                    <div class="dp-meta">
-                        M <strong style="color:#fff;">${magnitude}</strong> / 深さ <strong style="color:#fff;">${depth}</strong>${depth !== 'ごく浅い' && depth !== '--' ? 'km' : ''}
-                    </div>
+                    <div class="dp-meta">M <strong style="color:#fff;">${magnitude}</strong> / 深さ <strong style="color:#fff;">${depth}</strong>${depth !== 'ごく浅い' && depth !== '--' ? 'km' : ''}</div>
                 </div>
             </div>
+            ${regionsText}
             <div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')">詳細情報を表示 ▼</div>
             <div id="eew-extended-${eventId}" class="dp-extended-area collapsed">
                 <div class="dp-comments-box" style="border-left-color: ${color};">
@@ -796,25 +1111,22 @@
         `;
     }
 
-    // パネルの折りたたみトグル機能
     window.toggleEEWExtendedArea = function(eventId) {
         const area = document.getElementById(`eew-extended-${eventId}`);
         const btn = document.getElementById(`eew-toggle-${eventId}`);
         if (!area || !btn) return;
         if (area.classList.contains('collapsed')) {
-            area.classList.remove('collapsed'); 
-            btn.innerHTML = '詳細情報を閉じる ▲';
+            area.classList.remove('collapsed'); btn.innerHTML = '詳細情報を閉じる ▲';
         } else {
-            area.classList.add('collapsed'); 
-            btn.innerHTML = '詳細情報を表示 ▼';
+            area.classList.add('collapsed'); btn.innerHTML = '詳細情報を表示 ▼';
         }
     };
 
-    // ばつ印で閉じる機能
     window.closeEEW = function(eventId) {
         if (activeEEWs.has(eventId)) {
             const state = activeEEWs.get(eventId);
             if (state.clearTimer) clearTimeout(state.clearTimer);
+            if (state.animFrame) cancelAnimationFrame(state.animFrame);
             eewLayer.removeLayer(state.layerGroup);
             activeEEWs.delete(eventId);
         }
@@ -836,6 +1148,7 @@
         isEEWMockActive = false;
         activeEEWs.forEach((state, eventId) => {
             if (state.clearTimer) clearTimeout(state.clearTimer);
+            if (state.animFrame) cancelAnimationFrame(state.animFrame);
             eewLayer.removeLayer(state.layerGroup);
             removeEEWDOM(eventId);
         });
@@ -843,81 +1156,59 @@
         addSystemLog(`[EEW Test] 全てのシミュレーションとUIを強制クリアしました`, 'info');
     }
 
-    // --- EEW テスト・シミュレータ ---
     window.runEEWTest = function(type) {
         if (!isKyoshinActive) switchTab('kyoshin'); 
         isEEWMockActive = true;
         closeDetailPanel();
-        
         const baseTime = getFormatTimeStr(new Date()).time;
         addSystemLog(`[EEW Test] ${type} テストを開始しました`, 'warn');
-
         if (type === 'normal') {
-            startMockEEWSequence("TEST_001", false, "東京湾", 35.5, 139.8, 30, 4.5, ["3", "4", "4"], baseTime, 0);
+            startMockEEWSequence("TEST_001", false, "東京湾", 35.5, 139.8, 30, 4.5, ["3", "4", "5弱"], baseTime, 0, false, ["東京都", "神奈川県", "千葉県", "埼玉県"]);
         } else if (type === 'plum') {
-            startMockEEWSequence("TEST_PLUM_01", true, "関東地方", 36.0, 140.0, null, null, ["3", "5弱", "5弱"], baseTime, 0);
+            startMockEEWSequence("TEST_PLUM_01", true, "関東地方", 36.0, 140.0, null, null, ["3", "5弱", "5弱"], baseTime, 0, false, ["茨城県"]);
         } else if (type === 'cancel') {
             startMockEEWSequence("TEST_CAN_01", false, "紀伊水道", 33.8, 134.8, 10, 5.5, ["3"], baseTime, 0, true);
         } else if (type === 'multiple') {
-            startMockEEWSequence("TEST_MULTI_1", false, "東京湾", 35.5, 139.8, 30, 4.5, ["3", "4", "4"], baseTime, 0);
+            startMockEEWSequence("TEST_MULTI_1", false, "東京湾", 35.5, 139.8, 30, 4.5, ["3", "4"], baseTime, 0);
             setTimeout(() => {
-                startMockEEWSequence("TEST_MULTI_2", false, "南海トラフ周辺", 32.0, 134.0, 10, 7.8, ["5弱", "6弱", "6強", "6強"], "20260331151503", 0);
+                startMockEEWSequence("TEST_MULTI_2", false, "南海トラフ周辺", 32.0, 134.0, 10, 7.8, ["5弱", "6弱", "6強"], baseTime, 0, false, ["和歌山県", "高知県", "徳島県", "三重県"]);
             }, 4000);
         }
     };
 
-    function startMockEEWSequence(id, isPlum, region, lat, lon, depth, mag, intensities, originTime, delayMs, forceCancel = false) {
+    function startMockEEWSequence(id, isPlum, region, lat, lon, depth, mag, intensities, originTime, delayMs, forceCancel = false, alertRegions = []) {
         let step = 0;
         let isWarning = false;
-        
         const interval = setInterval(() => {
-            if (step >= intensities.length) { 
-                clearInterval(interval);
-                return;
-            }
-
+            if (step >= intensities.length) { clearInterval(interval); return; }
             let isFinal = (step === intensities.length - 1);
             let intensity = intensities[Math.min(step, intensities.length - 1)];
-            if (intensity.includes("4") || intensity.includes("5") || intensity.includes("6") || intensity.includes("7")) {
-                isWarning = true;
-            }
-
+            if (intensity.includes("4") || intensity.includes("5") || intensity.includes("6") || intensity.includes("7")) isWarning = true;
             let isCancel = forceCancel && step === 0; 
             if (isCancel) isFinal = false;
-
             let data = {
                 result: { status: "success", message: "" },
-                report_id: id,
-                report_num: (step + 1).toString(),
-                is_final: isFinal,
-                is_cancel: isCancel,
-                is_plum: isPlum,
+                report_id: id, report_num: (step + 1).toString(),
+                is_final: isFinal, is_cancel: isCancel, is_plum: isPlum,
                 alertflg: isWarning ? "警報" : "予報",
                 region_name: region,
-                latitude: lat ? lat.toString() : "",
-                longitude: lon ? lon.toString() : "",
-                depth: depth ? depth + "km" : "",
-                magunitude: mag ? mag.toString() : "",
-                calcintensity: intensity,
-                origin_time: originTime
+                latitude: lat ? lat.toString() : "", longitude: lon ? lon.toString() : "",
+                depth: depth ? depth + "km" : "", magunitude: mag ? mag.toString() : "",
+                calcintensity: intensity, origin_time: originTime,
+                alertRegions: alertRegions
             };
-
             processEEWData(data);
             step++;
             if(isCancel) clearInterval(interval);
         }, 3000);
-        
         mockEEWTimers.push(interval);
     }
 
-    // --- 津波 自動受信テスト ---
     window.runTsunamiTest = function() {
         addSystemLog(`[Tsunami Test] 津波自動受信テストを開始しました`, 'warn');
-        
         const mockTsunami = {
             id: "mock_tsunami_" + Date.now(),
-            created_at: new Date().toISOString(),
-            cancelled: false,
+            created_at: new Date().toISOString(), cancelled: false,
             areas: [
                 { name: "東京湾内", grade: "Warning", maxHeight: { description: "1m" } },
                 { name: "千葉県内房", grade: "Warning", maxHeight: { description: "1m" } },
@@ -925,19 +1216,14 @@
                 { name: "伊豆諸島", grade: "Watch", maxHeight: { description: "0.2m" } }
             ]
         };
-        
         lastTsunamiId = mockTsunami.id;
         tsunamiDataList.unshift(mockTsunami);
-        if (document.getElementById('tsunami-list-container').style.display !== 'none') {
-            renderTsunamiList();
-        }
-        
+        if (document.getElementById('tsunami-list-container').style.display !== 'none') renderTsunamiList();
         drawTsunamiCoastlines(mockTsunami);
         updateTsunamiPanelUI(mockTsunami);
         document.getElementById('tp-main-header').innerText = "津波警報 (自動受信テスト)";
         document.getElementById('tsunami-panel').classList.add('show');
     };
-
 
     // ==========================================
     // サーバーレス完全フロントエンド画像解析処理
@@ -952,11 +1238,7 @@
         const HH = String(date.getHours()).padStart(2, '0');
         const mm = String(date.getMinutes()).padStart(2, '0');
         const ss = String(date.getSeconds()).padStart(2, '0');
-        return {
-            date: `${yyyy}${MM}${dd}`,
-            time: `${yyyy}${MM}${dd}${HH}${mm}${ss}`,
-            display: `${yyyy}/${MM}/${dd} ${HH}:${mm}:${ss}`
-        };
+        return { date: `${yyyy}${MM}${dd}`, time: `${yyyy}${MM}${dd}${HH}${mm}${ss}`, display: `${yyyy}/${MM}/${dd} ${HH}:${mm}:${ss}` };
     }
 
     function extractColorsFromImage(img, targetTimeDisplay) {
@@ -965,7 +1247,6 @@
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        
         const dataArray = [];
         intensityPointsData.forEach(pt => {
             const x = Math.floor(pt.x); const y = Math.floor(pt.y);
@@ -976,7 +1257,6 @@
                 dataArray.push({ lat: pt.lat, lon: pt.lon, color: `rgb(${r}, ${g}, ${b})` });
             }
         });
-
         if (kyoshinLayer) kyoshinLayer.updateData(dataArray);
         document.getElementById('kmoni-indicator').classList.remove('error');
         document.getElementById('kmoni-status-text').innerText = "リアルタイム監視中";
@@ -988,13 +1268,10 @@
         const now = new Date();
         const targetTime = new Date(now.getTime() - currentKmoniTimeOffset);
         const t = getFormatTimeStr(targetTime);
-        
-        fetchKmoniEEW(t); 
-
+        fetchKmoniEEW(t);
         const baseUrl = `http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/${t.date}/${t.time}.jma_s.gif?_=${Date.now()}`;
         const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(baseUrl)}`;
         const img = new Image(); img.crossOrigin = "Anonymous"; 
-        
         img.onload = function() {
             sysStats.success++;
             currentDelay = Math.floor((Date.now() - targetTime.getTime()) / 1000);
@@ -1030,8 +1307,12 @@
         if(kmoniTimeout) clearTimeout(kmoniTimeout);
         addSystemLog(`Info: 強震モニタ解析を停止しました`, 'warn');
         if(document.getElementById('settings-panel').classList.contains('show')) updateSettingsUI();
+        if (isSnetEnabled) {
+            stopSnetMonitor();
+            const toggle = document.getElementById('snet-toggle');
+            if (toggle) toggle.checked = false;
+        }
     }
-
 
     // ==========================================
     // データ読み込み ＆ 初期化 ＆ 自動監視
@@ -1041,7 +1322,6 @@
     let tsunamiGeoData = null; 
     let isTsunamiListRendered = false; 
     let isTsunamiFetchError = false; 
-
     let lastTsunamiId = null;
     let tsunamiPollingTimer = null;
 
@@ -1052,10 +1332,8 @@
         else container.classList.remove('map-zoomed');
     });
 
-    // 津波情報の自動ポーリング監視機能
     function startTsunamiPolling() {
         if (tsunamiPollingTimer) return;
-        // 20秒ごとに最新1件をチェック
         tsunamiPollingTimer = setInterval(async () => {
             try {
                 const res = await fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=1');
@@ -1063,14 +1341,10 @@
                 const data = await res.json();
                 if (data && data.length > 0) {
                     const latest = data[0];
-                    // 新しい津波情報が発表された場合
                     if (lastTsunamiId && latest.id !== lastTsunamiId) {
                         lastTsunamiId = latest.id;
                         tsunamiDataList.unshift(latest);
-                        if (document.getElementById('tsunami-list-container').style.display !== 'none') {
-                            renderTsunamiList();
-                        }
-                        // 地図への描画とパネルポップアップ
+                        if (document.getElementById('tsunami-list-container').style.display !== 'none') renderTsunamiList();
                         drawTsunamiCoastlines(latest);
                         updateTsunamiPanelUI(latest);
                         document.getElementById('tp-main-header').innerText = latest.cancelled ? "津波予報・警報 (解除等)" : "津波情報 (自動受信)";
@@ -1080,9 +1354,7 @@
                         lastTsunamiId = latest.id;
                     }
                 }
-            } catch (e) {
-                // エラーは無視して次回に再試行
-            }
+            } catch (e) {}
         }, 20000); 
     }
 
@@ -1096,38 +1368,30 @@
         fetch('./intensity-points.json').then(res => res.json()).catch(() => []) 
     ]).then(([geoData, stations, tGeo, tData1, tData2, tData3, intPoints]) => {
         if (geoData) {
+            japanGeoData = geoData; // EEWハイライト用にキャッシュ
             L.geoJSON(geoData, { pane: 'baseMapPane', style: { color: "#3A3A3C", weight: 1, fillColor: "#1C1C1E", fillOpacity: 1 } }).addTo(map);
         }
-        
         stationsData = stations || []; 
         tsunamiGeoData = tGeo; 
-        
         intensityPointsData = [];
         if (intPoints && intPoints.length > 0) {
             intPoints.forEach(st => {
                 if (st.location && st.point && st.point.center_point) {
                     intensityPointsData.push({
                         name: st.name || st.code,
-                        lat: st.location.latitude,
-                        lon: st.location.longitude,
-                        x: st.point.center_point.x,
-                        y: st.point.center_point.y
+                        lat: st.location.latitude, lon: st.location.longitude,
+                        x: st.point.center_point.x, y: st.point.center_point.y
                     });
                 }
             });
             console.log(`✅ 強震モニタ観測点ロード成功: ${intensityPointsData.length}件`);
         }
-
         const combinedTsunamiData = [...(tData1||[]), ...(tData2||[]), ...(tData3||[])];
         if (combinedTsunamiData.length === 0 && (!tData1 || tData1.length === 0)) isTsunamiFetchError = true;
         tsunamiDataList = combinedTsunamiData;
-        
-        if (tsunamiDataList.length > 0) {
-            lastTsunamiId = tsunamiDataList[0].id;
-        }
-        
+        if (tsunamiDataList.length > 0) lastTsunamiId = tsunamiDataList[0].id;
         fetchEarthquakeHistory();
-        startTsunamiPolling(); // バックグラウンドで津波監視を開始
+        startTsunamiPolling();
     }).catch(err => {
         console.error("データ読み込みエラー:", err);
         addSystemLog(`Err: 初期データの読み込みに失敗しました`, 'error');
@@ -1145,7 +1409,6 @@
         const safeStr = rawTimeStr.replace(/-/g, '/').replace(/T/, ' ').replace(/\+.*/, '').replace(/Z/, '');
         return new Date(safeStr);
     }
-
     function getIntensityColor(scale) {
         switch (scale) {
             case 10: return '#64D2FF'; case 20: return '#0A84FF'; case 30: return '#30D158';
@@ -1179,19 +1442,23 @@
             for (let i = 0; i < colors.length; i++) html += '<div><i style="background:' + colors[i] + '"></i> ' + labels[i] + '</div>';
         } else if (type === 'kyoshin') {
             html = `
+                <strong>強震モニタ</strong>
                 <div style="display: flex;">
                     <div style="width: 15px; height: 180px; background: linear-gradient(to top, #0000cd 0%, #00bfff 15%, #00ff00 30%, #ffff00 50%, #ffa500 65%, #ff0000 80%, #b22222 90%, #800080 100%); border: 1px solid #555; border-radius: 3px; margin-right: 10px;"></div>
                     <div style="display: flex; flex-direction: column; justify-content: space-between; font-size: 11px; font-weight: bold; height: 180px;">
                         <span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span><span>0</span><span>-3</span>
                     </div>
                 </div>
+                <div style="margin-top:8px; font-size:11px; color:#64D2FF;">◆ = 海底(S-net)</div>
+                <div style="font-size:11px; color:#aaa;">● = 陸上</div>
             `;
         } else if (type === 'kyoshin-calc') {
             const grades = [10, 20, 30, 40, 45, 50, 55, 60, 70];
             const labels = ['1', '2', '3', '4', '5-', '5+', '6-', '6+', '7'];
             html = '<strong style="margin-bottom:6px;">推定計測震度</strong>';
             for (let i = 0; i < grades.length; i++) html += '<div><i style="background:' + getIntensityColor(grades[i]) + '"></i> ' + labels[i] + '</div>';
-            html += '<div style="margin-top: 8px; font-size: 10px; color: #aaa; line-height:1.2;">※震度1未満は白色<br>（透過）で表示されます</div>';
+            html += '<div style="margin-top: 8px; font-size: 10px; color: #aaa; line-height:1.2;">※震度1未満は白色<br>（透過）で表示</div>';
+            html += '<div style="margin-top:6px; font-size:11px; color:#64D2FF;">◆ = 海底(S-net)</div>';
         }
         legendDiv.innerHTML = html;
     }
@@ -1204,14 +1471,11 @@
         tabs[0].classList.toggle('active', tabName === 'history');
         tabs[1].classList.toggle('active', tabName === 'tsunami');
         tabs[2].classList.toggle('active', tabName === 'kyoshin');
-
         document.getElementById('list-container').style.display = tabName === 'history' ? 'block' : 'none';
         document.getElementById('tsunami-list-container').style.display = tabName === 'tsunami' ? 'block' : 'none';
         document.getElementById('kyoshin-list-container').style.display = tabName === 'kyoshin' ? 'block' : 'none';
-        
         closeDetailPanel();
         closeTsunamiPanel();
-
         if (tabName === 'kyoshin') {
             if (map.hasLayer(allEarthquakesLayer)) map.removeLayer(allEarthquakesLayer);
             if (kyoshinLayer && !map.hasLayer(kyoshinLayer)) map.addLayer(kyoshinLayer);
@@ -1221,7 +1485,6 @@
         } else {
             stopKyoshinMonitor();
             if (kyoshinLayer && map.hasLayer(kyoshinLayer)) map.removeLayer(kyoshinLayer);
-            
             if (tabName === 'tsunami') {
                 if (map.hasLayer(allEarthquakesLayer)) map.removeLayer(allEarthquakesLayer);
                 if (!isTsunamiListRendered) { renderTsunamiList(); isTsunamiListRendered = true; }
@@ -1268,15 +1531,12 @@
                     const maxScale = eq.earthquake.maxScale;
                     if (hypo.latitude === -200 || hypo.longitude === -200) return;
                     if (maxScale === undefined || maxScale === null || maxScale < 10) return;
-
                     const color = getIntensityColor(maxScale);
                     const timeStr = safeFormatDateString(eq.earthquake.time);
                     const radius = Math.max((hypo.magnitude || 4) * 2.5, 5);
-
                     const eqCircle = L.circleMarker([hypo.latitude, hypo.longitude], {
                         radius: radius, fillColor: color, color: color, weight: 1.5, opacity: 0.9, fillOpacity: 0.4
                     }).bindTooltip(`${hypo.name} (M${hypo.magnitude})`).addTo(allEarthquakesLayer);
-
                     const listItem = document.createElement('div');
                     listItem.className = 'list-item';
                     listItem.style.borderLeftColor = color; 
@@ -1284,7 +1544,6 @@
                         <div class="list-item-title"><span>${hypo.name || "不明"}</span><span style="color:${color};">震度${getIntensityString(maxScale)}</span></div>
                         <div class="list-item-details">${timeStr} | M${hypo.magnitude >= 0 ? hypo.magnitude : '-'}</div>
                     `;
-
                     const activateEarthquake = () => {
                         if (listItem.classList.contains('active')) { closeDetailPanel(); return; }
                         document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
@@ -1292,7 +1551,6 @@
                         listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                         showEarthquakeDetails(eq, color);
                     };
-
                     listItem.addEventListener('click', activateEarthquake);
                     eqCircle.on('click', activateEarthquake);
                     listContainer.appendChild(listItem);
@@ -1303,10 +1561,8 @@
     function drawTsunamiCoastlines(matchedData) {
         tsunamiLineLayer.clearLayers(); 
         if (!tsunamiGeoData || !matchedData || !matchedData.areas || matchedData.cancelled) return; 
-
         const gradeMap = new Map();
         matchedData.areas.forEach(area => gradeMap.set(area.name, area.grade));
-
         L.geoJSON(tsunamiGeoData, {
             pane: 'tsunamiPane',
             filter: function(feature) {
@@ -1330,13 +1586,12 @@
         const container = document.getElementById('tsunami-list-container');
         container.innerHTML = '';
         if (isTsunamiFetchError) {
-            container.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--tsunami-warning); font-size: 13px; line-height: 1.5;">津波データの取得に失敗しました。<br>通信環境を確認して再読み込みしてください。</div>`;
+            container.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--tsunami-warning); font-size: 13px; line-height: 1.5;">津波データの取得に失敗しました。</div>`;
             return;
         }
         if (!tsunamiDataList || tsunamiDataList.length === 0) {
             container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary); font-size: 13px;">津波情報はありません</div>'; return;
         }
-
         let renderCount = 0;
         tsunamiDataList.forEach((tInfo) => {
             let maxGrade = "Unknown", color = "var(--tsunami-none)", title = "津波情報";
@@ -1357,29 +1612,23 @@
                 else if (highestWeight === 0.5) { color = "var(--tsunami-slight)"; title = "若干の海面変動"; }
                 else { color = "var(--tsunami-none)"; title = "津波情報 (調査中等)"; }
             }
-
             const rawTime = tInfo.time || (tInfo.issue && tInfo.issue.time) || tInfo.created_at;
             const timeStr = safeFormatDateString(rawTime);
-
             const item = document.createElement('div');
             item.className = 't-list-item'; item.style.borderLeftColor = color;
             item.innerHTML = `<div class="t-list-item-title"><span style="color: ${color};">${title}</span></div><div class="t-list-item-details">${timeStr} 発表</div>`;
-
             item.addEventListener('click', () => {
                 if (item.classList.contains('active')) { closeTsunamiPanel(); return; }
                 document.querySelectorAll('.t-list-item').forEach(el => el.classList.remove('active'));
                 item.classList.add('active');
-                
                 document.getElementById('detail-panel').classList.remove('show');
                 document.getElementById('tp-main-header').innerText = title + " (発表内容)";
-                
                 updateTsunamiPanelUI(tInfo);
                 document.getElementById('tsunami-panel').classList.add('show');
                 drawTsunamiCoastlines(tInfo);
             });
             container.appendChild(item); renderCount++;
         });
-
         if (renderCount === 0) container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary); font-size: 13px;">表示できる津波情報がありません</div>';
     }
 
@@ -1407,10 +1656,8 @@
         if (!matchedData || !matchedData.areas || matchedData.areas.length === 0) {
             listContainer.innerHTML = `<div class="tp-item"><div class="tp-area" style="color: var(--text-secondary);">詳細データが見つかりません</div></div>`; return;
         }
-
         const gradeWeight = { "MajorWarning": 3, "Warning": 2, "Watch": 1, "Unknown": 0 };
         const sortedAreas = matchedData.areas.sort((a, b) => (gradeWeight[b.grade] || 0) - (gradeWeight[a.grade] || 0));
-
         sortedAreas.forEach(area => {
             const item = document.createElement('div');
             item.className = 'tp-item';
@@ -1419,7 +1666,6 @@
             else if (area.grade === "Warning") colorVar = "var(--tsunami-warning)";
             else if (area.grade === "Watch") colorVar = "var(--tsunami-watch)";
             else if (area.grade === "NonEffective") colorVar = "var(--tsunami-slight)";
-
             let timeText = "--:--";
             if (area.firstHeight) {
                 if (area.firstHeight.condition) timeText = area.firstHeight.condition;
@@ -1442,21 +1688,16 @@
         tsunamiLineLayer.clearLayers(); 
         map.addLayer(detailLayer);
         closeTsunamiPanel(); 
-
         const hypo = eq.earthquake.hypocenter;
         const epicIcon = L.divIcon({ className: 'epicenter-icon', html: '<div class="epicenter-cross">×</div>', iconSize: [0, 0] });
         L.marker([hypo.latitude, hypo.longitude], { icon: epicIcon, zIndexOffset: 20000 }).addTo(detailLayer);
-
         const stationsListContainer = document.getElementById('dp-stations-list');
         stationsListContainer.innerHTML = ''; 
-
         let commentHtml = "", tStatus = eq.earthquake && eq.earthquake.domesticTsunami ? eq.earthquake.domesticTsunami : "None";
         let tColorVar = "var(--tsunami-none)", isTsunamiActive = false; 
-
         switch (tStatus) {
             case "None": commentHtml += `<strong>【津波情報】</strong><br>この地震による津波の心配はありません。`; break;
-            case "Unknown":
-            case "Checking": commentHtml += `<strong>【津波情報】</strong><br>津波の影響は現在調査中です。`; break;
+            case "Unknown": case "Checking": commentHtml += `<strong>【津波情報】</strong><br>津波の影響は現在調査中です。`; break;
             case "NonEffective": tColorVar = "var(--tsunami-slight)"; commentHtml += `<strong>【津波情報】</strong><br>若干の海面変動が予想されますが、被害の心配はありません。`; isTsunamiActive = true; break;
             case "Watch": tColorVar = "var(--tsunami-watch)"; commentHtml += `<strong>【津波情報】</strong><br>この地震により、津波注意報が発表されています。`; isTsunamiActive = true; break;
             case "Warning": tColorVar = "var(--tsunami-warning)"; commentHtml += `<strong>【津波情報】</strong><br>この地震により、津波警報が発表されています。`; isTsunamiActive = true; break;
@@ -1466,30 +1707,25 @@
                 else commentHtml += `<strong>【津波情報】</strong><br>津波に関する情報はありません。`;
         }
         if (eq.comments && eq.comments.freeFormComment) commentHtml += `<br><br><strong>【気象庁付加文】</strong><br>${eq.comments.freeFormComment}`;
-        
         const commentsBox = document.getElementById('dp-comments');
         document.getElementById('dp-comments-text').innerHTML = commentHtml;
         commentsBox.style.borderLeftColor = tColorVar;
-
         if (isTsunamiActive) {
             commentsBox.classList.add('clickable');
             const matchedTsunami = getMatchingTsunamiInfo(eq.earthquake.time);
             updateTsunamiPanelUI(matchedTsunami); drawTsunamiCoastlines(matchedTsunami);
         } else commentsBox.classList.remove('clickable');
-
         if (eq.points && eq.points.length > 0) {
             const listSortedPoints = [...eq.points].sort((a, b) => b.scale - a.scale);
             eq.points.forEach(p => {
                 const scaleColor = getIntensityColor(p.scale), scaleStr = getIntensityString(p.scale), shortScaleStr = getShortIntensityString(p.scale);
                 let matchedStations = stationsData.filter(st => st.name === p.addr);
                 if (matchedStations.length === 0) matchedStations = stationsData.filter(st => st.name.includes(p.addr) || p.addr.includes(st.city.name));
-
                 matchedStations.forEach(st => {
                     const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="station-dot" style="background-color: ${scaleColor};"><span class="station-scale-text">${shortScaleStr}</span></div>`, iconSize: [0, 0] });
                     L.marker([st.lat, st.lon], { icon: customIcon, zIndexOffset: p.scale * 100 }).bindTooltip(`${st.name}<br>震度${scaleStr}`, { direction: 'top', className: 'custom-tooltip' }).addTo(detailLayer);
                 });
             });
-
             listSortedPoints.forEach(p => {
                 const scaleColor = getIntensityColor(p.scale), scaleStr = getIntensityString(p.scale);
                 const item = document.createElement('div');
@@ -1498,26 +1734,20 @@
                 stationsListContainer.appendChild(item);
             });
         } else stationsListContainer.innerHTML = '<div style="padding: 10px; text-align: center; color: var(--text-secondary); font-size: 13px;">詳細な観測点データがありません</div>';
-
         map.setView([hypo.latitude, hypo.longitude], 7, { animate: true, duration: 0.5 });
         document.getElementById('dp-scale-label').innerText = "最大震度"; 
-        
         const scaleValue = document.getElementById('dp-scale');
         scaleValue.innerText = getIntensityString(eq.earthquake.maxScale);
         scaleValue.style.color = mainColor; 
         scaleValue.style.fontSize = "34px"; 
-
         document.getElementById('dp-box').style.borderColor = mainColor;
         document.getElementById('dp-box').style.background = "rgba(0,0,0,0.3)";
         document.getElementById('detail-panel').style.backgroundColor = "rgba(28, 28, 30, 0.45)";
-        
         const dpNameEl = document.getElementById('dp-name');
         dpNameEl.innerText = hypo.name || "震源地不明"; dpNameEl.title = hypo.name || "震源地不明"; 
-        
         document.getElementById('dp-time').innerText = safeFormatDateString(eq.earthquake.time) + " 発生";
         document.getElementById('dp-mag').innerText = hypo.magnitude >= 0 ? hypo.magnitude.toFixed(1) : '-.-';
         document.getElementById('dp-depth').innerText = hypo.depth >= 0 ? hypo.depth : '--';
-
         document.getElementById('dp-extended-area').classList.add('collapsed');
         document.getElementById('dp-toggle-btn').innerHTML = '詳細情報を表示 ▼';
         document.getElementById('detail-panel').classList.add('show');
@@ -1530,15 +1760,11 @@
         document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
         map.removeLayer(detailLayer);
         closeTsunamiPanel(); 
-        
         const isHistoryTab = document.querySelectorAll('.tab-btn')[0].classList.contains('active');
         const isKyoshinTab = document.querySelectorAll('.tab-btn')[2].classList.contains('active');
-        
         if (isHistoryTab) map.addLayer(allEarthquakesLayer);
         else map.removeLayer(allEarthquakesLayer);
-
         if (isKyoshinTab && kyoshinLayer && !map.hasLayer(kyoshinLayer)) map.addLayer(kyoshinLayer);
-        
         map.setView([38.0, 137.0], 5, { animate: true });
     };
 
@@ -1559,7 +1785,7 @@
     const style = document.createElement('style');
     style.innerHTML = `.custom-tooltip { background: rgba(0,0,0,0.8); border: 1px solid #555; color: #fff; font-size: 11px; backdrop-filter: blur(10px); }`;
     document.head.appendChild(style);
-
 </script>
+
 </body>
 </html>
