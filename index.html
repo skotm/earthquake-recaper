@@ -144,7 +144,7 @@
         .eew-container::-webkit-scrollbar { width: 6px; }
         .eew-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
 
-        /* ======== EEW Wrapper & Minimized Icon CSS 追加 ======== */
+        /* ======== EEW Wrapper & Minimized Icon ======== */
         .eew-wrapper {
             position: relative;
             pointer-events: none;
@@ -190,7 +190,6 @@
             70% { box-shadow: 0 0 0 15px rgba(255, 59, 48, 0); }
             100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
         }
-        /* ======================================================= */
 
         .eew-panel {
             pointer-events: auto; position: relative; box-sizing: border-box;
@@ -233,7 +232,6 @@
         .station-scale-text { display: none; color: #ffffff; font-weight: 800; font-size: 12px; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.6); letter-spacing: -0.5px; line-height: 1; transform: translateY(0.5px); }
         .map-zoomed .station-dot { width: 24px; height: 24px; border-width: 1.5px; } .map-zoomed .station-scale-text { display: block; }
         
-        /* ピクセルパーフェクトに調整した震源・モヤのCSS（iconSize: [0, 0] 前提） */
         .eew-epicenter-pulse {
             position: absolute; top: -25px; left: -25px;
             width: 50px; height: 50px; background: rgba(255, 69, 58, 0.5);
@@ -246,7 +244,7 @@
 
         .eew-marker-cross { position: absolute; top: -12px; left: -12px; width: 24px; height: 24px; pointer-events: none; }
         .eew-marker-cross::before, .eew-marker-cross::after {
-            content: ''; position: absolute; top: 2px; left: 11px; /* 11px + 1px(半幅) = 12px(中心) */
+            content: ''; position: absolute; top: 2px; left: 11px;
             width: 2px; height: 20px; background-color: #FF453A; box-shadow: 0 0 8px #FF453A;
         }
         .eew-marker-cross::before { transform: rotate(45deg); }
@@ -434,6 +432,85 @@
     const eewLayer = L.layerGroup().addTo(map);
 
     // ==========================================
+    // 津波情報：JMA(直近・予報対応) ＋ P2P(過去の警報履歴) 合体処理
+    // ==========================================
+    function convertJMAToP2P(jmaData, reportDatetime) {
+        let issueTime = (jmaData.Head && jmaData.Head.ReportDateTime) ? jmaData.Head.ReportDateTime : reportDatetime;
+        
+        let p2pData = {
+            id: reportDatetime, 
+            created_at: issueTime,
+            time: issueTime,
+            issue: { time: issueTime, source: "気象庁", type: (jmaData.Head && jmaData.Head.InfoType) || "発表" },
+            cancelled: (jmaData.Head && jmaData.Head.InfoType === "取消"),
+            areas: []
+        };
+
+        if (jmaData.Body && jmaData.Body.Tsunami && jmaData.Body.Tsunami.Forecast) {
+            const forecast = jmaData.Body.Tsunami.Forecast;
+            if (forecast.Item) {
+                const items = Array.isArray(forecast.Item) ? forecast.Item : [forecast.Item];
+                items.forEach(item => {
+                    const areaName = item.Area ? item.Area.Name : "";
+                    const kindName = (item.Category && item.Category.Kind && item.Category.Kind.Name) ? item.Category.Kind.Name : "";
+                    
+                    let grade = "Unknown";
+                    if (!kindName.includes("解除")) {
+                        if (kindName.includes("大津波")) grade = "MajorWarning";
+                        else if (kindName.includes("警報")) grade = "Warning";
+                        else if (kindName.includes("注意報")) grade = "Watch";
+                        else if (kindName.includes("海面変動") || kindName.includes("予報")) grade = "NonEffective";
+                    }
+
+                    let firstHeight = {};
+                    if (item.FirstHeight) {
+                        if (item.FirstHeight.Condition) firstHeight.condition = item.FirstHeight.Condition;
+                        if (item.FirstHeight.ArrivalTime) firstHeight.time = item.FirstHeight.ArrivalTime;
+                    }
+
+                    let maxHeight = {};
+                    if (item.MaxHeight && item.MaxHeight.TsunamiHeight && item.MaxHeight.TsunamiHeight.Description) {
+                        maxHeight.description = item.MaxHeight.TsunamiHeight.Description;
+                    }
+
+                    if (grade !== "Unknown" && areaName) {
+                        p2pData.areas.push({ 
+                            name: areaName, 
+                            grade: grade,
+                            firstHeight: Object.keys(firstHeight).length > 0 ? firstHeight : null,
+                            maxHeight: Object.keys(maxHeight).length > 0 ? maxHeight : null
+                        });
+                    }
+                });
+            }
+        }
+        return p2pData;
+    }
+
+    async function fetchJMATsunamiHistory() {
+        try {
+            const res = await fetch('https://www.jma.go.jp/bosai/tsunami/data/list.json');
+            if(!res.ok) return [];
+            const list = await res.json();
+            // JMAからは直近10件分だけ取得してパースする
+            const recentList = list.slice(0, 10);
+            const promises = recentList.map(async (item) => {
+                try {
+                    const dRes = await fetch(`https://www.jma.go.jp/bosai/tsunami/data/${item.json}`);
+                    if(!dRes.ok) return null;
+                    const detail = await dRes.json();
+                    return convertJMAToP2P(detail, item.reportDatetime);
+                } catch(e) { return null; }
+            });
+            const results = await Promise.all(promises);
+            return results.filter(r => r !== null);
+        } catch(e) { 
+            return []; 
+        }
+    }
+
+
+    // ==========================================
     // 計測震度 逆算ロジック (RGB -> Hue -> Intensity)
     // ==========================================
     function rgbToHue(r, g, b) {
@@ -585,8 +662,7 @@
     let isKyoshinActive = false;
 
     // ==========================================
-    // 緊急地震速報 (EEW) 高度化統合管理
-    // P波/S波アニメーション ＆ 警報地域ハイライト ＆ 最小化機能
+    // 緊急地震速報 (EEW) 統合管理
     // ==========================================
     const activeEEWs = new Map();
     let isEEWMockActive = false;
@@ -757,17 +833,14 @@
         let panel, minIcon;
         
         if (!wrapper) {
-            // フローティング用ラッパーの作成（EEWごとに作成）
             wrapper = document.createElement('div');
             wrapper.id = `eew-wrapper-${eventId}`;
             wrapper.className = 'eew-wrapper';
             
-            // フルサイズパネル
             panel = document.createElement('div');
             panel.id = `eew-panel-${eventId}`;
             panel.className = 'eew-panel';
             
-            // 最小化用アイコン
             minIcon = document.createElement('div');
             minIcon.id = `eew-minimized-${eventId}`;
             minIcon.className = 'eew-minimized';
@@ -785,7 +858,7 @@
         }
 
         if (isCancel) {
-            restoreEEW(eventId); // キャンセル時は強制的に展開して知らせる
+            restoreEEW(eventId); 
             panel.style.backgroundColor = "rgba(28, 28, 30, 0.45)";
             panel.style.borderColor = "#8E8E93";
             panel.innerHTML = `
@@ -813,7 +886,6 @@
 
         const isWarning = data.alertflg === "警報";
         
-        // 最小化アイコンのスタイル更新（赤：警報、黄：予報）
         minIcon.className = `eew-minimized ${isWarning ? 'warning' : 'forecast'}`;
 
         panel.style.backgroundColor = isWarning ? "rgba(100, 20, 20, 0.45)" : "rgba(28, 28, 30, 0.45)";
@@ -874,21 +946,18 @@
         }
     };
 
-    // フローティングを閉じる（＝丸いアイコンへ最小化する）
     window.minimizeEEW = function(eventId) {
         const panel = document.getElementById(`eew-panel-${eventId}`);
         const minIcon = document.getElementById(`eew-minimized-${eventId}`);
         if (panel && minIcon) {
             panel.style.display = 'none';
             minIcon.style.display = 'flex';
-            // アニメーションを再発火させるためのリセット処理
             minIcon.style.animation = 'none';
             void minIcon.offsetWidth; 
             minIcon.style.animation = null;
         }
     };
 
-    // 最小化されたアイコンを押して元のパネルへ復元する
     window.restoreEEW = function(eventId) {
         const panel = document.getElementById(`eew-panel-${eventId}`);
         const minIcon = document.getElementById(`eew-minimized-${eventId}`);
@@ -898,7 +967,6 @@
         }
     };
 
-    // 最終報到達時など、完全に画面から消去する処理
     window.closeEEW = function(eventId) {
         if (activeEEWs.has(eventId)) {
             const state = activeEEWs.get(eventId);
@@ -991,7 +1059,8 @@
                 { name: "東京湾内", grade: "Warning", maxHeight: { description: "1m" } },
                 { name: "千葉県内房", grade: "Warning", maxHeight: { description: "1m" } },
                 { name: "相模湾・三浦半島", grade: "Watch", maxHeight: { description: "0.2m" } },
-                { name: "伊豆諸島", grade: "Watch", maxHeight: { description: "0.2m" } }
+                { name: "伊豆諸島", grade: "Watch", maxHeight: { description: "0.2m" } },
+                { name: "テスト予報区", grade: "NonEffective", maxHeight: { description: "0.2m未満" } }
             ]
         };
         lastTsunamiId = mockTsunami.id;
@@ -1109,37 +1178,49 @@
         if (tsunamiPollingTimer) return;
         tsunamiPollingTimer = setInterval(async () => {
             try {
-                const res = await fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=1');
+                // JMA APIのリアルタイム監視
+                const res = await fetch('https://www.jma.go.jp/bosai/tsunami/data/list.json');
                 if (!res.ok) return;
-                const data = await res.json();
-                if (data && data.length > 0) {
-                    const latest = data[0];
-                    if (lastTsunamiId && latest.id !== lastTsunamiId) {
-                        lastTsunamiId = latest.id;
-                        tsunamiDataList.unshift(latest);
-                        if (document.getElementById('tsunami-list-container').style.display !== 'none') renderTsunamiList();
-                        drawTsunamiCoastlines(latest);
-                        updateTsunamiPanelUI(latest);
-                        document.getElementById('tp-main-header').innerText = latest.cancelled ? "津波予報・警報 (解除等)" : "津波情報 (自動受信)";
-                        document.getElementById('tsunami-panel').classList.add('show');
-                        addSystemLog(`[自動受信] 新しい津波情報を検知・表示しました`, 'warn');
+                const listData = await res.json();
+                if (listData && listData.length > 0) {
+                    const latestItem = listData[0];
+                    const latestId = latestItem.reportDatetime;
+                    if (lastTsunamiId && latestId !== lastTsunamiId) {
+                        const detailRes = await fetch(`https://www.jma.go.jp/bosai/tsunami/data/${latestItem.json}`);
+                        if(!detailRes.ok) return;
+                        const detailData = await detailRes.json();
+                        const latest = convertJMAToP2P(detailData, latestItem.reportDatetime);
+                        
+                        lastTsunamiId = latestId;
+                        
+                        // 重複を弾いて追加
+                        const isDuplicate = tsunamiDataList.some(item => Math.abs(new Date(item.created_at).getTime() - new Date(latest.created_at).getTime()) < 3600000);
+                        if(!isDuplicate) {
+                            tsunamiDataList.unshift(latest);
+                            if (document.getElementById('tsunami-list-container').style.display !== 'none') renderTsunamiList();
+                            drawTsunamiCoastlines(latest);
+                            updateTsunamiPanelUI(latest);
+                            document.getElementById('tp-main-header').innerText = latest.cancelled ? "津波予報・警報 (解除等)" : "津波情報 (自動受信)";
+                            document.getElementById('tsunami-panel').classList.add('show');
+                            addSystemLog(`[自動受信] 新しい津波情報を検知・表示しました`, 'warn');
+                        }
                     } else if (!lastTsunamiId) {
-                        lastTsunamiId = latest.id;
+                        lastTsunamiId = latestId;
                     }
                 }
             } catch (e) {}
-        }, 20000); 
+        }, 30000); 
     }
 
     Promise.all([
         fetch('./japan.geo.json').then(res => res.json()).catch(() => null),
         fetch('./stations_with_amp_revised.json').then(res => res.json()).catch(() => []),
         fetch('./津波予報区.json').then(res => res.json()).catch(() => null),
-        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=0').then(res => res.ok ? res.json() : []).catch(() => []),
-        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=100').then(res => res.ok ? res.json() : []).catch(() => []),
-        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=200').then(res => res.ok ? res.json() : []).catch(() => []),
+        fetchJMATsunamiHistory(), // 気象庁API (直近のリアルタイム + 予報)
+        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=0').then(res => res.ok ? res.json() : []).catch(() => []), // P2P (過去の履歴1)
+        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=100').then(res => res.ok ? res.json() : []).catch(() => []), // P2P (過去の履歴2)
         fetch('./intensity-points.json').then(res => res.json()).catch(() => []) 
-    ]).then(([geoData, stations, tGeo, tData1, tData2, tData3, intPoints]) => {
+    ]).then(([geoData, stations, tGeo, jmaTsunami, p2pTsunami1, p2pTsunami2, intPoints]) => {
         if (geoData) {
             japanGeoData = geoData;
             L.geoJSON(geoData, { pane: 'baseMapPane', style: { color: "#3A3A3C", weight: 1, fillColor: "#1C1C1E", fillOpacity: 1 } }).addTo(map);
@@ -1158,10 +1239,30 @@
                 }
             });
         }
-        const combinedTsunamiData = [...(tData1||[]), ...(tData2||[]), ...(tData3||[])];
-        if (combinedTsunamiData.length === 0 && (!tData1 || tData1.length === 0)) isTsunamiFetchError = true;
-        tsunamiDataList = combinedTsunamiData;
-        if (tsunamiDataList.length > 0) lastTsunamiId = tsunamiDataList[0].id;
+        
+        // JMA(直近・予報) と P2P(過去履歴) をマージ
+        let mergedTsunami = [...(jmaTsunami || [])];
+        const combinedP2P = [...(p2pTsunami1 || []), ...(p2pTsunami2 || [])];
+        
+        combinedP2P.forEach(p2pItem => {
+            const p2pTime = new Date(p2pItem.created_at).getTime();
+            // JMAデータと時刻が1時間以内なら同じ事象とみなしてP2P側を捨てる（JMA優先）
+            const isDuplicate = mergedTsunami.some(jmaItem => {
+                const jmaTime = new Date(jmaItem.created_at).getTime();
+                return Math.abs(p2pTime - jmaTime) < 3600000; 
+            });
+            if (!isDuplicate) {
+                mergedTsunami.push(p2pItem);
+            }
+        });
+        
+        // 日時が新しい順にソート
+        mergedTsunami.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        if (mergedTsunami.length === 0) isTsunamiFetchError = true;
+        tsunamiDataList = mergedTsunami;
+        if (tsunamiDataList.length > 0) lastTsunamiId = tsunamiDataList[0].id || tsunamiDataList[0].created_at;
+        
         fetchEarthquakeHistory();
         startTsunamiPolling();
     }).catch(err => {
@@ -1378,7 +1479,7 @@
                 if (maxGrade === "MajorWarning") { color = "var(--tsunami-major)"; title = "大津波警報"; }
                 else if (maxGrade === "Warning") { color = "var(--tsunami-warning)"; title = "津波警報"; }
                 else if (maxGrade === "Watch") { color = "var(--tsunami-watch)"; title = "津波注意報"; }
-                else if (highestWeight === 0.5) { color = "var(--tsunami-slight)"; title = "若干の海面変動"; }
+                else if (highestWeight === 0.5) { color = "var(--tsunami-slight)"; title = "津波予報 (若干の海面変動)"; }
                 else { color = "var(--tsunami-none)"; title = "津波情報 (調査中等)"; }
             }
             const rawTime = tInfo.time || (tInfo.issue && tInfo.issue.time) || tInfo.created_at;
