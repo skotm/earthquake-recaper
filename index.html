@@ -247,7 +247,7 @@
                     </div>
                 </div>
                 <div style="font-size: 10px; color: #aaa; line-height: 1.4;">
-                    ※過去数日〜1週間程度より古いデータは、防災科研のサーバー仕様により削除されているため再生できません。
+                    ※過去数時間（約2〜4時間）より古いデータは、防災科研サーバーから削除されているため再生できません。
                 </div>
             </div>
             </div>
@@ -676,8 +676,6 @@
         if (isEEWMockActive) return null; 
         try {
             const baseUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${timeFmt.time}.json?_=${Date.now()}`;
-            // ★ プロキシのリストを用意し、エラー時や制限時に切り替えられるようにするのも手だが
-            // ここではシンプルなCORS回避としてそのまま使用
             const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(baseUrl)}`;
             const res = await fetch(proxyUrl);
             const data = await res.json();
@@ -1037,14 +1035,6 @@
     let archiveTime = null;
     let archiveTimer = null;
     let archiveIsPlaying = false;
-    
-    // ★追加: 複数のCORSプロキシリスト（制限回避用）
-    const proxyList = [
-        "https://api.codetabs.com/v1/proxy/?quest=",
-        "https://api.allorigins.win/raw?url=",
-        "https://corsproxy.io/?"
-    ];
-    let currentProxyIndex = 0;
 
     function getFormatTimeStr(date) {
         const yyyy = date.getFullYear();
@@ -1078,27 +1068,24 @@
         const ind = document.getElementById('kmoni-indicator');
         const statusTextEl = document.getElementById('kmoni-status-text');
         
-        // ★修正: 空の画像（または期間外の透明画像）の厳密なハンドリング
-        // imgが10x10以下の極小サイズ（404代わりの透明GIFなど）またはデータ点がゼロの場合
+        // ★ エラーハンドリング強化：画像が404代わりの極小・透明画像、またはデータがない場合
         if (img.width < 10 || dataArray.length === 0) {
             ind.classList.remove('archive');
             ind.classList.add('error');
             
             if (isArchiveMode) {
-                statusTextEl.innerText = "過去データなし (保存期間外または欠損)";
-                // 無駄な通信を避けるため、再生を自動停止する
+                statusTextEl.innerText = "過去データなし (保存期間外など)";
+                // 無限エラーでプロキシ制限を食らわないように、自動で一時停止させる
                 if (archiveIsPlaying) pauseArchive();
             } else {
                 statusTextEl.innerText = "データがありません";
             }
             document.getElementById('kmoni-time').innerText = targetTimeDisplay;
-            
-            // 古いデータを画面に残さないようクリアする
-            if (kyoshinLayer) kyoshinLayer.updateData([]); 
+            if (kyoshinLayer) kyoshinLayer.updateData([]); // 古い残像を消す
             return;
         }
         
-        // 通常の正常描画とステータス更新
+        // 正常時の描画とステータス更新
         if (kyoshinLayer) kyoshinLayer.updateData(dataArray);
         
         ind.classList.remove('error');
@@ -1112,14 +1099,14 @@
         document.getElementById('kmoni-time').innerText = targetTimeDisplay;
     }
 
-    // 共通画像取得ロジック（★修正：プロキシ切替とエラーハンドリングの強化）
+    // 共通画像取得ロジック
     function fetchAndDrawKmoni(targetDate, isLive = true) {
         const t = getFormatTimeStr(targetDate);
         if (isLive) fetchKmoniEEW(t); 
         
         const baseUrl = `http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/${t.date}/${t.time}.jma_s.gif`;
-        // 現在のプロキシを適用
-        const proxyUrl = `${proxyList[currentProxyIndex]}${encodeURIComponent(baseUrl)}?_=${Date.now()}`;
+        // プロキシを固定（ラウンドロビンは無限ループエラーを助長するため廃止）
+        const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(baseUrl)}`;
         
         const img = new Image(); 
         img.crossOrigin = "Anonymous"; 
@@ -1133,20 +1120,13 @@
             img.onerror = function() {
                 sysStats.error++;
                 const ind = document.getElementById('kmoni-indicator');
+                ind.classList.remove('archive'); ind.classList.add('error');
                 
                 if (isLive) {
-                    ind.classList.remove('archive'); ind.classList.add('error');
                     document.getElementById('kmoni-status-text').innerText = "画像取得エラー (ラグ調整中...)";
                 } else {
-                    // ★修正: アーカイブ時の通信エラーUI更新
-                    ind.classList.remove('archive'); ind.classList.add('error');
-                    document.getElementById('kmoni-status-text').innerText = "プロキシ通信制限 (待機中...)";
+                    document.getElementById('kmoni-status-text').innerText = "データなし (保存期間外 または 通信エラー)";
                 }
-                
-                // エラー時はプロキシを次のものに切り替える（ラウンドロビン）
-                currentProxyIndex = (currentProxyIndex + 1) % proxyList.length;
-                addSystemLog(`[Network] プロキシ制限を検知。サーバーを切り替えました（${currentProxyIndex}）`, 'warn');
-                
                 reject(false);
             };
             img.src = proxyUrl;
@@ -1242,10 +1222,10 @@
             archiveTime = new Date(archiveTime.getTime() + speed * 1000);
             archiveTimer = setTimeout(archiveLoop, 1000); 
         }).catch(() => {
-            // ★修正: エラー時はシーク（時間）を進めずに、同じ時間でリトライする
-            // 少し長めに待機（1.5秒）してプロキシの回復を待つ
+            // ★修正: エラー時はシーク（時間）を進めずに、自動停止して無限スパムを防止
             updateArchiveUITime();
-            archiveTimer = setTimeout(archiveLoop, 1500);
+            pauseArchive(); 
+            addSystemLog(`[Archive] 画像が見つからないため自動停止しました（保存期間外の可能性）`, 'error');
         });
     }
 
