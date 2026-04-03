@@ -21,7 +21,6 @@
             --tsunami-watch: #FFD60A;
             --tsunami-slight: #64D2FF;
             --tsunami-none: #8E8E93;
-            /* P波・S波カラー */
             --p-wave-color: #32ADE6;
             --s-wave-color: #FF3B30;
         }
@@ -76,9 +75,9 @@
             display: inline-block; width: 8px; height: 8px; background-color: #30D158; border-radius: 50%;
             margin-right: 6px; box-shadow: 0 0 8px #30D158; animation: pulse 1.5s infinite;
         }
-        .live-indicator.error {
-            background-color: #FF453A; box-shadow: 0 0 8px #FF453A; animation: none;
-        }
+        .live-indicator.error { background-color: #FF453A; box-shadow: 0 0 8px #FF453A; animation: none; }
+        .live-indicator.archive { background-color: #FFD60A; box-shadow: 0 0 8px #FFD60A; animation: pulse 1.5s infinite; }
+        
         @keyframes pulse {
             0% { transform: scale(0.95); opacity: 0.5; }
             50% { transform: scale(1.2); opacity: 1; }
@@ -133,81 +132,22 @@
         .sp-log-box div:last-child { margin-bottom: 0; border-bottom: none; }
         .sp-log-box .log-err { color: #FF453A; } .sp-log-box .log-succ { color: #30D158; } .sp-log-box .log-warn { color: #FFD60A; } .sp-log-box .log-info { color: #e5e5ea; }
         
-        .eew-container {
-            position: absolute; bottom: 20px; left: 10px;
-            display: flex; flex-direction: column-reverse;
-            gap: 12px; max-height: 75vh; overflow-y: auto;
-            z-index: 1500; pointer-events: auto;
-            width: 295px; max-width: calc(100vw - 20px); padding-right: 10px;
-        }
+        .eew-container { position: absolute; bottom: 20px; left: 10px; display: flex; flex-direction: column-reverse; gap: 12px; max-height: 75vh; overflow-y: auto; z-index: 1500; pointer-events: auto; width: 295px; max-width: calc(100vw - 20px); padding-right: 10px; }
         .eew-container:empty { display: none; }
         .eew-container::-webkit-scrollbar { width: 6px; }
         .eew-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
 
-        /* ======== EEW Wrapper & Minimized Icon ======== */
-        .eew-wrapper {
-            position: relative;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        .eew-minimized {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 26px;
-            font-weight: 900;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            pointer-events: auto;
-            transition: transform 0.2s, background-color 0.3s;
-            margin-bottom: 4px;
-            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        @keyframes popIn {
-            from { transform: scale(0); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        .eew-minimized:hover {
-            transform: scale(1.1);
-        }
-        .eew-minimized.warning {
-            background-color: #FF3B30;
-            color: #FFFFFF;
-            animation: pulse-minimized-red 1.5s infinite;
-        }
-        .eew-minimized.forecast {
-            background-color: #FFCC00;
-            color: #1C1C1E;
-        }
-        @keyframes pulse-minimized-red {
-            0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(255, 59, 48, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
-        }
+        .eew-wrapper { position: relative; pointer-events: none; display: flex; flex-direction: column; align-items: flex-start; }
+        .eew-minimized { width: 48px; height: 48px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 26px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255, 255, 255, 0.2); pointer-events: auto; transition: transform 0.2s, background-color 0.3s; margin-bottom: 4px; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .eew-minimized:hover { transform: scale(1.1); }
+        .eew-minimized.warning { background-color: #FF3B30; color: #FFFFFF; animation: pulse-minimized-red 1.5s infinite; }
+        .eew-minimized.forecast { background-color: #FFCC00; color: #1C1C1E; }
+        @keyframes pulse-minimized-red { 0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 59, 48, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); } }
 
-        .eew-panel {
-            pointer-events: auto; position: relative; box-sizing: border-box;
-            width: 280px; flex-shrink: 0;
-            background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
-            border: 0.5px solid var(--border-color); border-radius: 16px;
-            padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); color: #FFFFFF;
-            animation: slideInEew 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            transition: background-color 0.3s, border-color 0.3s, opacity 0.3s, transform 0.3s;
-        }
-        .plum-badge {
-            background-color: #8E44AD; color: white; padding: 2px 6px; border-radius: 4px;
-            font-size: 0.75em; margin-left: 6px; font-weight: bold; vertical-align: 2px; box-shadow: 0 0 5px rgba(142,68,173,0.8);
-        }
-        @keyframes slideInEew {
-            from { opacity: 0; transform: translateX(-30px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
+        .eew-panel { pointer-events: auto; position: relative; box-sizing: border-box; width: 280px; flex-shrink: 0; background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); color: #FFFFFF; animation: slideInEew 0.4s cubic-bezier(0.16, 1, 0.3, 1); transition: background-color 0.3s, border-color 0.3s, opacity 0.3s, transform 0.3s; }
+        .plum-badge { background-color: #8E44AD; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; margin-left: 6px; font-weight: bold; vertical-align: 2px; box-shadow: 0 0 5px rgba(142,68,173,0.8); }
+        @keyframes slideInEew { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
 
         .dp-main { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
         .dp-scale-box { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 10px 8px; min-width: 64px; background: rgba(0,0,0,0.3); border: 2px solid transparent; transition: border-color 0.3s, background-color 0.3s; white-space: nowrap; }
@@ -232,30 +172,15 @@
         .station-scale-text { display: none; color: #ffffff; font-weight: 800; font-size: 12px; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.6); letter-spacing: -0.5px; line-height: 1; transform: translateY(0.5px); }
         .map-zoomed .station-dot { width: 24px; height: 24px; border-width: 1.5px; } .map-zoomed .station-scale-text { display: block; }
         
-        .eew-epicenter-pulse {
-            position: absolute; top: -25px; left: -25px;
-            width: 50px; height: 50px; background: rgba(255, 69, 58, 0.5);
-            border-radius: 50%; animation: eew-pulse 1.5s infinite cubic-bezier(0.2, 0.8, 0.2, 1); pointer-events: none;
-        }
-        @keyframes eew-pulse {
-            0% { transform: scale(0.2); opacity: 1; }
-            100% { transform: scale(3.5); opacity: 0; }
-        }
+        .eew-epicenter-pulse { position: absolute; top: -25px; left: -25px; width: 50px; height: 50px; background: rgba(255, 69, 58, 0.5); border-radius: 50%; animation: eew-pulse 1.5s infinite cubic-bezier(0.2, 0.8, 0.2, 1); pointer-events: none; }
+        @keyframes eew-pulse { 0% { transform: scale(0.2); opacity: 1; } 100% { transform: scale(3.5); opacity: 0; } }
 
         .eew-marker-cross { position: absolute; top: -12px; left: -12px; width: 24px; height: 24px; pointer-events: none; }
-        .eew-marker-cross::before, .eew-marker-cross::after {
-            content: ''; position: absolute; top: 2px; left: 11px;
-            width: 2px; height: 20px; background-color: #FF453A; box-shadow: 0 0 8px #FF453A;
-        }
+        .eew-marker-cross::before, .eew-marker-cross::after { content: ''; position: absolute; top: 2px; left: 11px; width: 2px; height: 20px; background: #FF453A; box-shadow: 0 0 8px #FF453A; }
         .eew-marker-cross::before { transform: rotate(45deg); }
         .eew-marker-cross::after { transform: rotate(-45deg); }
 
-        .eew-marker-plum {
-            position: absolute; top: -12px; left: -12px; pointer-events: none;
-            width: 24px; height: 24px; border: 4px solid #FF453A; border-radius: 50%;
-            box-sizing: border-box; background-color: transparent;
-            box-shadow: 0 0 10px rgba(255, 69, 58, 0.8), inset 0 0 10px rgba(255, 69, 58, 0.8);
-        }
+        .eew-marker-plum { position: absolute; top: -12px; left: -12px; pointer-events: none; width: 24px; height: 24px; border: 4px solid #FF453A; border-radius: 50%; box-sizing: border-box; background-color: transparent; box-shadow: 0 0 10px rgba(255, 69, 58, 0.8), inset 0 0 10px rgba(255, 69, 58, 0.8); }
     </style>
 </head>
 <body>
@@ -297,7 +222,35 @@
                     <span>-3.0</span><span>0</span><span>3</span><span>7.0</span>
                 </div>
             </div>
-        </div>
+            
+            <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); text-align: left;">
+                <div style="font-size: 12px; font-weight: bold; margin-bottom: 8px; color: #fff;">
+                    ⏪ アーカイブ再生 (タイムマシン)
+                </div>
+                <input type="datetime-local" id="archive-datetime" step="1" style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.5); color: white; border: 1px solid var(--border-color); padding: 6px; margin-bottom: 10px; border-radius: 4px; font-family: monospace;">
+                
+                <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+                    <button class="sp-btn" onclick="startArchive()" style="flex: 1.5; background: rgba(48, 209, 88, 0.2); border-color: #30D158; color: #30D158;">▶ 再生</button>
+                    <button class="sp-btn" onclick="pauseArchive()" style="flex: 1;">⏸ 一時停止</button>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <button class="sp-btn sp-btn-danger" onclick="stopArchive()" style="flex: 1; margin-right: 10px;">⏹ ライブに戻る</button>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 11px; color: var(--text-secondary);">速度:</span>
+                        <select id="archive-speed" style="background: rgba(0,0,0,0.5); color: white; border: 1px solid var(--border-color); border-radius: 4px; padding: 4px; font-size: 11px;">
+                            <option value="1">1倍速</option>
+                            <option value="2">2倍速</option>
+                            <option value="5">5倍速</option>
+                            <option value="10">10倍速</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="font-size: 10px; color: #aaa; line-height: 1.4;">
+                    ※過去数日〜1週間程度より古いデータは、防災科研のサーバー仕様により削除されているため再生できません。
+                </div>
+            </div>
+            </div>
     </div>
 </div>
 
@@ -392,8 +345,8 @@
     }
 
     function updateSettingsUI() {
-        document.getElementById('sys-status').innerText = isKyoshinActive ? "リアルタイム監視中" : "停止中";
-        document.getElementById('sys-status').style.color = isKyoshinActive ? "#30D158" : "#8E8E93";
+        document.getElementById('sys-status').innerText = isKyoshinActive ? (isArchiveMode ? "アーカイブ再生中" : "リアルタイム監視中") : "停止中";
+        document.getElementById('sys-status').style.color = isKyoshinActive ? (isArchiveMode ? "#FFD60A" : "#30D158") : "#8E8E93";
         document.getElementById('sys-delay').innerText = `${currentDelay} 秒`;
         document.getElementById('sys-success').innerText = sysStats.success;
         document.getElementById('sys-error').innerText = sysStats.error;
@@ -492,7 +445,6 @@
             const res = await fetch('https://www.jma.go.jp/bosai/tsunami/data/list.json');
             if(!res.ok) return [];
             const list = await res.json();
-            // JMAからは直近10件分だけ取得してパースする
             const recentList = list.slice(0, 10);
             const promises = recentList.map(async (item) => {
                 try {
@@ -724,6 +676,8 @@
         if (isEEWMockActive) return null; 
         try {
             const baseUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${timeFmt.time}.json?_=${Date.now()}`;
+            // ★ プロキシのリストを用意し、エラー時や制限時に切り替えられるようにするのも手だが
+            // ここではシンプルなCORS回避としてそのまま使用
             const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(baseUrl)}`;
             const res = await fetch(proxyUrl);
             const data = await res.json();
@@ -1073,10 +1027,24 @@
     };
 
     // ==========================================
-    // サーバーレス完全フロントエンド画像解析処理
+    // サーバーレス完全フロントエンド画像解析処理 ＆ アーカイブ機能
     // ==========================================
     let currentKmoniTimeOffset = 2000; 
     let intensityPointsData = []; 
+    
+    // アーカイブ用ステート
+    let isArchiveMode = false;
+    let archiveTime = null;
+    let archiveTimer = null;
+    let archiveIsPlaying = false;
+    
+    // ★追加: 複数のCORSプロキシリスト（制限回避用）
+    const proxyList = [
+        "https://api.codetabs.com/v1/proxy/?quest=",
+        "https://api.allorigins.win/raw?url=",
+        "https://corsproxy.io/?"
+    ];
+    let currentProxyIndex = 0;
 
     function getFormatTimeStr(date) {
         const yyyy = date.getFullYear();
@@ -1095,57 +1063,121 @@
         ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
         const dataArray = [];
+        
         intensityPointsData.forEach(pt => {
             const x = Math.floor(pt.x); const y = Math.floor(pt.y);
             if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
                 const index = (y * canvas.width + x) * 4;
-                const r = imageData[index]; const g = imageData[index + 1]; const b = imageData[index + 2];
-                if (r === 0 && g === 0 && b === 0) return;
+                const r = imageData[index]; const g = imageData[index + 1]; const b = imageData[index + 2]; const a = imageData[index + 3];
+                // 防災科研画像の背景透過や真っ黒なピクセルはデータなしとして除外
+                if (a === 0 || (r === 0 && g === 0 && b === 0)) return;
                 dataArray.push({ lat: pt.lat, lon: pt.lon, color: `rgb(${r}, ${g}, ${b})` });
             }
         });
+        
+        const ind = document.getElementById('kmoni-indicator');
+        const statusTextEl = document.getElementById('kmoni-status-text');
+        
+        // ★修正: 空の画像（または期間外の透明画像）の厳密なハンドリング
+        // imgが10x10以下の極小サイズ（404代わりの透明GIFなど）またはデータ点がゼロの場合
+        if (img.width < 10 || dataArray.length === 0) {
+            ind.classList.remove('archive');
+            ind.classList.add('error');
+            
+            if (isArchiveMode) {
+                statusTextEl.innerText = "過去データなし (保存期間外または欠損)";
+                // 無駄な通信を避けるため、再生を自動停止する
+                if (archiveIsPlaying) pauseArchive();
+            } else {
+                statusTextEl.innerText = "データがありません";
+            }
+            document.getElementById('kmoni-time').innerText = targetTimeDisplay;
+            
+            // 古いデータを画面に残さないようクリアする
+            if (kyoshinLayer) kyoshinLayer.updateData([]); 
+            return;
+        }
+        
+        // 通常の正常描画とステータス更新
         if (kyoshinLayer) kyoshinLayer.updateData(dataArray);
-        document.getElementById('kmoni-indicator').classList.remove('error');
-        document.getElementById('kmoni-status-text').innerText = "リアルタイム監視中";
+        
+        ind.classList.remove('error');
+        if (isArchiveMode) {
+            ind.classList.add('archive');
+            statusTextEl.innerText = archiveIsPlaying ? "アーカイブ再生中" : "アーカイブ一時停止";
+        } else {
+            ind.classList.remove('archive');
+            statusTextEl.innerText = "リアルタイム監視中";
+        }
         document.getElementById('kmoni-time').innerText = targetTimeDisplay;
     }
 
+    // 共通画像取得ロジック（★修正：プロキシ切替とエラーハンドリングの強化）
+    function fetchAndDrawKmoni(targetDate, isLive = true) {
+        const t = getFormatTimeStr(targetDate);
+        if (isLive) fetchKmoniEEW(t); 
+        
+        const baseUrl = `http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/${t.date}/${t.time}.jma_s.gif`;
+        // 現在のプロキシを適用
+        const proxyUrl = `${proxyList[currentProxyIndex]}${encodeURIComponent(baseUrl)}?_=${Date.now()}`;
+        
+        const img = new Image(); 
+        img.crossOrigin = "Anonymous"; 
+        
+        return new Promise((resolve, reject) => {
+            img.onload = function() {
+                sysStats.success++;
+                extractColorsFromImage(img, t.display + (isLive ? "" : " [過去]"));
+                resolve(true);
+            };
+            img.onerror = function() {
+                sysStats.error++;
+                const ind = document.getElementById('kmoni-indicator');
+                
+                if (isLive) {
+                    ind.classList.remove('archive'); ind.classList.add('error');
+                    document.getElementById('kmoni-status-text').innerText = "画像取得エラー (ラグ調整中...)";
+                } else {
+                    // ★修正: アーカイブ時の通信エラーUI更新
+                    ind.classList.remove('archive'); ind.classList.add('error');
+                    document.getElementById('kmoni-status-text').innerText = "プロキシ通信制限 (待機中...)";
+                }
+                
+                // エラー時はプロキシを次のものに切り替える（ラウンドロビン）
+                currentProxyIndex = (currentProxyIndex + 1) % proxyList.length;
+                addSystemLog(`[Network] プロキシ制限を検知。サーバーを切り替えました（${currentProxyIndex}）`, 'warn');
+                
+                reject(false);
+            };
+            img.src = proxyUrl;
+        });
+    }
+
     function fetchKmoniImage() {
-        if (!isKyoshinActive) return;
+        if (!isKyoshinActive || isArchiveMode) return;
         const now = new Date();
         const targetTime = new Date(now.getTime() - currentKmoniTimeOffset);
-        const t = getFormatTimeStr(targetTime);
-        fetchKmoniEEW(t);
-        const baseUrl = `http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/${t.date}/${t.time}.jma_s.gif?_=${Date.now()}`;
-        const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(baseUrl)}`;
-        const img = new Image(); img.crossOrigin = "Anonymous"; 
-        img.onload = function() {
-            sysStats.success++;
+        
+        fetchAndDrawKmoni(targetTime, true).then(() => {
             currentDelay = Math.floor((Date.now() - targetTime.getTime()) / 1000);
-            extractColorsFromImage(img, t.display);
             if (document.getElementById('settings-panel').classList.contains('show')) updateSettingsUI();
             currentKmoniTimeOffset = 2000;
             kmoniTimeout = setTimeout(fetchKmoniImage, 1000);
-        };
-        img.onerror = function() {
-            sysStats.error++;
-            document.getElementById('kmoni-indicator').classList.add('error');
-            document.getElementById('kmoni-status-text').innerText = "画像取得エラー (ラグ調整中...)";
+        }).catch(() => {
             if (document.getElementById('settings-panel').classList.contains('show')) updateSettingsUI();
             currentKmoniTimeOffset += 1000; 
             if (currentKmoniTimeOffset > 10000) currentKmoniTimeOffset = 2000; 
             kmoniTimeout = setTimeout(fetchKmoniImage, 500); 
-        };
-        img.src = proxyUrl;
+        });
     }
 
     function startKyoshinMonitor() {
         if(isKyoshinActive) return;
         isKyoshinActive = true;
-        addSystemLog(`Info: フロントエンド単体での強震モニタ解析を開始しました`, 'info');
+        addSystemLog(`Info: 強震モニタを開始しました`, 'info');
         if(document.getElementById('settings-panel').classList.contains('show')) updateSettingsUI();
         if(kmoniTimeout) clearTimeout(kmoniTimeout);
-        fetchKmoniImage();
+        if(!isArchiveMode) fetchKmoniImage();
     }
     
     function stopKyoshinMonitor() {
@@ -1155,6 +1187,86 @@
         addSystemLog(`Info: 強震モニタ解析を停止しました`, 'warn');
         if(document.getElementById('settings-panel').classList.contains('show')) updateSettingsUI();
     }
+
+    // ====== アーカイブコントローラー関数 ======
+    window.startArchive = function() {
+        const dtInput = document.getElementById('archive-datetime').value;
+        if (!dtInput && !archiveTime) return;
+        
+        if (!isKyoshinActive) switchTab('kyoshin');
+        
+        if (dtInput) { archiveTime = new Date(dtInput); }
+        
+        isArchiveMode = true; archiveIsPlaying = true;
+        if (kmoniTimeout) clearTimeout(kmoniTimeout);
+        if (archiveTimer) clearTimeout(archiveTimer);
+        
+        const ind = document.getElementById('kmoni-indicator');
+        ind.classList.remove('error'); ind.classList.add('archive');
+        document.getElementById('kmoni-status-text').innerText = "アーカイブ再生中";
+        
+        addSystemLog(`[Archive] タイムマシン再生を開始: ${archiveTime.toLocaleString()}`, 'info');
+        archiveLoop();
+    };
+
+    window.pauseArchive = function() {
+        archiveIsPlaying = false;
+        if (archiveTimer) clearTimeout(archiveTimer);
+        const ind = document.getElementById('kmoni-indicator');
+        // 保存期間外エラーで止まっている場合は上書きしない
+        if (!ind.classList.contains('error')) {
+            document.getElementById('kmoni-status-text').innerText = "アーカイブ一時停止";
+        }
+    };
+
+    window.stopArchive = function() {
+        isArchiveMode = false; archiveIsPlaying = false;
+        if (archiveTimer) clearTimeout(archiveTimer);
+        
+        const ind = document.getElementById('kmoni-indicator');
+        ind.classList.remove('archive'); ind.classList.remove('error');
+        document.getElementById('kmoni-status-text').innerText = "ライブ復帰中...";
+        addSystemLog(`[Archive] ライブ監視モードに復帰しました`, 'info');
+        
+        currentKmoniTimeOffset = 2000;
+        fetchKmoniImage();
+    };
+
+    function archiveLoop() {
+        if (!archiveIsPlaying || !isArchiveMode) return;
+        
+        const speed = parseInt(document.getElementById('archive-speed').value) || 1;
+        
+        fetchAndDrawKmoni(archiveTime, false).then(() => {
+            updateArchiveUITime();
+            archiveTime = new Date(archiveTime.getTime() + speed * 1000);
+            archiveTimer = setTimeout(archiveLoop, 1000); 
+        }).catch(() => {
+            // ★修正: エラー時はシーク（時間）を進めずに、同じ時間でリトライする
+            // 少し長めに待機（1.5秒）してプロキシの回復を待つ
+            updateArchiveUITime();
+            archiveTimer = setTimeout(archiveLoop, 1500);
+        });
+    }
+
+    function updateArchiveUITime() {
+        const tzOffset = archiveTime.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(archiveTime - tzOffset)).toISOString().slice(0, 19);
+        document.getElementById('archive-datetime').value = localISOTime;
+    }
+
+    window.playArchiveFromEQ = function(timeStr) {
+        const d = getSafeDateObj(timeStr);
+        if (isNaN(d.getTime())) return;
+        
+        d.setSeconds(d.getSeconds() - 10);
+        
+        const tzOffset = d.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(d - tzOffset)).toISOString().slice(0, 19);
+        document.getElementById('archive-datetime').value = localISOTime;
+        
+        startArchive();
+    };
 
     // ==========================================
     // データ読み込み ＆ 初期化 ＆ 自動監視
@@ -1178,7 +1290,6 @@
         if (tsunamiPollingTimer) return;
         tsunamiPollingTimer = setInterval(async () => {
             try {
-                // JMA APIのリアルタイム監視
                 const res = await fetch('https://www.jma.go.jp/bosai/tsunami/data/list.json');
                 if (!res.ok) return;
                 const listData = await res.json();
@@ -1193,7 +1304,6 @@
                         
                         lastTsunamiId = latestId;
                         
-                        // 重複を弾いて追加
                         const isDuplicate = tsunamiDataList.some(item => Math.abs(new Date(item.created_at).getTime() - new Date(latest.created_at).getTime()) < 3600000);
                         if(!isDuplicate) {
                             tsunamiDataList.unshift(latest);
@@ -1216,9 +1326,9 @@
         fetch('./japan.geo.json').then(res => res.json()).catch(() => null),
         fetch('./stations_with_amp_revised.json').then(res => res.json()).catch(() => []),
         fetch('./津波予報区.json').then(res => res.json()).catch(() => null),
-        fetchJMATsunamiHistory(), // 気象庁API (直近のリアルタイム + 予報)
-        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=0').then(res => res.ok ? res.json() : []).catch(() => []), // P2P (過去の履歴1)
-        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=100').then(res => res.ok ? res.json() : []).catch(() => []), // P2P (過去の履歴2)
+        fetchJMATsunamiHistory(), 
+        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=0').then(res => res.ok ? res.json() : []).catch(() => []),
+        fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=100').then(res => res.ok ? res.json() : []).catch(() => []),
         fetch('./intensity-points.json').then(res => res.json()).catch(() => []) 
     ]).then(([geoData, stations, tGeo, jmaTsunami, p2pTsunami1, p2pTsunami2, intPoints]) => {
         if (geoData) {
@@ -1240,13 +1350,11 @@
             });
         }
         
-        // JMA(直近・予報) と P2P(過去履歴) をマージ
         let mergedTsunami = [...(jmaTsunami || [])];
         const combinedP2P = [...(p2pTsunami1 || []), ...(p2pTsunami2 || [])];
         
         combinedP2P.forEach(p2pItem => {
             const p2pTime = new Date(p2pItem.created_at).getTime();
-            // JMAデータと時刻が1時間以内なら同じ事象とみなしてP2P側を捨てる（JMA優先）
             const isDuplicate = mergedTsunami.some(jmaItem => {
                 const jmaTime = new Date(jmaItem.created_at).getTime();
                 return Math.abs(p2pTime - jmaTime) < 3600000; 
@@ -1256,7 +1364,6 @@
             }
         });
         
-        // 日時が新しい順にソート
         mergedTsunami.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
         if (mergedTsunami.length === 0) isTsunamiFetchError = true;
@@ -1579,6 +1686,9 @@
                 else commentHtml += `<strong>【津波情報】</strong><br>津波に関する情報はありません。`;
         }
         if (eq.comments && eq.comments.freeFormComment) commentHtml += `<br><br><strong>【気象庁付加文】</strong><br>${eq.comments.freeFormComment}`;
+        
+        commentHtml += `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);"><button class="sp-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(100, 210, 255, 0.2); border-color: rgba(100, 210, 255, 0.5); color: #64D2FF;" onclick="playArchiveFromEQ('${eq.earthquake.time}')">▶ この地震の強震モニタを再生</button><div style="font-size: 10px; color: #aaa; margin-top: 6px; text-align: center;">※発生10秒前から自動再生（最近の地震のみ有効）</div></div>`;
+
         const commentsBox = document.getElementById('dp-comments');
         document.getElementById('dp-comments-text').innerHTML = commentHtml;
         commentsBox.style.borderLeftColor = tColorVar;
