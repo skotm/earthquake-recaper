@@ -946,37 +946,61 @@
     }
 
     // ==========================================
-    // 計測震度 逆算ロジック (RGB -> Hue -> Intensity)
+    // 計測震度 逆算ロジック (多項式補間のみ実装)
     // ==========================================
-    function rgbToHue(r, g, b) {
+    
+    // RGBをHSV(0.0〜1.0の範囲)に変換する関数
+    function rgbToHsv(r, g, b) {
         let max = Math.max(r, g, b), min = Math.min(r, g, b);
-        if (max === min) return 0;
-        let h;
-        if (max === r) h = 60 * ((g - b) / (max - min)) + (g < b ? 360 : 0);
-        else if (max === g) h = 60 * ((b - r) / (max - min)) + 120;
-        else h = 60 * ((r - g) / (max - min)) + 240;
-        return h;
+        let h = 0, s = 0, v = max / 255.0;
+        let d = max - min;
+        s = max === 0 ? 0 : d / max;
+        
+        if (max !== min) {
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        return [h, s, v];
     }
 
+    // HSVと多項式補間を用いて色から計測震度を正確に計算する
     function calcIntensityFromColor(colorStr) {
         if (!colorStr) return -3.0;
         const match = colorStr.match(/\d+/g);
         if (!match || match.length < 3) return -3.0;
+        
         const r = parseInt(match[0]), g = parseInt(match[1]), b = parseInt(match[2]);
-        const max = Math.max(r, g, b);
-        const min = Math.min(r, g, b);
-        if (max - min < 20) return -999; 
-        let h = rgbToHue(r, g, b);
-        if (h >= 280) h = h - 360; 
-        let intensity = -3.0;
-        if (h > 240) intensity = -3.0;
-        else if (h > 180) intensity = -3.0 + ((240 - h) / 60) * 3.0;
-        else if (h > 120) intensity = 0.0 + ((180 - h) / 60) * 1.5;
-        else if (h > 60)  intensity = 1.5 + ((120 - h) / 60) * 1.5;
-        else if (h > 30)  intensity = 3.0 + ((60 - h) / 30) * 1.0;
-        else if (h > 0)   intensity = 4.0 + ((30 - h) / 30) * 1.5;
-        else              intensity = 5.5 + ((0 - h) / 80) * 1.5;
-        return intensity;
+        const [h, s, v] = rgbToHsv(r, g, b);
+        
+        // 多項式補間が前提とする、カラースケール上の有効色判定
+        if (v > 0.1 && s > 0.75) {
+            let p = 0; // スケール上の位置 (0.0〜1.0)
+            
+            if (h > 0.1476) {
+                // 震度-3〜5弱付近
+                p = 280.31 * Math.pow(h, 6) - 916.05 * Math.pow(h, 5) + 1142.6 * Math.pow(h, 4) - 709.95 * Math.pow(h, 3) + 234.65 * Math.pow(h, 2) - 40.27 * h + 3.2217;
+            } else if (h <= 0.1476 && h > 0.001) {
+                // 震度5弱〜6強付近
+                p = 151.4 * Math.pow(h, 4) - 49.32 * Math.pow(h, 3) + 6.753 * Math.pow(h, 2) - 2.481 * h + 0.9033;
+            } else if (h <= 0.001) {
+                // 震度6強〜7 (紫帯域: 明度Vで計算)
+                p = -0.005171 * Math.pow(v, 2) - 0.3282 * v + 1.2236;
+            }
+            
+            // はみ出しの防止
+            if (p < 0) p = 0;
+            if (p > 1.0) p = 1.0; 
+            
+            // 位置(0.0: 震度-3) 〜 (1.0: 震度7) を線形に変換して返す
+            return 10 * p - 3.0;
+        } else {
+            // スケール外の色（地図の枠線など無効データ）
+            return -999;
+        }
     }
 
     let currentIntensityFilterThreshold = -3.0;
@@ -1025,17 +1049,9 @@
         },
         updateData: function(dataArray) {
             if (!dataArray || !Array.isArray(dataArray)) return;
-            function getOriginalIntensityScore(colorStr) {
-                if (!colorStr) return 0;
-                const match = colorStr.match(/\d+/g);
-                if (!match || match.length < 3) return 0;
-                let h = rgbToHue(parseInt(match[0]), parseInt(match[1]), parseInt(match[2]));
-                return h >= 280 ? h + 360 : (360 - h);
-            }
+            // 重なり順のソート処理（元のgetOriginalIntensityScoreを廃止し、新しい関数で統一）
             this._data = dataArray.sort((a, b) => {
-                const scoreA = this._isCalcMode ? calcIntensityFromColor(a.color) : getOriginalIntensityScore(a.color);
-                const scoreB = this._isCalcMode ? calcIntensityFromColor(b.color) : getOriginalIntensityScore(b.color);
-                return scoreA - scoreB;
+                return calcIntensityFromColor(a.color) - calcIntensityFromColor(b.color);
             });
             this.redraw();
         },
