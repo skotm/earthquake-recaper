@@ -12,9 +12,11 @@
         :root {
             --bg-color: #000000;
             --surface-color: rgba(28, 28, 30, 0.75);
+            --surface-drawer: rgba(28, 28, 30, 0.85);
             --text-primary: #FFFFFF;
             --text-secondary: rgba(235, 235, 245, 0.6);
             --border-color: rgba(84, 84, 88, 0.5);
+            --accent-color: #0A84FF;
             --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
             --tsunami-major: #BF5AF2;
             --tsunami-warning: #FF453A;
@@ -24,6 +26,9 @@
             /* P波・S波カラー */
             --p-wave-color: #32ADE6;
             --s-wave-color: #FF3B30;
+
+            --rail-width: 68px;
+            --drawer-width: 300px;
         }
         body { 
             margin: 0; padding: 0; display: flex; height: 100vh; 
@@ -31,116 +36,96 @@
             font-family: var(--font-family); overflow: hidden; 
             -webkit-font-smoothing: antialiased;
         }
-        #sidebar {
-            width: 260px; min-width: 260px;
-            background: var(--surface-color);
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border-right: 1px solid var(--border-color);
-            display: flex; flex-direction: column;
-            z-index: 1000; box-shadow: 2px 0 20px rgba(0,0,0,0.8);
+
+        /* ========== 新UI: ナビゲーションレール ========== */
+        #nav-rail {
+            position: absolute; top: 0; left: 0; width: var(--rail-width); height: 100%;
+            background-color: var(--surface-color); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border-color); z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; padding-top: 30px; gap: 20px;
         }
-        .sidebar-header {
-            display: flex; padding: 12px 10px; gap: 6px;
-            border-bottom: 1px solid var(--border-color);
+        .nav-btn {
+            position: relative; width: 44px; height: 44px; border-radius: 12px;
+            background-color: rgba(255, 255, 255, 0.1); display: flex; justify-content: center; align-items: center;
+            cursor: pointer; transition: all 0.3s ease;
         }
-        .tab-btn {
-            flex: 1; text-align: center; padding: 8px 0;
-            font-size: 12px; font-weight: 600; color: var(--text-secondary);
-            background: rgba(255, 255, 255, 0.05); border-radius: 8px;
-            cursor: pointer; transition: all 0.2s; white-space: nowrap;
+        .nav-btn svg { width: 22px; height: 22px; fill: var(--text-secondary); transition: fill 0.3s ease; }
+        .nav-btn:hover { background-color: rgba(255, 255, 255, 0.2); }
+        
+        /* 案A: 選択状態の背景色とアイコン色の反転 */
+        .nav-btn.active { background-color: var(--text-primary); }
+        .nav-btn.active svg { fill: #000000; }
+        
+        /* 案C: 選択状態のアクセントインジケーター */
+        .nav-btn::before {
+            content: ''; position: absolute; left: -12px; top: 50%; transform: translateY(-50%) scaleY(0);
+            width: 4px; height: 24px; background-color: var(--accent-color); border-radius: 0 4px 4px 0;
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        .tab-btn:hover { background: rgba(255, 255, 255, 0.1); }
-        .tab-btn.active {
-            color: #fff; background: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        .nav-btn.active::before { transform: translateY(-50%) scaleY(1); }
+
+        /* ========== 新UI: ドロワーパネル ========== */
+        #drawer-panel {
+            position: absolute; top: 0; left: var(--rail-width); width: var(--drawer-width); height: 100%;
+            background-color: var(--surface-drawer); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border-color); z-index: 999;
+            transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            display: flex; flex-direction: column; box-shadow: 2px 0 20px rgba(0,0,0,0.8);
         }
+        #drawer-panel.open { transform: translateX(0); }
+        .drawer-header {
+            padding: 18px 16px; font-size: 15px; font-weight: 700; border-bottom: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.02); display: flex; align-items: center; justify-content: space-between;
+        }
+        .drawer-content { flex-grow: 1; overflow-y: auto; display: none; flex-direction: column; }
+        .drawer-content.active { display: flex; }
+
+        /* 元のリスト系スタイル */
         #list-container, #tsunami-list-container, #kyoshin-list-container { 
             flex-grow: 1; overflow-y: auto; padding: 8px; scroll-behavior: smooth; 
         }
         #list-container::-webkit-scrollbar, #tsunami-list-container::-webkit-scrollbar, #kyoshin-list-container::-webkit-scrollbar { width: 0px; }
         .list-item, .t-list-item {
-            padding: 10px; margin-bottom: 4px;
-            border-radius: 8px; cursor: pointer;
-            border-left: 4px solid transparent; 
-            background: rgba(255,255,255,0.02);
+            padding: 10px; margin-bottom: 4px; border-radius: 8px; cursor: pointer;
+            border-left: 4px solid transparent; background: rgba(255,255,255,0.02);
             transition: background-color 0.2s, transform 0.1s;
         }
         .list-item:hover, .t-list-item:hover { background-color: rgba(255, 255, 255, 0.08); }
         .list-item.active, .t-list-item.active { background-color: rgba(255, 255, 255, 0.15); }
         .list-item-title, .t-list-item-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; display: flex; justify-content: space-between;}
         .list-item-details, .t-list-item-details { font-size: 11px; color: var(--text-secondary); }
-        .kyoshin-status-box {
-            padding: 16px; text-align: center; color: var(--text-secondary); font-size: 13px; line-height: 1.6;
-        }
+        .kyoshin-status-box { padding: 16px; text-align: center; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+        
         .live-indicator {
             display: inline-block; width: 8px; height: 8px; background-color: #30D158; border-radius: 50%;
             margin-right: 6px; box-shadow: 0 0 8px #30D158; animation: pulse 1.5s infinite;
         }
         .live-indicator.error { background-color: #FF453A; box-shadow: 0 0 8px #FF453A; animation: none; }
         .live-indicator.archive { background-color: #FFD60A; box-shadow: 0 0 8px #FFD60A; animation: pulse 1.5s infinite; }
-        
-        @keyframes pulse {
-            0% { transform: scale(0.95); opacity: 0.5; }
-            50% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(0.95); opacity: 0.5; }
-        }
+        @keyframes pulse { 0% { transform: scale(0.95); opacity: 0.5; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.95); opacity: 0.5; } }
 
         #map-container { flex-grow: 1; position: relative; }
         #map { width: 100%; height: 100%; background-color: #0c0c0e; }
         .legend {
-            background: var(--surface-color); backdrop-filter: blur(20px);
-            padding: 10px 14px; border-radius: 12px; border: 0.5px solid var(--border-color);
-            line-height: 1.6; color: var(--text-primary); font-size: 12px;
+            background: var(--surface-color); backdrop-filter: blur(20px); padding: 10px 14px; border-radius: 12px; border: 0.5px solid var(--border-color); line-height: 1.6; color: var(--text-primary); font-size: 12px;
         }
         .legend strong { display: block; margin-bottom: 6px; font-size: 13px; }
         .legend i { width: 12px; height: 12px; float: left; margin-top: 4px; margin-right: 8px; border-radius: 50%; }
         .dp-close, .tp-close, .sp-close {
-            position: absolute; top: 12px; right: 12px; width: 28px; height: 28px;
-            background: rgba(255,255,255,0.1); border-radius: 50%; text-align: center;
-            line-height: 28px; font-size: 14px; cursor: pointer; color: #fff; z-index: 10; transition: background 0.2s;
+            position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; background: rgba(255,255,255,0.1); border-radius: 50%; text-align: center; line-height: 28px; font-size: 14px; cursor: pointer; color: #fff; z-index: 10; transition: background 0.2s;
         }
         .dp-close:hover, .tp-close:hover, .sp-close:hover { background: rgba(255,255,255,0.2); }
 
         /* ========== UI コントロールボタン ========== */
         .custom-topright-btns { margin-top: 15px !important; margin-right: 15px !important; border: 0.5px solid var(--border-color) !important; overflow: hidden; border-radius: 10px !important; box-shadow: 0 4px 15px rgba(0,0,0,0.6) !important; z-index: 800; }
-        .custom-topright-btns a {
-            display: flex !important; align-items: center; justify-content: center;
-            background-color: rgba(28, 28, 30, 0.45) !important; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            color: var(--text-primary) !important; border-bottom: 0.5px solid var(--border-color) !important; width: 36px !important; height: 36px !important;
-            transition: background-color 0.2s; text-decoration: none;
-        }
+        .custom-topright-btns a { display: flex !important; align-items: center; justify-content: center; background-color: rgba(28, 28, 30, 0.45) !important; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: var(--text-primary) !important; border-bottom: 0.5px solid var(--border-color) !important; width: 36px !important; height: 36px !important; transition: background-color 0.2s; text-decoration: none; }
         .custom-topright-btns a:hover { background-color: rgba(255, 255, 255, 0.15) !important; }
         .custom-topright-btns a:last-child { border-bottom: none !important; }
-
-        /* ========== UI コントロールボタン（ズーム）のオーバーライド ========== */
-        .leaflet-bar, .leaflet-control-zoom {
-            border: none !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6) !important;
-            border-radius: 10px !important;
-            overflow: hidden;
-            margin-right: 15px !important;
-        }
-
-        .leaflet-touch .leaflet-control-zoom a, 
-        .leaflet-control-zoom a {
-            background-color: rgba(28, 28, 30, 0.45) !important;
-            color: var(--text-primary) !important;
-            border-bottom: 0.5px solid var(--border-color) !important;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            width: 36px !important;
-            height: 36px !important;
-            line-height: 36px !important;
-            transition: background-color 0.2s ease;
-        }
-
-        .leaflet-control-zoom a:hover {
-            background-color: rgba(255, 255, 255, 0.15) !important;
-        }
+        .leaflet-bar, .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 15px rgba(0,0,0,0.6) !important; border-radius: 10px !important; overflow: hidden; margin-right: 15px !important; }
+        .leaflet-touch .leaflet-control-zoom a, .leaflet-control-zoom a { background-color: rgba(28, 28, 30, 0.45) !important; color: var(--text-primary) !important; border-bottom: 0.5px solid var(--border-color) !important; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); width: 36px !important; height: 36px !important; line-height: 36px !important; transition: background-color 0.2s ease; }
+        .leaflet-control-zoom a:hover { background-color: rgba(255, 255, 255, 0.15) !important; }
         .leaflet-control-zoom a:last-child { border-bottom: none !important; }
 
-
-        /* ========== 内部要素のスタイル（パネル用） ========== */
         .sp-info { font-size: 13px; color: #e5e5ea; margin-bottom: 6px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; }
         .sp-info:last-of-type { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
         .sp-info span { font-family: monospace; color: #64D2FF; text-align: right; font-weight: bold; }
@@ -156,10 +141,10 @@
         .sp-log-box div:last-child { margin-bottom: 0; border-bottom: none; }
         .sp-log-box .log-err { color: #FF453A; } .sp-log-box .log-succ { color: #30D158; } .sp-log-box .log-warn { color: #FFD60A; } .sp-log-box .log-info { color: #e5e5ea; }
         
-        .eew-container { position: absolute; bottom: 20px; left: 10px; display: flex; flex-direction: column-reverse; gap: 12px; max-height: 75vh; overflow-y: auto; z-index: 1500; pointer-events: auto; width: 295px; max-width: calc(100vw - 20px); padding-right: 10px; }
+        /* ========== 新UI: フローティング要素のレイアウトシフト設定 ========== */
+        .eew-container { position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); display: flex; flex-direction: column-reverse; gap: 12px; max-height: 75vh; overflow-y: auto; z-index: 1500; pointer-events: auto; width: 295px; max-width: calc(100vw - 20px); padding-right: 10px; transition: margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
         .eew-container:empty { display: none; }
-        .eew-container::-webkit-scrollbar { width: 6px; }
-        .eew-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
+        .eew-container::-webkit-scrollbar { width: 6px; } .eew-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
 
         .eew-wrapper { position: relative; pointer-events: none; display: flex; flex-direction: column; align-items: flex-start; }
         .eew-minimized { width: 48px; height: 48px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 26px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255, 255, 255, 0.2); pointer-events: auto; transition: transform 0.2s, background-color 0.3s; margin-bottom: 4px; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
@@ -185,8 +170,10 @@
         .dp-extended-area { overflow-y: auto; padding-right: 4px; transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.4s ease; max-height: 300px; opacity: 1; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; } .dp-extended-area.collapsed { max-height: 0; opacity: 0; margin-top: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; } .dp-extended-area::-webkit-scrollbar { width: 4px; } .dp-extended-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
         .dp-comments-box { background: rgba(0, 0, 0, 0.5); border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.5; color: #e5e5ea; border-left: 4px solid var(--tsunami-none); position: relative; transition: background-color 0.2s, border-color 0.3s; } .dp-comments-box.clickable { cursor: pointer; } .dp-comments-box.clickable:hover { background: rgba(255, 255, 255, 0.1); } .dp-comments-hint { display: none; position: absolute; right: 12px; bottom: 8px; font-size: 11px; font-weight: bold; color: var(--text-secondary); } .dp-comments-box.clickable .dp-comments-hint { display: block; }
         .dp-stations-container { display: flex; flex-direction: column; } .dp-station-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.04); } .dp-station-item:last-child { border-bottom: none; } .dp-station-name { font-size: 14px; color: #e5e5ea; } .dp-station-scale { font-size: 13px; font-weight: 700; color: #fff; padding: 4px 10px; border-radius: 6px; }
-        #detail-panel { position: absolute; bottom: 20px; left: 10px; width: 280px; max-width: calc(100vw - 20px); background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; display: flex; flex-direction: column; opacity: 0; transform: translateY(150%); transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s; pointer-events: none; box-sizing: border-box; }
+        
+        #detail-panel { position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); width: 280px; max-width: calc(100vw - 20px); background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; display: flex; flex-direction: column; opacity: 0; transform: translateY(150%); transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s, margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); pointer-events: none; box-sizing: border-box; }
         #detail-panel.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        
         #tsunami-panel { position: absolute; top: 60px; right: 10px; width: 280px; max-width: calc(100vw - 20px); max-height: 40vh; background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; opacity: 0; transform: translateX(20px); pointer-events: none; transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; } #tsunami-panel.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
         .tp-header { font-size: 16px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px; color: #fff; padding-right: 28px; flex-shrink: 0; } .tp-list { overflow-y: auto; padding-right: 4px; flex-grow: 1; } .tp-list::-webkit-scrollbar { width: 4px; } .tp-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
         .tp-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); } .tp-item:last-child { border-bottom: none; } .tp-area { font-size: 15px; font-weight: 600; color: #e5e5ea; } .tp-details { font-size: 13px; color: var(--text-secondary); text-align: right;} .tp-height { font-size: 15px; font-weight: bold; margin-left: 8px;} 
@@ -206,215 +193,148 @@
 
         .eew-marker-plum { position: absolute; top: -12px; left: -12px; pointer-events: none; width: 24px; height: 24px; border: 4px solid #FF453A; border-radius: 50%; box-sizing: border-box; background-color: transparent; box-shadow: 0 0 10px rgba(255, 69, 58, 0.8), inset 0 0 10px rgba(255, 69, 58, 0.8); }
 
-        /* ========== EEW History Panel & Button CSS ========== */
-        .eew-trigger-btn {
-            width: 100%; margin-top: 12px; display: none;
-            background: rgba(10, 132, 255, 0.15); border: 1px solid rgba(10, 132, 255, 0.4);
-            color: #64D2FF; font-weight: bold; font-size: 13px; padding: 10px;
-            border-radius: 8px; cursor: pointer; transition: all 0.2s;
-            align-items: center; justify-content: center; gap: 8px;
-        }
+        .eew-trigger-btn { width: 100%; margin-top: 12px; display: none; background: rgba(10, 132, 255, 0.15); border: 1px solid rgba(10, 132, 255, 0.4); color: #64D2FF; font-weight: bold; font-size: 13px; padding: 10px; border-radius: 8px; cursor: pointer; transition: all 0.2s; align-items: center; justify-content: center; gap: 8px; }
         .eew-trigger-btn:hover { background: rgba(10, 132, 255, 0.3); }
         .eew-trigger-btn.loading { color: var(--text-secondary); background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); cursor: wait; }
         .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
         #eew-panel {
-            position: absolute; bottom: 20px; left: 300px; width: 280px; max-width: calc(100vw - 20px); max-height: 60vh;
+            position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); width: 280px; max-width: calc(100vw - 20px); max-height: 60vh;
             background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
             border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; display: flex; flex-direction: column;
-            opacity: 0; transform: translateY(150%); pointer-events: none; transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); box-sizing: border-box; color: #FFFFFF;
+            opacity: 0; transform: translateY(150%); pointer-events: none; transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); box-sizing: border-box; color: #FFFFFF;
         }
         #eew-panel.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        
+        /* Layout Shift Execution */
+        body.drawer-open .eew-container,
+        body.drawer-open #detail-panel,
+        body.drawer-open #eew-panel {
+            margin-left: calc(var(--drawer-width) + 10px);
+        }
+
         .ep-header { font-size: 15px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px; color: #fff; padding-right: 28px; flex-shrink: 0; }
         .ep-list { overflow-y: auto; padding-right: 4px; flex-grow: 1; display: flex; flex-direction: column; gap: 8px;}
         .ep-list::-webkit-scrollbar { width: 4px; } .ep-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
         .ep-close { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; background: rgba(255,255,255,0.1); border-radius: 50%; text-align: center; line-height: 28px; font-size: 14px; cursor: pointer; color: #fff; z-index: 10; transition: background 0.2s;}
         .ep-close:hover { background: rgba(255,255,255,0.2); }
 
-        /* ========== 新規追加：iOS風 階層化メニューパネル ========== */
-        .ios-panel-container {
-            position: absolute;
-            top: 15px;
-            right: 65px; /* 右上のコントロールボタンの隣に配置 */
-            width: 320px;
-            max-height: calc(100vh - 30px);
-            z-index: 2000;
-            pointer-events: none;
-            /* 奥行き感のある展開のために起点のみ設定 */
-            transform-origin: top right;
-        }
-
-        .ios-panel {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            /* コンテンツに合わせて高さを自動調整、最大はコンテナに合わせる */
-            max-height: calc(100vh - 30px);
-            background-color: var(--surface-color);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-            color: var(--text-primary);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
-            pointer-events: auto;
-            transform: scale(0.95);
-        }
-
-        .ios-panel.active { 
-            opacity: 1; 
-            visibility: visible; 
-            transform: scale(1);
-        }
-        
-        /* 親が左に引っ込むアニメーション */
-        .ios-panel.slide-left { 
-            transform: translateX(-30px) scale(0.95); 
-            opacity: 0; 
-            visibility: hidden; 
-        }
-        
-        /* 子パネルは右からやってくる */
-        .ios-panel.child-panel { 
-            transform: translateX(100%); 
-        }
-        .ios-panel.child-panel.active { 
-            transform: translateX(0); 
-        }
-
-        .panel-header {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.1);
-            background: rgba(255, 255, 255, 0.02);
-            flex-shrink: 0;
-        }
-
-        /* 綺麗な円形のナビゲーションボタン */
-        .panel-header-btn {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            padding: 0;
-            flex-shrink: 0;
-        }
-
+        /* ========== iOS風 階層化メニューパネル ========== */
+        .ios-panel-container { position: absolute; top: 15px; right: 65px; width: 320px; max-height: calc(100vh - 30px); z-index: 2000; pointer-events: none; transform-origin: top right; }
+        .ios-panel { position: absolute; top: 0; left: 0; width: 100%; max-height: calc(100vh - 30px); background-color: var(--surface-color); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); color: var(--text-primary); display: flex; flex-direction: column; overflow: hidden; opacity: 0; visibility: hidden; transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1); pointer-events: auto; transform: scale(0.95); }
+        .ios-panel.active { opacity: 1; visibility: visible; transform: scale(1); }
+        .ios-panel.slide-left { transform: translateX(-30px) scale(0.95); opacity: 0; visibility: hidden; }
+        .ios-panel.child-panel { transform: translateX(100%); }
+        .ios-panel.child-panel.active { transform: translateX(0); }
+        .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(255, 255, 255, 0.02); flex-shrink: 0; }
+        .panel-header-btn { width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); border: none; color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; padding: 0; flex-shrink: 0; }
         .panel-header-btn:hover { background: rgba(255, 255, 255, 0.25); }
         .panel-header-btn:active { background: rgba(255, 255, 255, 0.15); transform: scale(0.92); }
         .panel-header-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-
-        /* タイトルとスペース調整 */
         .panel-title { flex-grow: 1; text-align: center; font-size: 15px; font-weight: 700; color: #fff; margin: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .header-spacer { width: 32px; height: 32px; flex-shrink: 0; }
-
         .menu-list { list-style: none; padding: 0; margin: 0; overflow-y: auto;}
         .menu-item { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: background-color 0.2s; }
         .menu-item:last-child { border-bottom: none; }
         .menu-item:active, .menu-item:hover { background-color: rgba(255, 255, 255, 0.08); }
-        
-        /* アプリアイコン風のベース */
-        .app-icon {
-            width: 32px; height: 32px;
-            border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            margin-right: 14px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-            flex-shrink: 0;
-        }
-        /* 各メニューごとのグラデーション */
+        .app-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.4); flex-shrink: 0; }
         .app-icon.status { background: linear-gradient(135deg, #32D74B, #249A36); }
         .app-icon.demo { background: linear-gradient(135deg, #FF453A, #C9342B); }
         .app-icon.log { background: linear-gradient(135deg, #0A84FF, #005BB5); }
-        
         .menu-icon { width: 18px; height: 18px; stroke: #FFF; stroke-width: 2; margin-right: 0; }
         .menu-text { flex-grow: 1; font-size: 14px; font-weight: 500; }
         .menu-chevron { width: 16px; height: 16px; fill: none; stroke: var(--text-secondary); stroke-width: 2; }
-        
         .panel-content { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;}
         .panel-content::-webkit-scrollbar { width: 4px; } .panel-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
     </style>
 </head>
 <body>
 
-<div id="sidebar">
-    <div class="sidebar-header">
-        <div class="tab-btn active" onclick="switchTab('history')">地震履歴</div>
-        <div class="tab-btn" onclick="switchTab('tsunami')">津波情報</div>
-        <div class="tab-btn" onclick="switchTab('kyoshin')">強震モニタ</div>
+<div id="nav-rail">
+    <div class="nav-btn active" onclick="toggleDrawer('history')" id="btn-history" title="地震履歴">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
     </div>
-    <div id="list-container"></div>
-    <div id="tsunami-list-container" style="display: none;"></div>
-    <div id="kyoshin-list-container" style="display: none;">
-        <div class="kyoshin-status-box">
-            <span id="kmoni-indicator" class="live-indicator error"></span>
-            <strong id="kmoni-status-text">データ待機中...</strong><br><br>
-            <span id="kmoni-time" style="font-family: monospace; font-size: 14px; color: #fff;">----/--/-- --:--:--</span><br><br>
-            ブラウザで防災科研画像を直接解析中<br>
-            <span style="font-size: 10px; color: #888;">※完全サーバーレス・EEW同時受信</span>
+    <div class="nav-btn" onclick="toggleDrawer('tsunami')" id="btn-tsunami" title="津波情報">
+        <svg viewBox="0 0 24 24"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12s4.48 10 10 10 10-4.48 10-10zm-11 5.5l-4-4 1.41-1.41L11 14.67V6h2v8.67l2.59-2.58L17 13.5l-6 4z"/></svg>
+    </div>
+    <div class="nav-btn" onclick="toggleDrawer('kyoshin')" id="btn-kyoshin" title="強震モニタ">
+        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9h-2V7h-2v5H6v2h2v5h2v-5h2v-2z"/></svg>
+    </div>
+</div>
 
-            <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1);">
-                <label style="display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; color: #fff; font-weight: bold;">
-                    <input type="checkbox" id="kmoni-color-mode-toggle" onchange="toggleKyoshinColorMode(this)" style="margin-right: 8px; cursor: pointer; transform: scale(1.2);">
-                    震度自動計算・履歴カラーモード
-                </label>
-                <div style="font-size: 10px; color: #aaa; margin-top: 6px; line-height: 1.4; margin-bottom: 15px;">
-                    ※RGBから計測震度を逆算し、履歴モードの色で表示します。<br>震度1以上の点はリッチなビジュアルで強調されます。
-                </div>
-            </div>
+<div id="drawer-panel">
+    <div class="drawer-header">
+        <span id="drawer-title">地震履歴</span>
+        <div class="dp-close" style="position:static; margin-left:auto;" onclick="closeDrawer()">✕</div>
+    </div>
+    
+    <div id="content-history" class="drawer-content active">
+        <div id="list-container"></div>
+    </div>
+    
+    <div id="content-tsunami" class="drawer-content">
+        <div id="tsunami-list-container"></div>
+    </div>
+    
+    <div id="content-kyoshin" class="drawer-content">
+        <div id="kyoshin-list-container">
+            <div class="kyoshin-status-box">
+                <span id="kmoni-indicator" class="live-indicator error"></span>
+                <strong id="kmoni-status-text">データ待機中...</strong><br><br>
+                <span id="kmoni-time" style="font-family: monospace; font-size: 14px; color: #fff;">----/--/-- --:--:--</span><br><br>
+                ブラウザで防災科研画像を直接解析中<br>
+                <span style="font-size: 10px; color: #888;">※完全サーバーレス・EEW同時受信</span>
 
-            <div style="padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); text-align: left;">
-                <div style="font-size: 12px; font-weight: bold; margin-bottom: 8px; color: #fff;">
-                    表示下限：<span style="color: #64D2FF; font-size: 14px;">震度 <span id="intensity-filter-val">-3.0</span></span> 以上
-                </div>
-                <input type="range" id="intensity-slider" min="-3.0" max="7.0" step="0.1" value="-3.0" 
-                       style="width: 100%; cursor: pointer;" 
-                       oninput="updateIntensityFilter(this.value)">
-                <div style="display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-top: 4px;">
-                    <span>-3.0</span><span>0</span><span>3</span><span>7.0</span>
-                </div>
-            </div>
-            
-            <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); text-align: left;">
-                <div style="font-size: 12px; font-weight: bold; margin-bottom: 8px; color: #fff;">
-                    ⏪ アーカイブ再生 (タイムマシン)
-                </div>
-                <input type="datetime-local" id="archive-datetime" step="1" style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.5); color: white; border: 1px solid var(--border-color); padding: 6px; margin-bottom: 10px; border-radius: 4px; font-family: monospace;">
-                
-                <div style="display: flex; gap: 6px; margin-bottom: 10px;">
-                    <button class="sp-btn" onclick="startArchive()" style="flex: 1.5; background: rgba(48, 209, 88, 0.2); border-color: #30D158; color: #30D158;">▶ 再生</button>
-                    <button class="sp-btn" onclick="pauseArchive()" style="flex: 1;">⏸ 一時停止</button>
-                </div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <button class="sp-btn sp-btn-danger" onclick="stopArchive()" style="flex: 1; margin-right: 10px;">⏹ ライブに戻る</button>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="font-size: 11px; color: var(--text-secondary);">速度:</span>
-                        <select id="archive-speed" style="background: rgba(0,0,0,0.5); color: white; border: 1px solid var(--border-color); border-radius: 4px; padding: 4px; font-size: 11px;">
-                            <option value="1">1倍速</option>
-                            <option value="2">2倍速</option>
-                            <option value="5">5倍速</option>
-                            <option value="10">10倍速</option>
-                        </select>
+                <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <label style="display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; color: #fff; font-weight: bold;">
+                        <input type="checkbox" id="kmoni-color-mode-toggle" onchange="toggleKyoshinColorMode(this)" style="margin-right: 8px; cursor: pointer; transform: scale(1.2);">
+                        震度自動計算・履歴カラーモード
+                    </label>
+                    <div style="font-size: 10px; color: #aaa; margin-top: 6px; line-height: 1.4; margin-bottom: 15px;">
+                        ※RGBから計測震度を逆算し、履歴モードの色で表示します。<br>震度1以上の点はリッチなビジュアルで強調されます。
                     </div>
                 </div>
-                <div style="font-size: 10px; color: #aaa; line-height: 1.4;">
-                    ※過去数時間（約2〜4時間）より古いデータは、防災科研サーバーから削除されているため再生できません。
+
+                <div style="padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); text-align: left;">
+                    <div style="font-size: 12px; font-weight: bold; margin-bottom: 8px; color: #fff;">
+                        表示下限：<span style="color: #64D2FF; font-size: 14px;">震度 <span id="intensity-filter-val">-3.0</span></span> 以上
+                    </div>
+                    <input type="range" id="intensity-slider" min="-3.0" max="7.0" step="0.1" value="-3.0" 
+                           style="width: 100%; cursor: pointer;" 
+                           oninput="updateIntensityFilter(this.value)">
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-top: 4px;">
+                        <span>-3.0</span><span>0</span><span>3</span><span>7.0</span>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); text-align: left;">
+                    <div style="font-size: 12px; font-weight: bold; margin-bottom: 8px; color: #fff;">
+                        ⏪ アーカイブ再生 (タイムマシン)
+                    </div>
+                    <input type="datetime-local" id="archive-datetime" step="1" style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.5); color: white; border: 1px solid var(--border-color); padding: 6px; margin-bottom: 10px; border-radius: 4px; font-family: monospace;">
+                    
+                    <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+                        <button class="sp-btn" onclick="startArchive()" style="flex: 1.5; background: rgba(48, 209, 88, 0.2); border-color: #30D158; color: #30D158;">▶ 再生</button>
+                        <button class="sp-btn" onclick="pauseArchive()" style="flex: 1;">⏸ 一時停止</button>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <button class="sp-btn sp-btn-danger" onclick="stopArchive()" style="flex: 1; margin-right: 10px;">⏹ ライブに戻る</button>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 11px; color: var(--text-secondary);">速度:</span>
+                            <select id="archive-speed" style="background: rgba(0,0,0,0.5); color: white; border: 1px solid var(--border-color); border-radius: 4px; padding: 4px; font-size: 11px;">
+                                <option value="1">1倍速</option>
+                                <option value="2">2倍速</option>
+                                <option value="5">5倍速</option>
+                                <option value="10">10倍速</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="font-size: 10px; color: #aaa; line-height: 1.4;">
+                        ※過去数時間（約2〜4時間）より古いデータは、防災科研サーバーから削除されているため再生できません。
+                    </div>
                 </div>
             </div>
         </div>
@@ -426,7 +346,6 @@
     <div id="eew-container" class="eew-container"></div>
 
     <div class="ios-panel-container" id="menu-container">
-        
         <div id="parent-menu" class="ios-panel">
             <div class="panel-header">
                 <div class="header-spacer"></div>
@@ -601,7 +520,6 @@
         document.getElementById('sys-error').innerText = sysStats.error;
     }
 
-    // パネル開閉状態の判定
     function isMenuOpen() {
         const pm = document.getElementById('parent-menu');
         const ps = document.getElementById('panel-status');
@@ -613,21 +531,15 @@
         options: { position: 'topright' },
         onAdd: function (map) {
             const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-topright-btns');
-            
-            // 設定（メニュー）ボタン
             const btnSet = L.DomUtil.create('a', '', container);
-            btnSet.href = '#';
-            btnSet.title = '設定・メニュー';
+            btnSet.href = '#'; btnSet.title = '設定・メニュー';
             btnSet.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`;
             btnSet.onclick = function(e){ e.preventDefault(); e.stopPropagation(); toggleSystemMenu(); }
             
-            // 再読み込みボタン
             const btnReload = L.DomUtil.create('a', '', container);
-            btnReload.href = '#';
-            btnReload.title = '再読み込み';
+            btnReload.href = '#'; btnReload.title = '再読み込み';
             btnReload.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`;
             btnReload.onclick = function(e){ e.preventDefault(); e.stopPropagation(); location.reload(); }
-
             return container;
         }
     });
@@ -647,8 +559,7 @@
             menuContainer.style.pointerEvents = 'auto';
             parentMenu.classList.add('active');
             parentMenu.classList.remove('slide-left');
-            closeTsunamiPanel(); 
-            closeEEWPanel();
+            closeTsunamiPanel(); closeEEWPanel();
         } else {
             closeAllPanels();
         }
@@ -656,16 +567,14 @@
 
     window.openChildPanel = function(panelId) {
         const targetPanel = document.getElementById(panelId);
-        parentMenu.classList.remove('active');
-        parentMenu.classList.add('slide-left');
+        parentMenu.classList.remove('active'); parentMenu.classList.add('slide-left');
         targetPanel.classList.add('active');
         if (panelId === 'panel-status') updateSettingsUI();
     }
 
     window.backToParentMenu = function() {
         allChildPanels.forEach(panel => panel.classList.remove('active'));
-        parentMenu.classList.remove('slide-left');
-        parentMenu.classList.add('active');
+        parentMenu.classList.remove('slide-left'); parentMenu.classList.add('active');
     }
 
     window.closeAllPanels = function() {
@@ -674,10 +583,7 @@
         menuContainer.style.pointerEvents = 'none';
     }
 
-    // マップ上の何もない場所をクリックしたら設定パネルを閉じる
-    map.on('click', function() {
-        closeAllPanels();
-    });
+    map.on('click', function() { closeAllPanels(); });
 
     map.createPane('baseMapPane'); map.getPane('baseMapPane').style.zIndex = 250;
     map.createPane('tsunamiPane'); map.getPane('tsunamiPane').style.zIndex = 260; 
@@ -688,7 +594,7 @@
     const eewLayer = L.layerGroup().addTo(map);
 
     // ==========================================
-    // EEW履歴パネル処理（ステップ関数型・再帰的二分探索アルゴリズム）
+    // EEW履歴パネル処理
     // ==========================================
     const eewHistoryCache = new Map();
     let eewProxyIndex = 0;
@@ -705,7 +611,6 @@
             const baseUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${t.time}.json`;
             const proxyUrl = proxyList[eewProxyIndex] + encodeURIComponent(baseUrl);
             eewProxyIndex = (eewProxyIndex + 1) % proxyList.length;
-            
             try {
                 const res = await fetch(proxyUrl);
                 const data = await res.json();
@@ -714,10 +619,8 @@
             return null;
         }
 
-        // 1. まず上限（最終報）のアタリをつける
         let T_end = T0 + 150 * 1000;
         let num_end = 0;
-        
         const probes = [30, 60, 90, 150, 240];
         const probeResults = await Promise.all(probes.map(sec => getEEWAt(T0 + sec * 1000)));
         
@@ -726,24 +629,17 @@
             if (data && parseInt(data.report_num) > 0) {
                 let rNum = parseInt(data.report_num);
                 localCache.set(rNum, data);
-                if (rNum > num_end) {
-                    num_end = rNum;
-                    T_end = T0 + probes[i] * 1000;
-                }
+                if (rNum > num_end) { num_end = rNum; T_end = T0 + probes[i] * 1000; }
             }
         }
         
-        if (num_end === 0) {
-             addSystemLog(`[EEW] データが見つかりませんでした (保存期間外など)`, 'error');
-             return null; 
-        }
+        if (num_end === 0) { addSystemLog(`[EEW] データが見つかりませんでした`, 'error'); return null; }
 
         addSystemLog(`[EEW] 最新の報 (第${num_end}報付近) を捕捉。中間データの探索を開始...`, 'info');
         
-        // 2. 報数の変化点を確実に全て捉える二分探索ロジック
         async function findChanges(t_start, t_end, num_start, num_end) {
             if (num_start >= num_end) return; 
-            if (t_end - t_start <= 1000) return; // 1秒未満の精度は探索不要
+            if (t_end - t_start <= 1000) return;
             
             let t_mid = Math.floor((t_start + t_end) / 2000) * 1000; 
             if (t_mid <= t_start || t_mid >= t_end) return;
@@ -761,11 +657,8 @@
             }
             
             if (num_mid !== -1) {
-                if (num_mid < num_start || num_mid > num_end) return; // 防御的処理：逆転していたら無視
-                if (num_mid > 0 && !localCache.has(num_mid)) {
-                     addSystemLog(`[EEW] 第${num_mid}報を補完しました`, 'success');
-                }
-                
+                if (num_mid < num_start || num_mid > num_end) return;
+                if (num_mid > 0 && !localCache.has(num_mid)) addSystemLog(`[EEW] 第${num_mid}報を補完しました`, 'success');
                 await Promise.all([
                     findChanges(t_start, t_mid, num_start, num_mid),
                     findChanges(t_mid, t_end, num_mid, num_end)
@@ -773,11 +666,8 @@
             }
         }
 
-        // T0(第0報) から T_end(最終捕捉報) までを探索
         await findChanges(T0, T_end, 0, num_end);
-        
         const sortedReports = Array.from(localCache.values()).sort((a, b) => parseInt(a.report_num) - parseInt(b.report_num));
-
         const elapsedMs = Date.now() - startTimeMs;
         addSystemLog(`[EEW] 全${sortedReports.length}件のデータを取得完了 (${elapsedMs}ms)`, 'success');
 
@@ -785,10 +675,8 @@
             const timeStr = data.report_time ? data.report_time.split(' ')[1] : "--:--:--";
             return {
                 reportNum: data.is_final ? "最終報" : `第${data.report_num}報`,
-                time: timeStr,
-                maxInt: data.calcintensity || "?",
-                mag: `M${data.magunitude || "-"}`,
-                isWarning: data.alertflg === "警報",
+                time: timeStr, maxInt: data.calcintensity || "?",
+                mag: `M${data.magunitude || "-"}`, isWarning: data.alertflg === "警報",
                 area: data.region_name || "調査中"
             };
         }).reverse(); 
@@ -797,22 +685,16 @@
     function renderEEWPanel(eewHistoryData) {
         const listContainer = document.getElementById('eew-list');
         listContainer.innerHTML = ''; 
-
         eewHistoryData.forEach(item => {
             const div = document.createElement('div');
-            
             let intNum = 0;
             if(item.maxInt.includes("1")) intNum=10; if(item.maxInt.includes("2")) intNum=20; if(item.maxInt.includes("3")) intNum=30;
             if(item.maxInt.includes("4")) intNum=40; if(item.maxInt.includes("5弱")) intNum=45; if(item.maxInt.includes("5強")) intNum=50;
             if(item.maxInt.includes("6弱")) intNum=55; if(item.maxInt.includes("6強")) intNum=60; if(item.maxInt.includes("7")) intNum=70;
             let color = getIntensityColor(intNum);
-
             const bgClass = item.isWarning ? 'background: rgba(255, 69, 58, 0.1);' : 'background: rgba(0,0,0,0.2);';
             let warningHtml = item.isWarning ? `<div class="dp-comments-box" style="border-left-color: #FF453A; margin-top: 8px;"><strong>⚠️ 警報対象地域</strong><br><span style="color:#FFD60A; font-size:12px;">${item.area} 等</span></div>` : '';
-
-            // ★ 詳細パネルと完全統合した美しいデザイン
             div.style.cssText = `margin-bottom: 12px; border-radius: 12px; border-left: 4px solid ${color}; padding: 12px 14px; ${bgClass}`;
-
             div.innerHTML = `
                 <div class="dp-main">
                     <div class="dp-scale-box" style="background: rgba(0,0,0,0.3); border-color: ${color}; min-width: 60px;">
@@ -829,37 +711,20 @@
             `;
             listContainer.appendChild(div);
         });
-
         document.getElementById('eew-panel').classList.add('show');
     }
 
     document.getElementById('show-eew-btn').onclick = async function() {
         const eqTime = this.dataset.eqTime;
         if (!eqTime) return;
-
-        // キャッシュがあれば即表示
-        if (eewHistoryCache.has(eqTime)) {
-            renderEEWPanel(eewHistoryCache.get(eqTime));
-            return;
-        }
-
-        // ローディングアニメーション開始
+        if (eewHistoryCache.has(eqTime)) { renderEEWPanel(eewHistoryCache.get(eqTime)); return; }
         const originalHtml = this.innerHTML;
-        this.classList.add('loading');
-        this.innerHTML = '<div class="spinner"></div> <span>データを取得中...</span>';
-
+        this.classList.add('loading'); this.innerHTML = '<div class="spinner"></div> <span>データを取得中...</span>';
         const eewHistoryData = await fetchRealEEWHistorySmart(eqTime);
-
-        // ボタンのUI復元
-        this.classList.remove('loading');
-        this.innerHTML = originalHtml;
-
+        this.classList.remove('loading'); this.innerHTML = originalHtml;
         if (!eewHistoryData || eewHistoryData.length === 0) {
-            alert("この地震のEEW履歴データは見つかりませんでした。\n（保存期間外、または小規模地震のため発表されていない可能性があります）");
-            return;
+            alert("この地震のEEW履歴データは見つかりませんでした。\n（保存期間外、または小規模地震のため発表されていない可能性があります）"); return;
         }
-
-        // キャッシュに保存して描画
         eewHistoryCache.set(eqTime, eewHistoryData);
         renderEEWPanel(eewHistoryData);
     };
@@ -869,20 +734,11 @@
     };
 
     // ==========================================
-    // 津波情報：JMA(直近・予報対応) ＋ P2P(過去の警報履歴) 合体処理
+    // 津波情報
     // ==========================================
     function convertJMAToP2P(jmaData, reportDatetime) {
         let issueTime = (jmaData.Head && jmaData.Head.ReportDateTime) ? jmaData.Head.ReportDateTime : reportDatetime;
-        
-        let p2pData = {
-            id: reportDatetime, 
-            created_at: issueTime,
-            time: issueTime,
-            issue: { time: issueTime, source: "気象庁", type: (jmaData.Head && jmaData.Head.InfoType) || "発表" },
-            cancelled: (jmaData.Head && jmaData.Head.InfoType === "取消"),
-            areas: []
-        };
-
+        let p2pData = { id: reportDatetime, created_at: issueTime, time: issueTime, issue: { time: issueTime, source: "気象庁", type: (jmaData.Head && jmaData.Head.InfoType) || "発表" }, cancelled: (jmaData.Head && jmaData.Head.InfoType === "取消"), areas: [] };
         if (jmaData.Body && jmaData.Body.Tsunami && jmaData.Body.Tsunami.Forecast) {
             const forecast = jmaData.Body.Tsunami.Forecast;
             if (forecast.Item) {
@@ -890,7 +746,6 @@
                 items.forEach(item => {
                     const areaName = item.Area ? item.Area.Name : "";
                     const kindName = (item.Category && item.Category.Kind && item.Category.Kind.Name) ? item.Category.Kind.Name : "";
-                    
                     let grade = "Unknown";
                     if (!kindName.includes("解除")) {
                         if (kindName.includes("大津波")) grade = "MajorWarning";
@@ -898,26 +753,14 @@
                         else if (kindName.includes("注意報")) grade = "Watch";
                         else if (kindName.includes("海面変動") || kindName.includes("予報")) grade = "NonEffective";
                     }
-
                     let firstHeight = {};
                     if (item.FirstHeight) {
                         if (item.FirstHeight.Condition) firstHeight.condition = item.FirstHeight.Condition;
                         if (item.FirstHeight.ArrivalTime) firstHeight.time = item.FirstHeight.ArrivalTime;
                     }
-
                     let maxHeight = {};
-                    if (item.MaxHeight && item.MaxHeight.TsunamiHeight && item.MaxHeight.TsunamiHeight.Description) {
-                        maxHeight.description = item.MaxHeight.TsunamiHeight.Description;
-                    }
-
-                    if (grade !== "Unknown" && areaName) {
-                        p2pData.areas.push({ 
-                            name: areaName, 
-                            grade: grade,
-                            firstHeight: Object.keys(firstHeight).length > 0 ? firstHeight : null,
-                            maxHeight: Object.keys(maxHeight).length > 0 ? maxHeight : null
-                        });
-                    }
+                    if (item.MaxHeight && item.MaxHeight.TsunamiHeight && item.MaxHeight.TsunamiHeight.Description) maxHeight.description = item.MaxHeight.TsunamiHeight.Description;
+                    if (grade !== "Unknown" && areaName) p2pData.areas.push({ name: areaName, grade: grade, firstHeight: Object.keys(firstHeight).length > 0 ? firstHeight : null, maxHeight: Object.keys(maxHeight).length > 0 ? maxHeight : null });
                 });
             }
         }
@@ -940,22 +783,17 @@
             });
             const results = await Promise.all(promises);
             return results.filter(r => r !== null);
-        } catch(e) { 
-            return []; 
-        }
+        } catch(e) { return []; }
     }
 
     // ==========================================
-    // 計測震度 逆算ロジック (多項式補間のみ実装)
+    // 計測震度 逆算ロジック
     // ==========================================
-    
-    // RGBをHSV(0.0〜1.0の範囲)に変換する関数
     function rgbToHsv(r, g, b) {
         let max = Math.max(r, g, b), min = Math.min(r, g, b);
         let h = 0, s = 0, v = max / 255.0;
         let d = max - min;
         s = max === 0 ? 0 : d / max;
-        
         if (max !== min) {
             switch (max) {
                 case r: h = (g - b) / d + (g < b ? 6 : 0); break;
@@ -967,44 +805,23 @@
         return [h, s, v];
     }
 
-    // HSVと多項式補間を用いて色から計測震度を正確に計算する
     function calcIntensityFromColor(colorStr) {
         if (!colorStr) return -3.0;
         const match = colorStr.match(/\d+/g);
         if (!match || match.length < 3) return -3.0;
-        
         const r = parseInt(match[0]), g = parseInt(match[1]), b = parseInt(match[2]);
         const [h, s, v] = rgbToHsv(r, g, b);
-        
-        // 多項式補間が前提とする、カラースケール上の有効色判定
         if (v > 0.1 && s > 0.75) {
-            let p = 0; // スケール上の位置 (0.0〜1.0)
-            
-            if (h > 0.1476) {
-                // 震度-3〜5弱付近
-                p = 280.31 * Math.pow(h, 6) - 916.05 * Math.pow(h, 5) + 1142.6 * Math.pow(h, 4) - 709.95 * Math.pow(h, 3) + 234.65 * Math.pow(h, 2) - 40.27 * h + 3.2217;
-            } else if (h <= 0.1476 && h > 0.001) {
-                // 震度5弱〜6強付近
-                p = 151.4 * Math.pow(h, 4) - 49.32 * Math.pow(h, 3) + 6.753 * Math.pow(h, 2) - 2.481 * h + 0.9033;
-            } else if (h <= 0.001) {
-                // 震度6強〜7 (紫帯域: 明度Vで計算)
-                p = -0.005171 * Math.pow(v, 2) - 0.3282 * v + 1.2236;
-            }
-            
-            // はみ出しの防止
-            if (p < 0) p = 0;
-            if (p > 1.0) p = 1.0; 
-            
-            // 位置(0.0: 震度-3) 〜 (1.0: 震度7) を線形に変換して返す
+            let p = 0; 
+            if (h > 0.1476) p = 280.31 * Math.pow(h, 6) - 916.05 * Math.pow(h, 5) + 1142.6 * Math.pow(h, 4) - 709.95 * Math.pow(h, 3) + 234.65 * Math.pow(h, 2) - 40.27 * h + 3.2217;
+            else if (h <= 0.1476 && h > 0.001) p = 151.4 * Math.pow(h, 4) - 49.32 * Math.pow(h, 3) + 6.753 * Math.pow(h, 2) - 2.481 * h + 0.9033;
+            else if (h <= 0.001) p = -0.005171 * Math.pow(v, 2) - 0.3282 * v + 1.2236;
+            if (p < 0) p = 0; if (p > 1.0) p = 1.0; 
             return 10 * p - 3.0;
-        } else {
-            // スケール外の色（地図の枠線など無効データ）
-            return -999;
-        }
+        } else return -999;
     }
 
     let currentIntensityFilterThreshold = -3.0;
-
     window.updateIntensityFilter = function(val) {
         let displayVal = parseFloat(val).toFixed(1);
         if (displayVal > 0) displayVal = "+" + displayVal;
@@ -1017,15 +834,8 @@
     // 【強震モニタ】 描画レイヤー
     // ==========================================
     L.KyoshinMonitorLayer = L.Layer.extend({
-        initialize: function (options) {
-            L.setOptions(this, options);
-            this._data = [];
-            this._isCalcMode = false; 
-        },
-        setCalcMode: function (isCalc) {
-            this._isCalcMode = isCalc;
-            this.redraw();
-        },
+        initialize: function (options) { L.setOptions(this, options); this._data = []; this._isCalcMode = false; },
+        setCalcMode: function (isCalc) { this._isCalcMode = isCalc; this.redraw(); },
         onAdd: function (map) {
             this._map = map;
             this._canvas = L.DomUtil.create('canvas', 'leaflet-kyoshin-layer leaflet-zoom-animated');
@@ -1035,30 +845,21 @@
             map.on('moveend zoomend resize', this._updatePosition, this);
             this._updatePosition();
         },
-        onRemove: function (map) {
-            L.DomUtil.remove(this._canvas);
-            map.off('moveend zoomend resize', this._updatePosition, this);
-        },
+        onRemove: function (map) { L.DomUtil.remove(this._canvas); map.off('moveend zoomend resize', this._updatePosition, this); },
         _updatePosition: function () {
-            const size = this._map.getSize();
-            const topLeft = this._map.containerPointToLayerPoint([0, 0]);
+            const size = this._map.getSize(); const topLeft = this._map.containerPointToLayerPoint([0, 0]);
             L.DomUtil.setPosition(this._canvas, topLeft);
-            this._canvas.width = size.x;
-            this._canvas.height = size.y;
+            this._canvas.width = size.x; this._canvas.height = size.y;
             this.redraw();
         },
         updateData: function(dataArray) {
             if (!dataArray || !Array.isArray(dataArray)) return;
-            // 重なり順のソート処理（元のgetOriginalIntensityScoreを廃止し、新しい関数で統一）
-            this._data = dataArray.sort((a, b) => {
-                return calcIntensityFromColor(a.color) - calcIntensityFromColor(b.color);
-            });
+            this._data = dataArray.sort((a, b) => calcIntensityFromColor(a.color) - calcIntensityFromColor(b.color));
             this.redraw();
         },
         redraw: function () {
             if (!this._ctx) return;
-            const ctx = this._ctx;
-            ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+            const ctx = this._ctx; ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
             const zoom = this._map.getZoom();
 
             for (let i = 0; i < this._data.length; i++) {
@@ -1084,8 +885,7 @@
                         if (intensity >= 6.5) scale = 70; else if (intensity >= 6.0) scale = 60; else if (intensity >= 5.5) scale = 55;
                         else if (intensity >= 5.0) scale = 50; else if (intensity >= 4.5) scale = 45; else if (intensity >= 3.5) scale = 40;
                         else if (intensity >= 2.5) scale = 30; else if (intensity >= 1.5) scale = 20;
-                        const hexColor = getIntensityColor(scale);
-                        const radius = zoom >= 9 ? 12 : 6;
+                        const hexColor = getIntensityColor(scale); const radius = zoom >= 9 ? 12 : 6;
                         ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
                         ctx.fillStyle = hexColor; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2; ctx.fill();
                         ctx.shadowColor = 'transparent'; ctx.lineWidth = 1.5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
@@ -1130,41 +930,29 @@
             if (!activeEEWs.has(eventId)) return; 
             const currentState = activeEEWs.get(eventId);
             const data = currentState.data;
-            
-            if (!data || !data.origin_time || !data.latitude || !data.longitude) {
-                currentState.animFrame = requestAnimationFrame(animate);
-                return;
-            }
-
+            if (!data || !data.origin_time || !data.latitude || !data.longitude) { currentState.animFrame = requestAnimationFrame(animate); return; }
             const tStr = data.origin_time;
-            const originTimeMs = new Date(
-                parseInt(tStr.slice(0,4)), parseInt(tStr.slice(4,6))-1, parseInt(tStr.slice(6,8)),
-                parseInt(tStr.slice(8,10)), parseInt(tStr.slice(10,12)), parseInt(tStr.slice(12,14))
-            ).getTime();
+            const originTimeMs = new Date(parseInt(tStr.slice(0,4)), parseInt(tStr.slice(4,6))-1, parseInt(tStr.slice(6,8)), parseInt(tStr.slice(8,10)), parseInt(tStr.slice(10,12)), parseInt(tStr.slice(12,14))).getTime();
             
-            const nowMs = Date.now();
+            let nowMs;
+            if (isArchiveMode && archiveTime) {
+                const speed = parseInt(document.getElementById('archive-speed').value) || 1;
+                const elapsedRealMs = Date.now() - lastArchiveRealTime;
+                nowMs = lastArchiveTimeMs + (elapsedRealMs * speed);
+            } else { nowMs = Date.now(); }
+
             let t = (nowMs - originTimeMs) / 1000;
-            
             let depthKm = parseInt(data.depth) || 10;
             if (depthKm < 0 || isNaN(depthKm)) depthKm = 10;
             if (data.depth === "ごく浅い" || data.depth === "ごく浅いkm") depthKm = 0;
 
             if (t > 0) {
                 const pDistance = 6.0 * t;
-                if (pDistance > depthKm) {
-                    const pRadius = Math.sqrt(Math.pow(pDistance, 2) - Math.pow(depthKm, 2)) * 1000;
-                    currentState.pCircle.setRadius(pRadius);
-                } else {
-                    currentState.pCircle.setRadius(0);
-                }
-
+                if (pDistance > depthKm) currentState.pCircle.setRadius(Math.sqrt(Math.pow(pDistance, 2) - Math.pow(depthKm, 2)) * 1000);
+                else currentState.pCircle.setRadius(0);
                 const sDistance = 3.5 * t;
-                if (sDistance > depthKm) {
-                    const sRadius = Math.sqrt(Math.pow(sDistance, 2) - Math.pow(depthKm, 2)) * 1000;
-                    currentState.sCircle.setRadius(sRadius);
-                } else {
-                    currentState.sCircle.setRadius(0);
-                }
+                if (sDistance > depthKm) currentState.sCircle.setRadius(Math.sqrt(Math.pow(sDistance, 2) - Math.pow(depthKm, 2)) * 1000);
+                else currentState.sCircle.setRadius(0);
             }
             currentState.animFrame = requestAnimationFrame(animate);
         }
@@ -1204,78 +992,46 @@
         if (!activeEEWs.has(eventId)) {
             const layerGroup = L.layerGroup().addTo(eewLayer);
             activeEEWs.set(eventId, {
-                data: data,
-                layerGroup: layerGroup,
-                clearTimer: null,
+                data: data, layerGroup: layerGroup, clearTimer: null,
                 pCircle: L.circle([0,0], {radius: 0, color: 'var(--p-wave-color)', weight: 1.5, fill: true, fillOpacity: 0.05, interactive: false}),
                 sCircle: L.circle([0,0], {radius: 0, color: 'var(--s-wave-color)', weight: 2.5, fill: true, fillOpacity: 0.15, interactive: false}),
-                alertLayer: L.layerGroup(),
-                animFrame: null
+                alertLayer: L.layerGroup(), animFrame: null
             });
             const state = activeEEWs.get(eventId);
-            state.pCircle.addTo(layerGroup);
-            state.sCircle.addTo(layerGroup);
-            state.alertLayer.addTo(layerGroup);
+            state.pCircle.addTo(layerGroup); state.sCircle.addTo(layerGroup); state.alertLayer.addTo(layerGroup);
             startWaveAnimation(eventId);
         }
 
         const eewState = activeEEWs.get(eventId);
         eewState.data = data;
-
         eewState.layerGroup.clearLayers(); 
-        eewState.pCircle.addTo(eewState.layerGroup);
-        eewState.sCircle.addTo(eewState.layerGroup);
-        eewState.alertLayer.addTo(eewState.layerGroup);
+        eewState.pCircle.addTo(eewState.layerGroup); eewState.sCircle.addTo(eewState.layerGroup); eewState.alertLayer.addTo(eewState.layerGroup);
 
         if (data.latitude && data.longitude) {
-            const lat = parseFloat(data.latitude);
-            const lon = parseFloat(data.longitude);
-            
-            eewState.pCircle.setLatLng([lat, lon]);
-            eewState.sCircle.setLatLng([lat, lon]);
-
+            const lat = parseFloat(data.latitude); const lon = parseFloat(data.longitude);
+            eewState.pCircle.setLatLng([lat, lon]); eewState.sCircle.setLatLng([lat, lon]);
             const iconHtml = isPlum ? `<div class="eew-marker-plum"></div>` : `<div class="eew-marker-cross"></div>`;
-            const epicenterMarker = L.marker([lat, lon], {
-                icon: L.divIcon({ className: 'custom-div-icon', html: iconHtml, iconSize: [0, 0] }),
-                zIndexOffset: 30000
-            });
+            const epicenterMarker = L.marker([lat, lon], { icon: L.divIcon({ className: 'custom-div-icon', html: iconHtml, iconSize: [0, 0] }), zIndexOffset: 30000 });
             eewState.layerGroup.addLayer(epicenterMarker);
-            
             if (!isPlum) {
                 const pulseIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="eew-epicenter-pulse"></div>`, iconSize: [0, 0] });
                 L.marker([lat, lon], { icon: pulseIcon }).addTo(eewState.layerGroup);
             }
-            if (data.report_num === "1" || data.report_num === 1) {
-                map.setView([lat, lon], 6, { animate: true, duration: 1.0 });
-            }
+            if (data.report_num === "1" || data.report_num === 1) map.setView([lat, lon], 6, { animate: true, duration: 1.0 });
         }
 
         eewState.alertLayer.clearLayers();
         if (data.alertflg === "警報" && japanGeoData) {
             let regionsToHighlight = data.alertRegions || [data.region_name];
             L.geoJSON(japanGeoData, {
-                filter: function(feature) {
-                    const name = feature.properties.name || "";
-                    return regionsToHighlight.some(r => name.includes(r) || r.includes(name));
-                },
-                style: {
-                    fillColor: '#FFFF00',
-                    fillOpacity: 0.35,
-                    color: '#FFFF00',
-                    weight: 2,
-                    dashArray: '3'
-                },
+                filter: function(feature) { const name = feature.properties.name || ""; return regionsToHighlight.some(r => name.includes(r) || r.includes(name)); },
+                style: { fillColor: '#FFFF00', fillOpacity: 0.35, color: '#FFFF00', weight: 2, dashArray: '3' },
                 interactive: false
             }).addTo(eewState.alertLayer);
         }
 
         updateEEWPanelUI(eventId, data, isPlum, timeStr, false);
-
-        if (data.is_final) {
-            if (!eewState.clearTimer) {
-                eewState.clearTimer = setTimeout(() => { closeEEW(eventId); }, 20000);
-            }
-        }
+        if (data.is_final) { if (!eewState.clearTimer) eewState.clearTimer = setTimeout(() => { closeEEW(eventId); }, 20000); }
     }
 
     function updateEEWPanelUI(eventId, data, isPlum, timeStr, isCancel) {
@@ -1284,31 +1040,15 @@
         let panel, minIcon;
         
         if (!wrapper) {
-            wrapper = document.createElement('div');
-            wrapper.id = `eew-wrapper-${eventId}`;
-            wrapper.className = 'eew-wrapper';
-            
-            panel = document.createElement('div');
-            panel.id = `eew-panel-${eventId}`;
-            panel.className = 'eew-panel';
-            
-            minIcon = document.createElement('div');
-            minIcon.id = `eew-minimized-${eventId}`;
-            minIcon.className = 'eew-minimized';
-            minIcon.style.display = 'none'; 
-            minIcon.onclick = () => restoreEEW(eventId);
-            minIcon.innerHTML = '!';
-            minIcon.title = '緊急地震速報を展開';
-            
-            wrapper.appendChild(panel);
-            wrapper.appendChild(minIcon);
-            container.appendChild(wrapper); 
+            wrapper = document.createElement('div'); wrapper.id = `eew-wrapper-${eventId}`; wrapper.className = 'eew-wrapper';
+            panel = document.createElement('div'); panel.id = `eew-panel-${eventId}`; panel.className = 'eew-panel';
+            minIcon = document.createElement('div'); minIcon.id = `eew-minimized-${eventId}`; minIcon.className = 'eew-minimized';
+            minIcon.style.display = 'none'; minIcon.onclick = () => restoreEEW(eventId); minIcon.innerHTML = '!'; minIcon.title = '緊急地震速報を展開';
+            wrapper.appendChild(panel); wrapper.appendChild(minIcon); container.appendChild(wrapper); 
         } else {
-            panel = document.getElementById(`eew-panel-${eventId}`);
-            minIcon = document.getElementById(`eew-minimized-${eventId}`);
+            panel = document.getElementById(`eew-panel-${eventId}`); minIcon = document.getElementById(`eew-minimized-${eventId}`);
         }
 
-        // === 修正箇所：再描画時の状態（開閉ステータス）を記憶する ===
         const existingExtended = document.getElementById(`eew-extended-${eventId}`);
         const isCollapsed = existingExtended ? existingExtended.classList.contains('collapsed') : true;
         const btnText = isCollapsed ? '詳細情報を表示 ▼' : '詳細情報を閉じる ▲';
@@ -1316,35 +1056,28 @@
 
         if (isCancel) {
             restoreEEW(eventId); 
-            panel.style.backgroundColor = "rgba(28, 28, 30, 0.45)";
-            panel.style.borderColor = "#8E8E93";
+            panel.style.backgroundColor = "rgba(28, 28, 30, 0.45)"; panel.style.borderColor = "#8E8E93";
             panel.innerHTML = `
                 <div class="dp-close" onclick="closeEEW('${eventId}')">✕</div>
                 <div class="dp-main">
                     <div class="dp-scale-box" style="background: rgba(0,0,0,0.5); border-color: #8E8E93;">
-                        <span class="dp-scale-label">緊急速報</span>
-                        <span class="dp-scale-value" style="color: #8E8E93; font-size: 26px;">取消</span>
+                        <span class="dp-scale-label">緊急速報</span><span class="dp-scale-value" style="color: #8E8E93; font-size: 26px;">取消</span>
                     </div>
                     <div class="dp-info">
                         <div class="dp-name"><span style="color:#FF453A; font-weight:800; font-size:16px;">【緊急地震速報】 取消</span></div>
-                        <div class="dp-time">この速報は取り消されました</div>
-                        <div class="dp-meta"></div>
+                        <div class="dp-time">この速報は取り消されました</div><div class="dp-meta"></div>
                     </div>
                 </div>
                 <div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')">${btnText}</div>
                 <div id="eew-extended-${eventId}" class="dp-extended-area${collapsedClass}">
-                    <div class="dp-comments-box" style="border-left-color: #8E8E93;">
-                        <strong>【誤報・取消】</strong><br>先ほどの緊急地震速報は取り消されました。
-                    </div>
+                    <div class="dp-comments-box" style="border-left-color: #8E8E93;"><strong>【誤報・取消】</strong><br>先ほどの緊急地震速報は取り消されました。</div>
                 </div>
             `;
             return;
         }
 
         const isWarning = data.alertflg === "警報";
-        
         minIcon.className = `eew-minimized ${isWarning ? 'warning' : 'forecast'}`;
-
         panel.style.backgroundColor = isWarning ? "rgba(100, 20, 20, 0.45)" : "rgba(28, 28, 30, 0.45)";
         panel.style.borderColor = isWarning ? "rgba(255, 69, 58, 0.6)" : "var(--border-color)";
         const badgeHtml = isPlum ? `<span class="plum-badge">PLUM法</span>` : '';
@@ -1361,23 +1094,16 @@
         if(intensityStr.includes("6弱")) intNum=55; if(intensityStr.includes("6強")) intNum=60; if(intensityStr.includes("7")) intNum=70;
         let color = getIntensityColor(intNum);
         let plumNotice = isPlum ? '<br><span style="font-size: 11px; color: #aaa;">※観測点の揺れから予測しています。</span>' : '';
-        
-        let regionsText = data.alertRegions && data.alertRegions.length > 0 
-            ? `<div style="font-size:12px; color:#FFD60A; margin-top:2px;">警報対象: ${data.alertRegions.join(', ')}</div>` 
-            : '';
+        let regionsText = data.alertRegions && data.alertRegions.length > 0 ? `<div style="font-size:12px; color:#FFD60A; margin-top:2px;">警報対象: ${data.alertRegions.join(', ')}</div>` : '';
 
         panel.innerHTML = `
             <div class="dp-close" onclick="minimizeEEW('${eventId}')">✕</div>
             <div class="dp-main">
                 <div class="dp-scale-box" style="background: rgba(0,0,0,0.3); border-color: ${color};">
-                    <span class="dp-scale-label">最大予測</span>
-                    <span class="dp-scale-value" style="color: ${color}; font-size: 34px;">${intensityStr}</span>
+                    <span class="dp-scale-label">最大予測</span><span class="dp-scale-value" style="color: ${color}; font-size: 34px;">${intensityStr}</span>
                 </div>
                 <div class="dp-info">
-                    <div class="dp-name" title="${regionName}">
-                        <span style="color:${titleColor}; font-weight:800;">【緊急地震速報】 ${reportText}</span> ${badgeHtml}<br>
-                        <span style="font-size:14px; font-weight:normal;">${regionName}</span>
-                    </div>
+                    <div class="dp-name" title="${regionName}"><span style="color:${titleColor}; font-weight:800;">【緊急地震速報】 ${reportText}</span> ${badgeHtml}<br><span style="font-size:14px; font-weight:normal;">${regionName}</span></div>
                     <div class="dp-time">${timeStr}</div>
                     <div class="dp-meta">M <strong style="color:#fff;">${magnitude}</strong> / 深さ <strong style="color:#fff;">${depth}</strong>${depth !== 'ごく浅い' && depth !== '--' ? 'km' : ''}</div>
                 </div>
@@ -1396,32 +1122,20 @@
         const area = document.getElementById(`eew-extended-${eventId}`);
         const btn = document.getElementById(`eew-toggle-${eventId}`);
         if (!area || !btn) return;
-        if (area.classList.contains('collapsed')) {
-            area.classList.remove('collapsed'); btn.innerHTML = '詳細情報を閉じる ▲';
-        } else {
-            area.classList.add('collapsed'); btn.innerHTML = '詳細情報を表示 ▼';
-        }
+        if (area.classList.contains('collapsed')) { area.classList.remove('collapsed'); btn.innerHTML = '詳細情報を閉じる ▲'; }
+        else { area.classList.add('collapsed'); btn.innerHTML = '詳細情報を表示 ▼'; }
     };
 
     window.minimizeEEW = function(eventId) {
         const panel = document.getElementById(`eew-panel-${eventId}`);
         const minIcon = document.getElementById(`eew-minimized-${eventId}`);
-        if (panel && minIcon) {
-            panel.style.display = 'none';
-            minIcon.style.display = 'flex';
-            minIcon.style.animation = 'none';
-            void minIcon.offsetWidth; 
-            minIcon.style.animation = null;
-        }
+        if (panel && minIcon) { panel.style.display = 'none'; minIcon.style.display = 'flex'; minIcon.style.animation = 'none'; void minIcon.offsetWidth; minIcon.style.animation = null; }
     };
 
     window.restoreEEW = function(eventId) {
         const panel = document.getElementById(`eew-panel-${eventId}`);
         const minIcon = document.getElementById(`eew-minimized-${eventId}`);
-        if (panel && minIcon) {
-            panel.style.display = 'block';
-            minIcon.style.display = 'none';
-        }
+        if (panel && minIcon) { panel.style.display = 'block'; minIcon.style.display = 'none'; }
     };
 
     window.closeEEW = function(eventId) {
@@ -1429,104 +1143,61 @@
             const state = activeEEWs.get(eventId);
             if (state.clearTimer) clearTimeout(state.clearTimer);
             if (state.animFrame) cancelAnimationFrame(state.animFrame);
-            eewLayer.removeLayer(state.layerGroup);
-            activeEEWs.delete(eventId);
+            eewLayer.removeLayer(state.layerGroup); activeEEWs.delete(eventId);
         }
         removeEEWDOM(eventId);
     };
 
     function removeEEWDOM(eventId) {
         const wrapper = document.getElementById(`eew-wrapper-${eventId}`);
-        if (wrapper) {
-            wrapper.style.opacity = '0';
-            wrapper.style.transform = 'translateX(-30px)';
-            wrapper.style.transition = 'opacity 0.3s, transform 0.3s';
-            setTimeout(() => wrapper.remove(), 300);
-        }
+        if (wrapper) { wrapper.style.opacity = '0'; wrapper.style.transform = 'translateX(-30px)'; wrapper.style.transition = 'opacity 0.3s, transform 0.3s'; setTimeout(() => wrapper.remove(), 300); }
     }
 
     function clearAllEEWs() {
-        mockEEWTimers.forEach(t => clearInterval(t));
-        mockEEWTimers = [];
-        isEEWMockActive = false;
+        mockEEWTimers.forEach(t => clearInterval(t)); mockEEWTimers = []; isEEWMockActive = false;
         activeEEWs.forEach((state, eventId) => {
             if (state.clearTimer) clearTimeout(state.clearTimer);
             if (state.animFrame) cancelAnimationFrame(state.animFrame);
-            eewLayer.removeLayer(state.layerGroup);
-            removeEEWDOM(eventId);
+            eewLayer.removeLayer(state.layerGroup); removeEEWDOM(eventId);
         });
-        activeEEWs.clear();
-        addSystemLog(`[EEW Test] 全てのシミュレーションとUIを強制クリアしました`, 'info');
+        activeEEWs.clear(); addSystemLog(`[EEW Test] 全てのシミュレーションとUIを強制クリアしました`, 'info');
     }
 
     window.runEEWTest = function(type) {
-        if (!isKyoshinActive) switchTab('kyoshin'); 
-        isEEWMockActive = true;
-        closeDetailPanel();
+        ensureMode('kyoshin'); 
+        isEEWMockActive = true; closeDetailPanel();
         const baseTime = getFormatTimeStr(new Date()).time;
         addSystemLog(`[EEW Test] ${type} テストを開始しました`, 'warn');
-        if (type === 'normal') {
-            startMockEEWSequence("TEST_001", false, "東京湾", 35.5, 139.8, 30, 4.5, ["3", "4", "5弱"], baseTime, 0, false, ["東京都", "神奈川県", "千葉県", "埼玉県"]);
-        } else if (type === 'plum') {
-            startMockEEWSequence("TEST_PLUM_01", true, "関東地方", 36.0, 140.0, null, null, ["3", "5弱", "5弱"], baseTime, 0, false, ["茨城県"]);
-        } else if (type === 'cancel') {
-            startMockEEWSequence("TEST_CAN_01", false, "紀伊水道", 33.8, 134.8, 10, 5.5, ["3"], baseTime, 0, true);
-        } else if (type === 'multiple') {
+        if (type === 'normal') startMockEEWSequence("TEST_001", false, "東京湾", 35.5, 139.8, 30, 4.5, ["3", "4", "5弱"], baseTime, 0, false, ["東京都", "神奈川県", "千葉県", "埼玉県"]);
+        else if (type === 'plum') startMockEEWSequence("TEST_PLUM_01", true, "関東地方", 36.0, 140.0, null, null, ["3", "5弱", "5弱"], baseTime, 0, false, ["茨城県"]);
+        else if (type === 'cancel') startMockEEWSequence("TEST_CAN_01", false, "紀伊水道", 33.8, 134.8, 10, 5.5, ["3"], baseTime, 0, true);
+        else if (type === 'multiple') {
             startMockEEWSequence("TEST_MULTI_1", false, "東京湾", 35.5, 139.8, 30, 4.5, ["3", "4"], baseTime, 0);
-            setTimeout(() => {
-                startMockEEWSequence("TEST_MULTI_2", false, "南海トラフ周辺", 32.0, 134.0, 10, 7.8, ["5弱", "6弱", "6強"], baseTime, 0, false, ["和歌山県", "高知県", "徳島県", "三重県"]);
-            }, 4000);
+            setTimeout(() => { startMockEEWSequence("TEST_MULTI_2", false, "南海トラフ周辺", 32.0, 134.0, 10, 7.8, ["5弱", "6弱", "6強"], baseTime, 0, false, ["和歌山県", "高知県", "徳島県", "三重県"]); }, 4000);
         }
     };
 
     function startMockEEWSequence(id, isPlum, region, lat, lon, depth, mag, intensities, originTime, delayMs, forceCancel = false, alertRegions = []) {
-        let step = 0;
-        let isWarning = false;
+        let step = 0; let isWarning = false;
         const interval = setInterval(() => {
             if (step >= intensities.length) { clearInterval(interval); return; }
             let isFinal = (step === intensities.length - 1);
             let intensity = intensities[Math.min(step, intensities.length - 1)];
             if (intensity.includes("4") || intensity.includes("5") || intensity.includes("6") || intensity.includes("7")) isWarning = true;
-            let isCancel = forceCancel && step === 0; 
-            if (isCancel) isFinal = false;
-            let data = {
-                result: { status: "success", message: "" },
-                report_id: id, report_num: (step + 1).toString(),
-                is_final: isFinal, is_cancel: isCancel, is_plum: isPlum,
-                alertflg: isWarning ? "警報" : "予報",
-                region_name: region,
-                latitude: lat ? lat.toString() : "", longitude: lon ? lon.toString() : "",
-                depth: depth ? depth + "km" : "", magunitude: mag ? mag.toString() : "",
-                calcintensity: intensity, origin_time: originTime,
-                alertRegions: alertRegions
-            };
-            processEEWData(data);
-            step++;
-            if(isCancel) clearInterval(interval);
+            let isCancel = forceCancel && step === 0; if (isCancel) isFinal = false;
+            let data = { result: { status: "success", message: "" }, report_id: id, report_num: (step + 1).toString(), is_final: isFinal, is_cancel: isCancel, is_plum: isPlum, alertflg: isWarning ? "警報" : "予報", region_name: region, latitude: lat ? lat.toString() : "", longitude: lon ? lon.toString() : "", depth: depth ? depth + "km" : "", magunitude: mag ? mag.toString() : "", calcintensity: intensity, origin_time: originTime, alertRegions: alertRegions };
+            processEEWData(data); step++; if(isCancel) clearInterval(interval);
         }, 3000);
         mockEEWTimers.push(interval);
     }
 
     window.runTsunamiTest = function() {
         addSystemLog(`[Tsunami Test] 津波自動受信テストを開始しました`, 'warn');
-        const mockTsunami = {
-            id: "mock_tsunami_" + Date.now(),
-            created_at: new Date().toISOString(), cancelled: false,
-            areas: [
-                { name: "東京湾内", grade: "Warning", maxHeight: { description: "1m" } },
-                { name: "千葉県内房", grade: "Warning", maxHeight: { description: "1m" } },
-                { name: "相模湾・三浦半島", grade: "Watch", maxHeight: { description: "0.2m" } },
-                { name: "伊豆諸島", grade: "Watch", maxHeight: { description: "0.2m" } },
-                { name: "テスト予報区", grade: "NonEffective", maxHeight: { description: "0.2m未満" } }
-            ]
-        };
-        lastTsunamiId = mockTsunami.id;
-        tsunamiDataList.unshift(mockTsunami);
-        if (document.getElementById('tsunami-list-container').style.display !== 'none') renderTsunamiList();
-        drawTsunamiCoastlines(mockTsunami);
-        updateTsunamiPanelUI(mockTsunami);
-        document.getElementById('tp-main-header').innerText = "津波警報 (自動受信テスト)";
-        document.getElementById('tsunami-panel').classList.add('show');
+        const mockTsunami = { id: "mock_tsunami_" + Date.now(), created_at: new Date().toISOString(), cancelled: false, areas: [{ name: "東京湾内", grade: "Warning", maxHeight: { description: "1m" } }, { name: "千葉県内房", grade: "Warning", maxHeight: { description: "1m" } }, { name: "相模湾・三浦半島", grade: "Watch", maxHeight: { description: "0.2m" } }, { name: "伊豆諸島", grade: "Watch", maxHeight: { description: "0.2m" } }, { name: "テスト予報区", grade: "NonEffective", maxHeight: { description: "0.2m未満" } }] };
+        lastTsunamiId = mockTsunami.id; tsunamiDataList.unshift(mockTsunami);
+        if (currentMode === 'tsunami') renderTsunamiList();
+        drawTsunamiCoastlines(mockTsunami); updateTsunamiPanelUI(mockTsunami);
+        document.getElementById('tp-main-header').innerText = "津波警報 (自動受信テスト)"; document.getElementById('tsunami-panel').classList.add('show');
     };
 
     // ==========================================
@@ -1534,98 +1205,60 @@
     // ==========================================
     let currentKmoniTimeOffset = 2000; 
     let intensityPointsData = []; 
-    
-    // アーカイブ用ステート
-    let isArchiveMode = false;
-    let archiveTime = null;
-    let archiveTimer = null;
-    let archiveIsPlaying = false;
+    let isArchiveMode = false; let archiveTime = null; let archiveTimer = null; let archiveIsPlaying = false;
+    let lastArchiveRealTime = Date.now(); let lastArchiveTimeMs = 0;
+    const eewTimeCache = {};
 
     function getFormatTimeStr(date) {
-        const yyyy = date.getFullYear();
-        const MM = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        const HH = String(date.getHours()).padStart(2, '0');
-        const mm = String(date.getMinutes()).padStart(2, '0');
-        const ss = String(date.getSeconds()).padStart(2, '0');
+        const yyyy = date.getFullYear(), MM = String(date.getMonth() + 1).padStart(2, '0'), dd = String(date.getDate()).padStart(2, '0');
+        const HH = String(date.getHours()).padStart(2, '0'), mm = String(date.getMinutes()).padStart(2, '0'), ss = String(date.getSeconds()).padStart(2, '0');
         return { date: `${yyyy}${MM}${dd}`, time: `${yyyy}${MM}${dd}${HH}${mm}${ss}`, display: `${yyyy}/${MM}/${dd} ${HH}:${mm}:${ss}` };
     }
 
     function extractColorsFromImage(img, targetTimeDisplay) {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width; canvas.height = img.height;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        ctx.drawImage(img, 0, 0);
+        const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true }); ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
         const dataArray = [];
-        
         intensityPointsData.forEach(pt => {
-            const x = Math.floor(pt.x); const y = Math.floor(pt.y);
+            const x = Math.floor(pt.x), y = Math.floor(pt.y);
             if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
                 const index = (y * canvas.width + x) * 4;
-                const r = imageData[index]; const g = imageData[index + 1]; const b = imageData[index + 2]; const a = imageData[index + 3];
+                const r = imageData[index], g = imageData[index + 1], b = imageData[index + 2], a = imageData[index + 3];
                 if (a === 0 || (r === 0 && g === 0 && b === 0)) return;
                 dataArray.push({ lat: pt.lat, lon: pt.lon, color: `rgb(${r}, ${g}, ${b})` });
             }
         });
         
-        const ind = document.getElementById('kmoni-indicator');
-        const statusTextEl = document.getElementById('kmoni-status-text');
-        
+        const ind = document.getElementById('kmoni-indicator'), statusTextEl = document.getElementById('kmoni-status-text');
         if (img.width < 10 || dataArray.length === 0) {
-            ind.classList.remove('archive');
-            ind.classList.add('error');
-            
-            if (isArchiveMode) {
-                statusTextEl.innerText = "過去データなし (保存期間外など)";
-                if (archiveIsPlaying) pauseArchive();
-            } else {
-                statusTextEl.innerText = "データがありません";
-            }
+            ind.classList.remove('archive'); ind.classList.add('error');
+            if (isArchiveMode) { statusTextEl.innerText = "過去データなし (保存期間外など)"; if (archiveIsPlaying) pauseArchive(); }
+            else { statusTextEl.innerText = "データがありません"; }
             document.getElementById('kmoni-time').innerText = targetTimeDisplay;
             if (kyoshinLayer) kyoshinLayer.updateData([]); 
             return;
         }
-        
         if (kyoshinLayer) kyoshinLayer.updateData(dataArray);
-        
         ind.classList.remove('error');
-        if (isArchiveMode) {
-            ind.classList.add('archive');
-            statusTextEl.innerText = archiveIsPlaying ? "アーカイブ再生中" : "アーカイブ一時停止";
-        } else {
-            ind.classList.remove('archive');
-            statusTextEl.innerText = "リアルタイム監視中";
-        }
+        if (isArchiveMode) { ind.classList.add('archive'); statusTextEl.innerText = archiveIsPlaying ? "アーカイブ再生中" : "アーカイブ一時停止"; }
+        else { ind.classList.remove('archive'); statusTextEl.innerText = "リアルタイム監視中"; }
         document.getElementById('kmoni-time').innerText = targetTimeDisplay;
     }
 
     function fetchAndDrawKmoni(targetDate, isLive = true) {
         const t = getFormatTimeStr(targetDate);
         if (isLive) fetchKmoniEEW(t); 
-        
         const baseUrl = `http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/${t.date}/${t.time}.jma_s.gif`;
         const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(baseUrl)}`;
-        
-        const img = new Image(); 
-        img.crossOrigin = "Anonymous"; 
-        
+        const img = new Image(); img.crossOrigin = "Anonymous"; 
         return new Promise((resolve, reject) => {
-            img.onload = function() {
-                sysStats.success++;
-                extractColorsFromImage(img, t.display + (isLive ? "" : " [過去]"));
-                resolve(true);
-            };
+            img.onload = function() { sysStats.success++; extractColorsFromImage(img, t.display + (isLive ? "" : " [過去]")); resolve(true); };
             img.onerror = function() {
                 sysStats.error++;
-                const ind = document.getElementById('kmoni-indicator');
-                ind.classList.remove('archive'); ind.classList.add('error');
-                
-                if (isLive) {
-                    document.getElementById('kmoni-status-text').innerText = "画像取得エラー (ラグ調整中...)";
-                } else {
-                    document.getElementById('kmoni-status-text').innerText = "データなし (保存期間外 または 通信エラー)";
-                }
+                const ind = document.getElementById('kmoni-indicator'); ind.classList.remove('archive'); ind.classList.add('error');
+                if (isLive) document.getElementById('kmoni-status-text').innerText = "画像取得エラー (ラグ調整中...)";
+                else document.getElementById('kmoni-status-text').innerText = "データなし (保存期間外 または 通信エラー)";
                 reject(false);
             };
             img.src = proxyUrl;
@@ -1634,26 +1267,21 @@
 
     function fetchKmoniImage() {
         if (!isKyoshinActive || isArchiveMode) return;
-        const now = new Date();
-        const targetTime = new Date(now.getTime() - currentKmoniTimeOffset);
-        
+        const now = new Date(), targetTime = new Date(now.getTime() - currentKmoniTimeOffset);
         fetchAndDrawKmoni(targetTime, true).then(() => {
             currentDelay = Math.floor((Date.now() - targetTime.getTime()) / 1000);
             if (isMenuOpen()) updateSettingsUI();
-            currentKmoniTimeOffset = 2000;
-            kmoniTimeout = setTimeout(fetchKmoniImage, 1000);
+            currentKmoniTimeOffset = 2000; kmoniTimeout = setTimeout(fetchKmoniImage, 1000);
         }).catch(() => {
             if (isMenuOpen()) updateSettingsUI();
-            currentKmoniTimeOffset += 1000; 
-            if (currentKmoniTimeOffset > 10000) currentKmoniTimeOffset = 2000; 
+            currentKmoniTimeOffset += 1000; if (currentKmoniTimeOffset > 10000) currentKmoniTimeOffset = 2000; 
             kmoniTimeout = setTimeout(fetchKmoniImage, 500); 
         });
     }
 
     function startKyoshinMonitor() {
         if(isKyoshinActive) return;
-        isKyoshinActive = true;
-        addSystemLog(`Info: 強震モニタを開始しました`, 'info');
+        isKyoshinActive = true; addSystemLog(`Info: 強震モニタを開始しました`, 'info');
         if(isMenuOpen()) updateSettingsUI();
         if(kmoniTimeout) clearTimeout(kmoniTimeout);
         if(!isArchiveMode) fetchKmoniImage();
@@ -1661,8 +1289,7 @@
     
     function stopKyoshinMonitor() {
         if(!isKyoshinActive) return;
-        isKyoshinActive = false;
-        if(kmoniTimeout) clearTimeout(kmoniTimeout);
+        isKyoshinActive = false; if(kmoniTimeout) clearTimeout(kmoniTimeout);
         addSystemLog(`Info: 強震モニタ解析を停止しました`, 'warn');
         if(isMenuOpen()) updateSettingsUI();
     }
@@ -1670,59 +1297,40 @@
     window.startArchive = function() {
         const dtInput = document.getElementById('archive-datetime').value;
         if (!dtInput && !archiveTime) return;
-        
-        if (!isKyoshinActive) switchTab('kyoshin');
-        
+        ensureMode('kyoshin');
         if (dtInput) { archiveTime = new Date(dtInput); }
-        
         isArchiveMode = true; archiveIsPlaying = true;
-        if (kmoniTimeout) clearTimeout(kmoniTimeout);
-        if (archiveTimer) clearTimeout(archiveTimer);
-        
-        const ind = document.getElementById('kmoni-indicator');
-        ind.classList.remove('error'); ind.classList.add('archive');
+        if (kmoniTimeout) clearTimeout(kmoniTimeout); if (archiveTimer) clearTimeout(archiveTimer);
+        const ind = document.getElementById('kmoni-indicator'); ind.classList.remove('error'); ind.classList.add('archive');
         document.getElementById('kmoni-status-text').innerText = "アーカイブ再生中";
-        
         addSystemLog(`[Archive] タイムマシン再生を開始: ${archiveTime.toLocaleString()}`, 'info');
         archiveLoop();
     };
 
     window.pauseArchive = function() {
-        archiveIsPlaying = false;
-        if (archiveTimer) clearTimeout(archiveTimer);
+        archiveIsPlaying = false; if (archiveTimer) clearTimeout(archiveTimer);
         const ind = document.getElementById('kmoni-indicator');
-        if (!ind.classList.contains('error')) {
-            document.getElementById('kmoni-status-text').innerText = "アーカイブ一時停止";
-        }
+        if (!ind.classList.contains('error')) document.getElementById('kmoni-status-text').innerText = "アーカイブ一時停止";
     };
 
     window.stopArchive = function() {
         isArchiveMode = false; archiveIsPlaying = false;
         if (archiveTimer) clearTimeout(archiveTimer);
-        
-        const ind = document.getElementById('kmoni-indicator');
-        ind.classList.remove('archive'); ind.classList.remove('error');
+        clearAllEEWs();
+        const ind = document.getElementById('kmoni-indicator'); ind.classList.remove('archive'); ind.classList.remove('error');
         document.getElementById('kmoni-status-text').innerText = "ライブ復帰中...";
         addSystemLog(`[Archive] ライブ監視モードに復帰しました`, 'info');
-        
-        currentKmoniTimeOffset = 2000;
-        fetchKmoniImage();
+        currentKmoniTimeOffset = 2000; fetchKmoniImage();
     };
 
     function archiveLoop() {
         if (!archiveIsPlaying || !isArchiveMode) return;
-        
         const speed = parseInt(document.getElementById('archive-speed').value) || 1;
-        
+        lastArchiveRealTime = Date.now(); lastArchiveTimeMs = archiveTime.getTime();
+        const tFmt = getFormatTimeStr(archiveTime); fetchKmoniEEW(tFmt);
         fetchAndDrawKmoni(archiveTime, false).then(() => {
-            updateArchiveUITime();
-            archiveTime = new Date(archiveTime.getTime() + speed * 1000);
-            archiveTimer = setTimeout(archiveLoop, 1000); 
-        }).catch(() => {
-            updateArchiveUITime();
-            pauseArchive(); 
-            addSystemLog(`[Archive] 画像が見つからないため自動停止しました（保存期間外の可能性）`, 'error');
-        });
+            updateArchiveUITime(); archiveTime = new Date(archiveTime.getTime() + speed * 1000); archiveTimer = setTimeout(archiveLoop, 1000); 
+        }).catch(() => { updateArchiveUITime(); pauseArchive(); addSystemLog(`[Archive] 画像が見つからないため自動停止しました`, 'error'); });
     }
 
     function updateArchiveUITime() {
@@ -1731,29 +1339,111 @@
         document.getElementById('archive-datetime').value = localISOTime;
     }
 
-    window.playArchiveFromEQ = function(timeStr) {
-        const d = getSafeDateObj(timeStr);
-        if (isNaN(d.getTime())) return;
+    window.playArchiveFromEQ = async function(timeStr) {
+        const btn = document.querySelector('#dp-archive-btn-container button');
+        const originalHtml = btn ? btn.innerHTML : "▶ この地震の強震モニタを再生";
+        if (btn) { btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;margin-right:4px;"></div><span>発生時刻(秒)を検索中...</span>'; btn.style.pointerEvents = 'none'; }
+        let d = getSafeDateObj(timeStr);
+        if (isNaN(d.getTime())) { if (btn) { btn.innerHTML = originalHtml; btn.style.pointerEvents = 'auto'; } return; }
         
-        d.setSeconds(d.getSeconds() - 10);
-        
-        const tzOffset = d.getTimezoneOffset() * 60000;
-        const localISOTime = (new Date(d - tzOffset)).toISOString().slice(0, 19);
-        document.getElementById('archive-datetime').value = localISOTime;
-        
+        let exactOriginTime = null;
+        if (eewTimeCache[timeStr]) { exactOriginTime = eewTimeCache[timeStr]; addSystemLog(`[Archive] キャッシュから発生時刻を読み込みました。`, 'info'); } 
+        else {
+            const baseTimeMs = d.getTime(); const checkSeconds = [15, 30, 45, 60, 75, 90]; 
+            for (let sec of checkSeconds) {
+                const checkTime = new Date(baseTimeMs + sec * 1000); const t = getFormatTimeStr(checkTime);
+                const baseUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${t.time}.json`;
+                const proxyUrl = proxyList[eewProxyIndex] + encodeURIComponent(baseUrl);
+                eewProxyIndex = (eewProxyIndex + 1) % proxyList.length;
+                try {
+                    const res = await fetch(proxyUrl); const data = await res.json();
+                    if (data && data.result && data.result.message !== "データがありません" && data.origin_time) {
+                        const ot = data.origin_time; 
+                        exactOriginTime = new Date(parseInt(ot.slice(0,4)), parseInt(ot.slice(4,6))-1, parseInt(ot.slice(6,8)), parseInt(ot.slice(8,10)), parseInt(ot.slice(10,12)), parseInt(ot.slice(12,14)));
+                        eewTimeCache[timeStr] = exactOriginTime; break; 
+                    }
+                } catch(e) {}
+            }
+        }
+        if (btn) { btn.innerHTML = originalHtml; btn.style.pointerEvents = 'auto'; }
+        let playStartTime = exactOriginTime ? new Date(exactOriginTime.getTime()) : new Date(d.getTime());
+        playStartTime.setSeconds(playStartTime.getSeconds() - 5);
+        const tzOffset = playStartTime.getTimezoneOffset() * 60000;
+        document.getElementById('archive-datetime').value = (new Date(playStartTime - tzOffset)).toISOString().slice(0, 19);
         startArchive();
+        if (exactOriginTime) { if (!eewTimeCache[timeStr] || eewTimeCache[timeStr] === exactOriginTime) addSystemLog(`[Archive] EEWから秒単位の発生時刻を特定しました。発生5秒前から再生します。`, 'success'); } 
+        else { addSystemLog(`[Archive] EEWが発表されていない地震のため、発表時刻の5秒前から再生します。`, 'warn'); }
     };
+
+    // ==========================================
+    // UI制御：ドロワー＆ナビゲーション
+    // ==========================================
+    let currentMode = 'history'; // デフォルトモード
+
+    window.toggleDrawer = function(mode) {
+        const isDrawerOpen = document.body.classList.contains('drawer-open');
+        if (currentMode === mode) {
+            if (isDrawerOpen) closeDrawer(); else openDrawer(mode);
+        } else {
+            currentMode = mode; executeModeSwitch(mode); openDrawer(mode);
+        }
+    };
+
+    function openDrawer(mode) {
+        document.body.classList.add('drawer-open');
+        document.getElementById('drawer-panel').classList.add('open');
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`btn-${mode}`).classList.add('active');
+        document.querySelectorAll('.drawer-content').forEach(c => c.classList.remove('active'));
+        document.getElementById(`content-${mode}`).classList.add('active');
+        const titles = { 'history': '地震履歴', 'tsunami': '津波情報', 'kyoshin': '強震モニタ' };
+        document.getElementById('drawer-title').innerText = titles[mode];
+    }
+
+    window.closeDrawer = function() {
+        document.body.classList.remove('drawer-open');
+        document.getElementById('drawer-panel').classList.remove('open');
+    };
+
+    // 外部機能から強制的にモードを切り替える（例：EEWテスト時）
+    function ensureMode(mode) {
+        if (currentMode !== mode) {
+            currentMode = mode; executeModeSwitch(mode);
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${mode}`).classList.add('active');
+            document.querySelectorAll('.drawer-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`content-${mode}`).classList.add('active');
+            const titles = { 'history': '地震履歴', 'tsunami': '津波情報', 'kyoshin': '強震モニタ' };
+            document.getElementById('drawer-title').innerText = titles[mode];
+        }
+    }
+
+    function executeModeSwitch(tabName) {
+        closeDetailPanel(); closeTsunamiPanel();
+        if (tabName === 'kyoshin') {
+            if (map.hasLayer(allEarthquakesLayer)) map.removeLayer(allEarthquakesLayer);
+            if (kyoshinLayer && !map.hasLayer(kyoshinLayer)) map.addLayer(kyoshinLayer);
+            startKyoshinMonitor();
+            const toggle = document.getElementById('kmoni-color-mode-toggle'); updateLegend(toggle && toggle.checked ? 'kyoshin-calc' : 'kyoshin');
+        } else {
+            stopKyoshinMonitor();
+            if (kyoshinLayer && map.hasLayer(kyoshinLayer)) map.removeLayer(kyoshinLayer);
+            if (tabName === 'tsunami') {
+                if (map.hasLayer(allEarthquakesLayer)) map.removeLayer(allEarthquakesLayer);
+                if (!isTsunamiListRendered) { renderTsunamiList(); isTsunamiListRendered = true; }
+                updateLegend('tsunami');
+            } else {
+                if (!map.hasLayer(allEarthquakesLayer)) map.addLayer(allEarthquakesLayer);
+                updateLegend('earthquake');
+            }
+        }
+    }
 
     // ==========================================
     // データ読み込み ＆ 初期化 ＆ 自動監視
     // ==========================================
-    let stationsData = [];
-    let tsunamiDataList = []; 
-    let tsunamiGeoData = null; 
-    let isTsunamiListRendered = false; 
-    let isTsunamiFetchError = false; 
-    let lastTsunamiId = null;
-    let tsunamiPollingTimer = null;
+    let stationsData = []; let tsunamiDataList = []; let tsunamiGeoData = null; let isTsunamiListRendered = false; 
+    let isTsunamiFetchError = false; let lastTsunamiId = null; let tsunamiPollingTimer = null;
 
     const ZOOM_THRESHOLD = 9;
     map.on('zoomend', function() {
@@ -1770,29 +1460,23 @@
                 if (!res.ok) return;
                 const listData = await res.json();
                 if (listData && listData.length > 0) {
-                    const latestItem = listData[0];
-                    const latestId = latestItem.reportDatetime;
+                    const latestItem = listData[0]; const latestId = latestItem.reportDatetime;
                     if (lastTsunamiId && latestId !== lastTsunamiId) {
                         const detailRes = await fetch(`https://www.jma.go.jp/bosai/tsunami/data/${latestItem.json}`);
                         if(!detailRes.ok) return;
                         const detailData = await detailRes.json();
                         const latest = convertJMAToP2P(detailData, latestItem.reportDatetime);
-                        
                         lastTsunamiId = latestId;
-                        
                         const isDuplicate = tsunamiDataList.some(item => Math.abs(new Date(item.created_at).getTime() - new Date(latest.created_at).getTime()) < 3600000);
                         if(!isDuplicate) {
                             tsunamiDataList.unshift(latest);
-                            if (document.getElementById('tsunami-list-container').style.display !== 'none') renderTsunamiList();
-                            drawTsunamiCoastlines(latest);
-                            updateTsunamiPanelUI(latest);
+                            if (currentMode === 'tsunami') renderTsunamiList();
+                            drawTsunamiCoastlines(latest); updateTsunamiPanelUI(latest);
                             document.getElementById('tp-main-header').innerText = latest.cancelled ? "津波予報・警報 (解除等)" : "津波情報 (自動受信)";
                             document.getElementById('tsunami-panel').classList.add('show');
                             addSystemLog(`[自動受信] 新しい津波情報を検知・表示しました`, 'warn');
                         }
-                    } else if (!lastTsunamiId) {
-                        lastTsunamiId = latestId;
-                    }
+                    } else if (!lastTsunamiId) { lastTsunamiId = latestId; }
                 }
             } catch (e) {}
         }, 30000); 
@@ -1811,74 +1495,48 @@
             japanGeoData = geoData;
             L.geoJSON(geoData, { pane: 'baseMapPane', style: { color: "#3A3A3C", weight: 1, fillColor: "#1C1C1E", fillOpacity: 1 } }).addTo(map);
         }
-        stationsData = stations || []; 
-        tsunamiGeoData = tGeo; 
-        intensityPointsData = [];
+        stationsData = stations || []; tsunamiGeoData = tGeo; intensityPointsData = [];
         if (intPoints && intPoints.length > 0) {
             intPoints.forEach(st => {
                 if (st.location && st.point && st.point.center_point) {
-                    intensityPointsData.push({
-                        name: st.name || st.code,
-                        lat: st.location.latitude, lon: st.location.longitude,
-                        x: st.point.center_point.x, y: st.point.center_point.y
-                    });
+                    intensityPointsData.push({ name: st.name || st.code, lat: st.location.latitude, lon: st.location.longitude, x: st.point.center_point.x, y: st.point.center_point.y });
                 }
             });
         }
         
-        let mergedTsunami = [...(jmaTsunami || [])];
-        const combinedP2P = [...(p2pTsunami1 || []), ...(p2pTsunami2 || [])];
-        
+        let mergedTsunami = [...(jmaTsunami || [])]; const combinedP2P = [...(p2pTsunami1 || []), ...(p2pTsunami2 || [])];
         combinedP2P.forEach(p2pItem => {
             const p2pTime = new Date(p2pItem.created_at).getTime();
-            const isDuplicate = mergedTsunami.some(jmaItem => {
-                const jmaTime = new Date(jmaItem.created_at).getTime();
-                return Math.abs(p2pTime - jmaTime) < 3600000; 
-            });
-            if (!isDuplicate) {
-                mergedTsunami.push(p2pItem);
-            }
+            const isDuplicate = mergedTsunami.some(jmaItem => Math.abs(p2pTime - new Date(jmaItem.created_at).getTime()) < 3600000);
+            if (!isDuplicate) mergedTsunami.push(p2pItem);
         });
-        
         mergedTsunami.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
         if (mergedTsunami.length === 0) isTsunamiFetchError = true;
         tsunamiDataList = mergedTsunami;
         if (tsunamiDataList.length > 0) lastTsunamiId = tsunamiDataList[0].id || tsunamiDataList[0].created_at;
         
-        fetchEarthquakeHistory();
-        startTsunamiPolling();
-    }).catch(err => {
-        addSystemLog(`Err: 初期データの読み込みに失敗しました`, 'error');
-    });
+        fetchEarthquakeHistory(); startTsunamiPolling();
+    }).catch(err => { addSystemLog(`Err: 初期データの読み込みに失敗しました`, 'error'); });
 
     function safeFormatDateString(rawTimeStr) {
         if (!rawTimeStr) return "--/-- --:--";
-        const safeStr = rawTimeStr.replace(/-/g, '/').replace(/T/, ' ').replace(/\+.*/, '').replace(/Z/, '');
-        const d = new Date(safeStr);
+        const safeStr = rawTimeStr.replace(/-/g, '/').replace(/T/, ' ').replace(/\+.*/, '').replace(/Z/, ''); const d = new Date(safeStr);
         if (isNaN(d.getTime())) return rawTimeStr; 
         return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     }
     function getSafeDateObj(rawTimeStr) {
         if (!rawTimeStr) return new Date(NaN);
-        const safeStr = rawTimeStr.replace(/-/g, '/').replace(/T/, ' ').replace(/\+.*/, '').replace(/Z/, '');
-        return new Date(safeStr);
+        const safeStr = rawTimeStr.replace(/-/g, '/').replace(/T/, ' ').replace(/\+.*/, '').replace(/Z/, ''); return new Date(safeStr);
     }
     function getIntensityColor(scale) {
-        switch (scale) {
-            case 10: return '#64D2FF'; case 20: return '#0A84FF'; case 30: return '#30D158';
-            case 40: return '#FFD60A'; case 45: return '#FF9F0A'; case 50: return '#FF453A';
-            case 55: return '#FF2D55'; case 60: return '#BF5AF2'; case 70: return '#5E5CE6';
-            default: return '#8E8E93';
-        }
+        switch (scale) { case 10: return '#64D2FF'; case 20: return '#0A84FF'; case 30: return '#30D158'; case 40: return '#FFD60A'; case 45: return '#FF9F0A'; case 50: return '#FF453A'; case 55: return '#FF2D55'; case 60: return '#BF5AF2'; case 70: return '#5E5CE6'; default: return '#8E8E93'; }
     }
     function getIntensityString(scale) {
-        const scaleMap = { 10: "1", 20: "2", 30: "3", 40: "4", 45: "5弱", 50: "5強", 55: "6弱", 60: "6強", 70: "7" };
-        return scaleMap[scale] || "?";
+        const scaleMap = { 10: "1", 20: "2", 30: "3", 40: "4", 45: "5弱", 50: "5強", 55: "6弱", 60: "6強", 70: "7" }; return scaleMap[scale] || "?";
     }
     function getShortIntensityString(scale) {
-        const scaleMap = { 10: "1", 20: "2", 30: "3", 40: "4", 45: "5-", 50: "5+", 55: "6-", 60: "6+", 70: "7" };
-        return scaleMap[scale] || "?";
+        const scaleMap = { 10: "1", 20: "2", 30: "3", 40: "4", 45: "5-", 50: "5+", 55: "6-", 60: "6+", 70: "7" }; return scaleMap[scale] || "?";
     }
 
     let legendDiv = null;
@@ -1886,91 +1544,39 @@
         if (!legendDiv) return;
         let html = '';
         if (type === 'earthquake') {
-            const grades = [10, 20, 30, 40, 45, 50, 55, 60, 70];
-            const labels = ['1', '2', '3', '4', '5-', '5+', '6-', '6+', '7'];
-            html = '<strong>最大震度</strong>';
+            const grades = [10, 20, 30, 40, 45, 50, 55, 60, 70]; const labels = ['1', '2', '3', '4', '5-', '5+', '6-', '6+', '7']; html = '<strong>最大震度</strong>';
             for (let i = 0; i < grades.length; i++) html += '<div><i style="background:' + getIntensityColor(grades[i]) + '"></i> ' + labels[i] + '</div>';
         } else if (type === 'tsunami') {
-            const colors = ['#BF5AF2', '#FF453A', '#FFD60A', '#64D2FF', '#8E8E93'];
-            const labels = ['大津波警報', '津波警報', '津波注意報', '若干の海面変動', '調査中・解除'];
-            html = '<strong>津波予報</strong>';
+            const colors = ['#BF5AF2', '#FF453A', '#FFD60A', '#64D2FF', '#8E8E93']; const labels = ['大津波警報', '津波警報', '津波注意報', '若干の海面変動', '調査中・解除']; html = '<strong>津波予報</strong>';
             for (let i = 0; i < colors.length; i++) html += '<div><i style="background:' + colors[i] + '"></i> ' + labels[i] + '</div>';
         } else if (type === 'kyoshin') {
-            html = `
-                <strong>強震モニタ</strong>
-                <div style="display: flex;">
-                    <div style="width: 15px; height: 180px; background: linear-gradient(to top, #0000cd 0%, #00bfff 15%, #00ff00 30%, #ffff00 50%, #ffa500 65%, #ff0000 80%, #b22222 90%, #800080 100%); border: 1px solid #555; border-radius: 3px; margin-right: 10px;"></div>
-                    <div style="display: flex; flex-direction: column; justify-content: space-between; font-size: 11px; font-weight: bold; height: 180px;">
-                        <span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span><span>0</span><span>-3</span>
-                    </div>
-                </div>
-                <div style="font-size:11px; color:#aaa; margin-top:8px;">● = 陸上</div>
-            `;
+            html = `<strong>強震モニタ</strong><div style="display: flex;"><div style="width: 15px; height: 180px; background: linear-gradient(to top, #000080 0%, #0044FF 10%, #00AAFF 20%, #00FFFF 30%, #00FF00 40%, #ADFF2F 50%, #FFFF00 60%, #FFA500 70%, #FF0000 80%, #800000 90%, #4B0082 100%); border: 1px solid #555; border-radius: 3px; margin-right: 10px;"></div><div style="display: flex; flex-direction: column; justify-content: space-between; font-size: 11px; font-weight: bold; height: 180px;"><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span><span>0</span><span>-1</span><span>-2</span><span>-3</span></div></div><div style="font-size:11px; color:#aaa; margin-top:8px;">● = 陸上</div>`;
         } else if (type === 'kyoshin-calc') {
-            const grades = [10, 20, 30, 40, 45, 50, 55, 60, 70];
-            const labels = ['1', '2', '3', '4', '5-', '5+', '6-', '6+', '7'];
-            html = '<strong style="margin-bottom:6px;">推定計測震度</strong>';
+            const grades = [10, 20, 30, 40, 45, 50, 55, 60, 70]; const labels = ['1', '2', '3', '4', '5-', '5+', '6-', '6+', '7']; html = '<strong style="margin-bottom:6px; display:block;">推定計測震度</strong>';
             for (let i = 0; i < grades.length; i++) html += '<div><i style="background:' + getIntensityColor(grades[i]) + '"></i> ' + labels[i] + '</div>';
-            html += '<div style="margin-top: 8px; font-size: 10px; color: #aaa; line-height:1.2;">※震度1未満は白色<br>（透過）で表示</div>';
+            html += '<div style="margin-top: 8px; font-size: 10px; color: #aaa; line-height:1.2;">※設定値未満は透過</div>';
         }
         legendDiv.innerHTML = html;
     }
 
     // ==========================================
-    // UI イベント制御
+    // UI イベント詳細制御
     // ==========================================
-    window.switchTab = function(tabName) {
-        const tabs = document.querySelectorAll('.tab-btn');
-        tabs[0].classList.toggle('active', tabName === 'history');
-        tabs[1].classList.toggle('active', tabName === 'tsunami');
-        tabs[2].classList.toggle('active', tabName === 'kyoshin');
-        document.getElementById('list-container').style.display = tabName === 'history' ? 'block' : 'none';
-        document.getElementById('tsunami-list-container').style.display = tabName === 'tsunami' ? 'block' : 'none';
-        document.getElementById('kyoshin-list-container').style.display = tabName === 'kyoshin' ? 'block' : 'none';
-        closeDetailPanel();
-        closeTsunamiPanel();
-        if (tabName === 'kyoshin') {
-            if (map.hasLayer(allEarthquakesLayer)) map.removeLayer(allEarthquakesLayer);
-            if (kyoshinLayer && !map.hasLayer(kyoshinLayer)) map.addLayer(kyoshinLayer);
-            startKyoshinMonitor();
-            const toggle = document.getElementById('kmoni-color-mode-toggle');
-            updateLegend(toggle && toggle.checked ? 'kyoshin-calc' : 'kyoshin');
-        } else {
-            stopKyoshinMonitor();
-            if (kyoshinLayer && map.hasLayer(kyoshinLayer)) map.removeLayer(kyoshinLayer);
-            if (tabName === 'tsunami') {
-                if (map.hasLayer(allEarthquakesLayer)) map.removeLayer(allEarthquakesLayer);
-                if (!isTsunamiListRendered) { renderTsunamiList(); isTsunamiListRendered = true; }
-                updateLegend('tsunami');
-            } else {
-                if (!map.hasLayer(allEarthquakesLayer)) map.addLayer(allEarthquakesLayer);
-                updateLegend('earthquake');
-            }
-        }
-    };
-
     window.toggleKyoshinColorMode = function(checkbox) {
         if (kyoshinLayer) kyoshinLayer.setCalcMode(checkbox.checked);
         updateLegend(checkbox.checked ? 'kyoshin-calc' : 'kyoshin');
     };
 
     window.toggleExtendedArea = function() {
-        const area = document.getElementById('dp-extended-area');
-        const btn = document.getElementById('dp-toggle-btn');
-        if (area.classList.contains('collapsed')) {
-            area.classList.remove('collapsed'); btn.innerHTML = '詳細情報を閉じる ▲';
-        } else {
-            area.classList.add('collapsed'); btn.innerHTML = '詳細情報を表示 ▼'; closeTsunamiPanel(); 
-        }
+        const area = document.getElementById('dp-extended-area'); const btn = document.getElementById('dp-toggle-btn');
+        if (area.classList.contains('collapsed')) { area.classList.remove('collapsed'); btn.innerHTML = '詳細情報を閉じる ▲'; } 
+        else { area.classList.add('collapsed'); btn.innerHTML = '詳細情報を表示 ▼'; closeTsunamiPanel(); }
     };
 
     window.toggleTsunamiPanelFromEarthquake = function() {
-        const commentsBox = document.getElementById('dp-comments');
-        if (!commentsBox.classList.contains('clickable')) return; 
-        const panel = document.getElementById('tsunami-panel');
-        document.getElementById('tp-main-header').innerText = "津波到達予想";
-        if (panel.classList.contains('show')) closeTsunamiPanel();
-        else panel.classList.add('show');
+        const commentsBox = document.getElementById('dp-comments'); if (!commentsBox.classList.contains('clickable')) return; 
+        const panel = document.getElementById('tsunami-panel'); document.getElementById('tp-main-header').innerText = "津波到達予想";
+        if (panel.classList.contains('show')) closeTsunamiPanel(); else panel.classList.add('show');
     };
 
     function fetchEarthquakeHistory() {
@@ -1980,32 +1586,20 @@
                 const listContainer = document.getElementById('list-container');
                 data.forEach((eq) => {
                     if (!eq.earthquake || !eq.earthquake.hypocenter) return;
-                    const hypo = eq.earthquake.hypocenter;
-                    const maxScale = eq.earthquake.maxScale;
-                    if (hypo.latitude === -200 || hypo.longitude === -200) return;
-                    if (maxScale === undefined || maxScale === null || maxScale < 10) return;
-                    const color = getIntensityColor(maxScale);
-                    const timeStr = safeFormatDateString(eq.earthquake.time);
+                    const hypo = eq.earthquake.hypocenter; const maxScale = eq.earthquake.maxScale;
+                    if (hypo.latitude === -200 || hypo.longitude === -200 || maxScale === undefined || maxScale === null || maxScale < 10) return;
+                    const color = getIntensityColor(maxScale); const timeStr = safeFormatDateString(eq.earthquake.time);
                     const radius = Math.max((hypo.magnitude || 4) * 2.5, 5);
-                    const eqCircle = L.circleMarker([hypo.latitude, hypo.longitude], {
-                        radius: radius, fillColor: color, color: color, weight: 1.5, opacity: 0.9, fillOpacity: 0.4
-                    }).bindTooltip(`${hypo.name} (M${hypo.magnitude})`).addTo(allEarthquakesLayer);
-                    const listItem = document.createElement('div');
-                    listItem.className = 'list-item';
-                    listItem.style.borderLeftColor = color; 
-                    listItem.innerHTML = `
-                        <div class="list-item-title"><span>${hypo.name || "不明"}</span><span style="color:${color};">震度${getIntensityString(maxScale)}</span></div>
-                        <div class="list-item-details">${timeStr} | M${hypo.magnitude >= 0 ? hypo.magnitude : '-'}</div>
-                    `;
+                    const eqCircle = L.circleMarker([hypo.latitude, hypo.longitude], { radius: radius, fillColor: color, color: color, weight: 1.5, opacity: 0.9, fillOpacity: 0.4 }).bindTooltip(`${hypo.name} (M${hypo.magnitude})`).addTo(allEarthquakesLayer);
+                    const listItem = document.createElement('div'); listItem.className = 'list-item'; listItem.style.borderLeftColor = color; 
+                    listItem.innerHTML = `<div class="list-item-title"><span>${hypo.name || "不明"}</span><span style="color:${color};">震度${getIntensityString(maxScale)}</span></div><div class="list-item-details">${timeStr} | M${hypo.magnitude >= 0 ? hypo.magnitude : '-'}</div>`;
                     const activateEarthquake = () => {
                         if (listItem.classList.contains('active')) { closeDetailPanel(); return; }
                         document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
-                        listItem.classList.add('active');
-                        listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        listItem.classList.add('active'); listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                         showEarthquakeDetails(eq, color);
                     };
-                    listItem.addEventListener('click', activateEarthquake);
-                    eqCircle.on('click', activateEarthquake);
+                    listItem.addEventListener('click', activateEarthquake); eqCircle.on('click', activateEarthquake);
                     listContainer.appendChild(listItem);
                 });
             });
@@ -2014,51 +1608,31 @@
     function drawTsunamiCoastlines(matchedData) {
         tsunamiLineLayer.clearLayers(); 
         if (!tsunamiGeoData || !matchedData || !matchedData.areas || matchedData.cancelled) return; 
-        const gradeMap = new Map();
-        matchedData.areas.forEach(area => gradeMap.set(area.name, area.grade));
+        const gradeMap = new Map(); matchedData.areas.forEach(area => gradeMap.set(area.name, area.grade));
         L.geoJSON(tsunamiGeoData, {
             pane: 'tsunamiPane',
-            filter: function(feature) {
-                const featureName = feature.properties.name || feature.properties.NAME || feature.properties.name_ja;
-                return gradeMap.has(featureName);
-            },
+            filter: function(feature) { const featureName = feature.properties.name || feature.properties.NAME || feature.properties.name_ja; return gradeMap.has(featureName); },
             style: function(feature) {
-                const featureName = feature.properties.name || feature.properties.NAME || feature.properties.name_ja;
-                const grade = gradeMap.get(featureName);
+                const featureName = feature.properties.name || feature.properties.NAME || feature.properties.name_ja; const grade = gradeMap.get(featureName);
                 let lineColor = '#8E8E93'; 
-                if (grade === "MajorWarning") lineColor = '#BF5AF2'; 
-                else if (grade === "Warning") lineColor = '#FF453A'; 
-                else if (grade === "Watch") lineColor = '#FFD60A';   
-                else if (grade === "NonEffective") lineColor = '#64D2FF'; 
+                if (grade === "MajorWarning") lineColor = '#BF5AF2'; else if (grade === "Warning") lineColor = '#FF453A'; else if (grade === "Watch") lineColor = '#FFD60A'; else if (grade === "NonEffective") lineColor = '#64D2FF'; 
                 return { color: lineColor, weight: 6, opacity: 0.9, lineJoin: 'round' };
             }
         }).addTo(tsunamiLineLayer);
     }
 
     function renderTsunamiList() {
-        const container = document.getElementById('tsunami-list-container');
-        container.innerHTML = '';
-        if (isTsunamiFetchError) {
-            container.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--tsunami-warning); font-size: 13px; line-height: 1.5;">津波データの取得に失敗しました。</div>`;
-            return;
-        }
-        if (!tsunamiDataList || tsunamiDataList.length === 0) {
-            container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary); font-size: 13px;">津波情報はありません</div>'; return;
-        }
+        const container = document.getElementById('tsunami-list-container'); container.innerHTML = '';
+        if (isTsunamiFetchError) { container.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--tsunami-warning); font-size: 13px; line-height: 1.5;">津波データの取得に失敗しました。</div>`; return; }
+        if (!tsunamiDataList || tsunamiDataList.length === 0) { container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary); font-size: 13px;">津波情報はありません</div>'; return; }
         let renderCount = 0;
         tsunamiDataList.forEach((tInfo) => {
             let maxGrade = "Unknown", color = "var(--tsunami-none)", title = "津波情報";
-            if (tInfo.cancelled) {
-                title = "津波予報・警報 (解除など)"; color = "var(--tsunami-none)";
-            } else {
+            if (tInfo.cancelled) { title = "津波予報・警報 (解除など)"; color = "var(--tsunami-none)"; } 
+            else {
                 const gradeWeight = { "MajorWarning": 3, "Warning": 2, "Watch": 1, "NonEffective": 0.5, "Unknown": 0 };
                 let highestWeight = -1;
-                if (tInfo.areas) {
-                    tInfo.areas.forEach(area => {
-                        const w = gradeWeight[area.grade] || 0;
-                        if (w > highestWeight) { highestWeight = w; maxGrade = area.grade; }
-                    });
-                }
+                if (tInfo.areas) { tInfo.areas.forEach(area => { const w = gradeWeight[area.grade] || 0; if (w > highestWeight) { highestWeight = w; maxGrade = area.grade; } }); }
                 if (maxGrade === "MajorWarning") { color = "var(--tsunami-major)"; title = "大津波警報"; }
                 else if (maxGrade === "Warning") { color = "var(--tsunami-warning)"; title = "津波警報"; }
                 else if (maxGrade === "Watch") { color = "var(--tsunami-watch)"; title = "津波注意報"; }
@@ -2067,18 +1641,14 @@
             }
             const rawTime = tInfo.time || (tInfo.issue && tInfo.issue.time) || tInfo.created_at;
             const timeStr = safeFormatDateString(rawTime);
-            const item = document.createElement('div');
-            item.className = 't-list-item'; item.style.borderLeftColor = color;
+            const item = document.createElement('div'); item.className = 't-list-item'; item.style.borderLeftColor = color;
             item.innerHTML = `<div class="t-list-item-title"><span style="color: ${color};">${title}</span></div><div class="t-list-item-details">${timeStr} 発表</div>`;
             item.addEventListener('click', () => {
                 if (item.classList.contains('active')) { closeTsunamiPanel(); return; }
                 document.querySelectorAll('.t-list-item').forEach(el => el.classList.remove('active'));
-                item.classList.add('active');
-                document.getElementById('detail-panel').classList.remove('show');
+                item.classList.add('active'); document.getElementById('detail-panel').classList.remove('show');
                 document.getElementById('tp-main-header').innerText = title + " (発表内容)";
-                updateTsunamiPanelUI(tInfo);
-                document.getElementById('tsunami-panel').classList.add('show');
-                drawTsunamiCoastlines(tInfo);
+                updateTsunamiPanelUI(tInfo); document.getElementById('tsunami-panel').classList.add('show'); drawTsunamiCoastlines(tInfo);
             });
             container.appendChild(item); renderCount++;
         });
@@ -2100,32 +1670,23 @@
     }
 
     function updateTsunamiPanelUI(matchedData) {
-        const listContainer = document.querySelector('#tsunami-panel .tp-list');
-        listContainer.innerHTML = ''; 
+        const listContainer = document.querySelector('#tsunami-panel .tp-list'); listContainer.innerHTML = ''; 
         if (matchedData && matchedData.cancelled) {
-             listContainer.innerHTML = `<div class="tp-item"><div class="tp-area" style="color: var(--tsunami-none); line-height: 1.5;">発表されていた津波に関する予報・警報は、すべて解除されたか、発表期限が過ぎています。</div></div>`;
-             return;
+             listContainer.innerHTML = `<div class="tp-item"><div class="tp-area" style="color: var(--tsunami-none); line-height: 1.5;">発表されていた津波に関する予報・警報は、すべて解除されたか、発表期限が過ぎています。</div></div>`; return;
         }
-        if (!matchedData || !matchedData.areas || matchedData.areas.length === 0) {
-            listContainer.innerHTML = `<div class="tp-item"><div class="tp-area" style="color: var(--text-secondary);">詳細データが見つかりません</div></div>`; return;
-        }
+        if (!matchedData || !matchedData.areas || matchedData.areas.length === 0) { listContainer.innerHTML = `<div class="tp-item"><div class="tp-area" style="color: var(--text-secondary);">詳細データが見つかりません</div></div>`; return; }
         const gradeWeight = { "MajorWarning": 3, "Warning": 2, "Watch": 1, "Unknown": 0 };
         const sortedAreas = matchedData.areas.sort((a, b) => (gradeWeight[b.grade] || 0) - (gradeWeight[a.grade] || 0));
         sortedAreas.forEach(area => {
-            const item = document.createElement('div');
-            item.className = 'tp-item';
+            const item = document.createElement('div'); item.className = 'tp-item';
             let colorVar = "var(--tsunami-none)";
-            if (area.grade === "MajorWarning") colorVar = "var(--tsunami-major)";
-            else if (area.grade === "Warning") colorVar = "var(--tsunami-warning)";
-            else if (area.grade === "Watch") colorVar = "var(--tsunami-watch)";
-            else if (area.grade === "NonEffective") colorVar = "var(--tsunami-slight)";
+            if (area.grade === "MajorWarning") colorVar = "var(--tsunami-major)"; else if (area.grade === "Warning") colorVar = "var(--tsunami-warning)"; else if (area.grade === "Watch") colorVar = "var(--tsunami-watch)"; else if (area.grade === "NonEffective") colorVar = "var(--tsunami-slight)";
             let timeText = "--:--";
             if (area.firstHeight) {
                 if (area.firstHeight.condition) timeText = area.firstHeight.condition;
                 else if (area.firstHeight.time) {
                     const d = getSafeDateObj(area.firstHeight.time);
-                    if (!isNaN(d.getTime())) timeText = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-                    else timeText = area.firstHeight.time;
+                    if (!isNaN(d.getTime())) timeText = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; else timeText = area.firstHeight.time;
                 }
             }
             let heightText = area.maxHeight && area.maxHeight.description ? area.maxHeight.description : "";
@@ -2137,17 +1698,13 @@
     function showEarthquakeDetails(eq, mainColor) {
         map.removeLayer(allEarthquakesLayer);
         if (kyoshinLayer && map.hasLayer(kyoshinLayer)) map.removeLayer(kyoshinLayer); 
-        detailLayer.clearLayers();
-        tsunamiLineLayer.clearLayers(); 
-        map.addLayer(detailLayer);
-        closeTsunamiPanel(); 
+        detailLayer.clearLayers(); tsunamiLineLayer.clearLayers(); map.addLayer(detailLayer); closeTsunamiPanel(); 
         const hypo = eq.earthquake.hypocenter;
         
         const epicIcon = L.divIcon({ className: 'custom-div-icon', html: '<div class="eew-marker-cross"></div>', iconSize: [0, 0] });
         L.marker([hypo.latitude, hypo.longitude], { icon: epicIcon, zIndexOffset: 20000 }).addTo(detailLayer);
         
-        const stationsListContainer = document.getElementById('dp-stations-list');
-        stationsListContainer.innerHTML = ''; 
+        const stationsListContainer = document.getElementById('dp-stations-list'); stationsListContainer.innerHTML = ''; 
         let commentHtml = "", tStatus = eq.earthquake && eq.earthquake.domesticTsunami ? eq.earthquake.domesticTsunami : "None";
         let tColorVar = "var(--tsunami-none)", isTsunamiActive = false; 
         switch (tStatus) {
@@ -2163,12 +1720,9 @@
         }
         if (eq.comments && eq.comments.freeFormComment) commentHtml += `<br><br><strong>【気象庁付加文】</strong><br>${eq.comments.freeFormComment}`;
         
-        const commentsBox = document.getElementById('dp-comments');
-        document.getElementById('dp-comments-text').innerHTML = commentHtml;
-        commentsBox.style.borderLeftColor = tColorVar;
+        const commentsBox = document.getElementById('dp-comments'); document.getElementById('dp-comments-text').innerHTML = commentHtml; commentsBox.style.borderLeftColor = tColorVar;
         if (isTsunamiActive) {
-            commentsBox.classList.add('clickable');
-            const matchedTsunami = getMatchingTsunamiInfo(eq.earthquake.time);
+            commentsBox.classList.add('clickable'); const matchedTsunami = getMatchingTsunamiInfo(eq.earthquake.time);
             updateTsunamiPanelUI(matchedTsunami); drawTsunamiCoastlines(matchedTsunami);
         } else commentsBox.classList.remove('clickable');
         if (eq.points && eq.points.length > 0) {
@@ -2184,57 +1738,39 @@
             });
             listSortedPoints.forEach(p => {
                 const scaleColor = getIntensityColor(p.scale), scaleStr = getIntensityString(p.scale);
-                const item = document.createElement('div');
-                item.className = 'dp-station-item';
-                item.innerHTML = `<span class="dp-station-name">${p.addr}</span><span class="dp-station-scale" style="background-color: ${scaleColor};">${scaleStr}</span>`;
-                stationsListContainer.appendChild(item);
+                const item = document.createElement('div'); item.className = 'dp-station-item';
+                item.innerHTML = `<span class="dp-station-name">${p.addr}</span><span class="dp-station-scale" style="background-color: ${scaleColor};">${scaleStr}</span>`; stationsListContainer.appendChild(item);
             });
         } else stationsListContainer.innerHTML = '<div style="padding: 10px; text-align: center; color: var(--text-secondary); font-size: 13px;">詳細な観測点データがありません</div>';
         map.setView([hypo.latitude, hypo.longitude], 7, { animate: true, duration: 0.5 });
         document.getElementById('dp-scale-label').innerText = "最大震度"; 
-        const scaleValue = document.getElementById('dp-scale');
-        scaleValue.innerText = getIntensityString(eq.earthquake.maxScale);
-        scaleValue.style.color = mainColor; 
-        scaleValue.style.fontSize = "34px"; 
-        document.getElementById('dp-box').style.borderColor = mainColor;
-        document.getElementById('dp-box').style.background = "rgba(0,0,0,0.3)";
+        const scaleValue = document.getElementById('dp-scale'); scaleValue.innerText = getIntensityString(eq.earthquake.maxScale); scaleValue.style.color = mainColor; scaleValue.style.fontSize = "34px"; 
+        document.getElementById('dp-box').style.borderColor = mainColor; document.getElementById('dp-box').style.background = "rgba(0,0,0,0.3)";
         document.getElementById('detail-panel').style.backgroundColor = "rgba(28, 28, 30, 0.45)";
-        const dpNameEl = document.getElementById('dp-name');
-        dpNameEl.innerText = hypo.name || "震源地不明"; dpNameEl.title = hypo.name || "震源地不明"; 
+        const dpNameEl = document.getElementById('dp-name'); dpNameEl.innerText = hypo.name || "震源地不明"; dpNameEl.title = hypo.name || "震源地不明"; 
         document.getElementById('dp-time').innerText = safeFormatDateString(eq.earthquake.time) + " 発生";
-        document.getElementById('dp-mag').innerText = hypo.magnitude >= 0 ? hypo.magnitude.toFixed(1) : '-.-';
-        document.getElementById('dp-depth').innerText = hypo.depth >= 0 ? hypo.depth : '--';
-        document.getElementById('dp-extended-area').classList.add('collapsed');
-        document.getElementById('dp-toggle-btn').innerHTML = '詳細情報を表示 ▼';
-        document.getElementById('detail-panel').classList.add('show');
-        document.getElementById('dp-extended-area').scrollTop = 0;
+        document.getElementById('dp-mag').innerText = hypo.magnitude >= 0 ? hypo.magnitude.toFixed(1) : '-.-'; document.getElementById('dp-depth').innerText = hypo.depth >= 0 ? hypo.depth : '--';
+        document.getElementById('dp-extended-area').classList.add('collapsed'); document.getElementById('dp-toggle-btn').innerHTML = '詳細情報を表示 ▼';
+        document.getElementById('detail-panel').classList.add('show'); document.getElementById('dp-extended-area').scrollTop = 0;
         
-        const eqTimeMs = getSafeDateObj(eq.earthquake.time).getTime();
-        const nowMs = Date.now();
+        const eqTimeMs = getSafeDateObj(eq.earthquake.time).getTime(); const nowMs = Date.now();
         const isWithin4Hours = (nowMs - eqTimeMs) <= (4 * 60 * 60 * 1000) && (nowMs - eqTimeMs) >= 0;
-
         const archiveContainer = document.getElementById('dp-archive-btn-container');
 
         if (isWithin4Hours) {
-            // アーカイブ再生ボタンを表示
-            archiveContainer.innerHTML = `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);"><button class="sp-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(100, 210, 255, 0.2); border-color: rgba(100, 210, 255, 0.5); color: #64D2FF;" onclick="playArchiveFromEQ('${eq.earthquake.time}')">▶ この地震の強震モニタを再生</button><div style="font-size: 10px; color: #aaa; margin-top: 6px; text-align: center;">※発生10秒前から自動再生</div></div>`;
+            archiveContainer.innerHTML = `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);"><button class="sp-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(100, 210, 255, 0.2); border-color: rgba(100, 210, 255, 0.5); color: #64D2FF;" onclick="playArchiveFromEQ('${eq.earthquake.time}')">▶ この地震の強震モニタを再生</button><div style="font-size: 10px; color: #aaa; margin-top: 6px; text-align: center;">※発生時刻(秒)を検索し、5秒前から自動再生</div></div>`;
             archiveContainer.style.display = 'block';
-        } else {
-            // 4時間以上前の場合は非表示
-            archiveContainer.innerHTML = '';
-            archiveContainer.style.display = 'none';
-        }
+        } else { archiveContainer.innerHTML = ''; archiveContainer.style.display = 'none'; }
     }
 
     window.closeDetailPanel = function() {
         document.getElementById('detail-panel').classList.remove('show');
         document.getElementById('detail-panel').style.backgroundColor = "rgba(28, 28, 30, 0.45)";
         document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
-        map.removeLayer(detailLayer);
-        closeTsunamiPanel(); 
+        map.removeLayer(detailLayer); closeTsunamiPanel(); 
         
-        const isHistoryTab = document.querySelectorAll('.tab-btn')[0].classList.contains('active');
-        const isKyoshinTab = document.querySelectorAll('.tab-btn')[2].classList.contains('active');
+        const isHistoryTab = (currentMode === 'history');
+        const isKyoshinTab = (currentMode === 'kyoshin');
         if (isHistoryTab) map.addLayer(allEarthquakesLayer);
         else map.removeLayer(allEarthquakesLayer);
         if (isKyoshinTab && kyoshinLayer && !map.hasLayer(kyoshinLayer)) map.addLayer(kyoshinLayer);
@@ -2248,11 +1784,7 @@
     };
 
     const legend = L.control({position: 'bottomright'});
-    legend.onAdd = function () {
-        legendDiv = L.DomUtil.create('div', 'legend');
-        updateLegend('earthquake');
-        return legendDiv;
-    };
+    legend.onAdd = function () { legendDiv = L.DomUtil.create('div', 'legend'); updateLegend('earthquake'); return legendDiv; };
     legend.addTo(map);
 
     const style = document.createElement('style');
