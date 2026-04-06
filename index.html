@@ -108,14 +108,23 @@
         @keyframes pulse { 0% { transform: scale(0.95); opacity: 0.5; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.95); opacity: 0.5; } }
 
         #map-container { flex-grow: 1; position: relative; background-color: #0c0c0e; }
-        #map-container:fullscreen { background-color: #0c0c0e; width: 100vw; height: 100vh; } /* 全画面用 */
+        
+        /* 🚨 フルスクリーン（ネイティブ & 擬似）のレイアウト補正 */
+        #map-container:fullscreen, #map-container.pseudo-fullscreen { 
+            background-color: #0c0c0e; width: 100vw !important; height: 100dvh !important; 
+            position: fixed !important; top: 0 !important; left: 0 !important; z-index: 9999 !important;
+        }
+        #map-container:fullscreen #detail-panel,
+        #map-container:fullscreen .eew-container,
+        #map-container:fullscreen .ios-panel-container,
+        #map-container.pseudo-fullscreen #detail-panel,
+        #map-container.pseudo-fullscreen .eew-container,
+        #map-container.pseudo-fullscreen .ios-panel-container { 
+            left: 20px !important; margin-left: 0 !important; 
+        }
+
         #map { width: 100%; height: 100%; background-color: #0c0c0e; }
         
-        /* フルスクリーン時のフローティングレイアウト補正 */
-        #map-container:fullscreen #detail-panel,
-        #map-container:fullscreen .eew-container { left: 20px !important; margin-left: 0 !important; }
-        #map-container:fullscreen .ios-panel-container { left: 20px !important; }
-
         .legend {
             background: var(--surface-color); backdrop-filter: blur(20px); padding: 10px 14px; border-radius: 12px; border: 0.5px solid var(--border-color); line-height: 1.6; color: var(--text-primary); font-size: 12px;
         }
@@ -197,7 +206,12 @@
         .eew-minimized.forecast { background-color: #FFCC00; color: #1C1C1E; }
         @keyframes pulse-minimized-red { 0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 59, 48, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); } }
 
-        .eew-panel { pointer-events: auto; position: relative; box-sizing: border-box; width: 280px; flex-shrink: 0; background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); color: #FFFFFF; animation: slideInEew 0.4s cubic-bezier(0.16, 1, 0.3, 1); transition: background-color 0.3s, border-color 0.3s, opacity 0.3s, transform 0.3s; }
+        /* 🚨 eew-panel と tsunami-panel に共通のCSSを適用し、意図しないスクロールを防止 */
+        .eew-panel, #eew-panel, #tsunami-panel { pointer-events: auto; position: relative; box-sizing: border-box; width: 280px; flex-shrink: 0; background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); color: #FFFFFF; transition: background-color 0.3s, border-color 0.3s, opacity 0.3s, transform 0.3s; }
+        .eew-panel { animation: slideInEew 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        #eew-panel, #tsunami-panel { position: absolute; top: 60px; right: 10px; max-width: calc(100vw - 20px); max-height: 40vh; z-index: 1000; opacity: 0; transform: translateX(20px); pointer-events: none; display: flex; flex-direction: column; }
+        #eew-panel.show, #tsunami-panel.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
+        
         .plum-badge { background-color: #8E44AD; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; margin-left: 6px; font-weight: bold; vertical-align: 2px; box-shadow: 0 0 5px rgba(142,68,173,0.8); }
         @keyframes slideInEew { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
 
@@ -217,7 +231,6 @@
         #detail-panel { position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); width: 280px; max-width: calc(100vw - 20px); background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; display: flex; flex-direction: column; opacity: 0; transform: translateY(150%); transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s, margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); pointer-events: none; box-sizing: border-box; }
         #detail-panel.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
         
-        #tsunami-panel { position: absolute; top: 60px; right: 10px; width: 280px; max-width: calc(100vw - 20px); max-height: 40vh; background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; opacity: 0; transform: translateX(20px); pointer-events: none; transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; } #tsunami-panel.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
         .tp-header { font-size: 16px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px; color: #fff; padding-right: 28px; flex-shrink: 0; } .tp-list { overflow-y: auto; padding-right: 4px; flex-grow: 1; } .tp-list::-webkit-scrollbar { width: 4px; } .tp-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
         .tp-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); } .tp-item:last-child { border-bottom: none; } .tp-area { font-size: 15px; font-weight: 600; color: #e5e5ea; } .tp-details { font-size: 13px; color: var(--text-secondary); text-align: right;} .tp-height { font-size: 15px; font-weight: bold; margin-left: 8px;} 
         
@@ -645,38 +658,60 @@
 
             L.DomEvent.disableClickPropagation(container);
 
+            let isPseudoFS = false;
+
             L.DomEvent.on(fsBtn, 'click', function(e) {
                 L.DomEvent.preventDefault(e);
-                toggleFullScreen();
+                var elem = document.getElementById("map-container");
+                
+                // ネイティブフルスクリーンか、擬似フルスクリーンか判定
+                if (!document.fullscreenElement && !isPseudoFS) {
+                    if (elem.requestFullscreen) { elem.requestFullscreen(); }
+                    else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); }
+                    else if (elem.msRequestFullscreen) { elem.msRequestFullscreen(); }
+                    else {
+                        // 🚨 iOS等向け擬似フルスクリーンフォールバック
+                        elem.classList.add('pseudo-fullscreen');
+                        isPseudoFS = true;
+                        updateFSIcon(true);
+                        setTimeout(() => map.invalidateSize(), 200);
+                    }
+                } else {
+                    if (document.exitFullscreen && document.fullscreenElement) { document.exitFullscreen(); }
+                    else if (document.webkitExitFullscreen && document.fullscreenElement) { document.webkitExitFullscreen(); }
+                    else if (document.msExitFullscreen && document.fullscreenElement) { document.msExitFullscreen(); }
+                    else if (isPseudoFS) {
+                        elem.classList.remove('pseudo-fullscreen');
+                        isPseudoFS = false;
+                        updateFSIcon(false);
+                        setTimeout(() => map.invalidateSize(), 200);
+                    }
+                }
             });
             L.DomEvent.on(inBtn, 'click', function(e) { L.DomEvent.preventDefault(e); map.zoomIn(); });
             L.DomEvent.on(outBtn, 'click', function(e) { L.DomEvent.preventDefault(e); map.zoomOut(); });
+
+            function updateFSIcon(isFullscreen) {
+                if (isFullscreen) {
+                    fsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+                } else {
+                    fsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+                }
+            }
+
+            document.addEventListener("fullscreenchange", function() {
+                updateFSIcon(!!document.fullscreenElement);
+                setTimeout(() => map.invalidateSize(), 200);
+            });
 
             return container;
         }
     });
     map.addControl(new L.Control.CustomZoom());
 
-    function toggleFullScreen() {
-        var elem = document.getElementById("map-container");
-        if (!document.fullscreenElement) {
-            if (elem.requestFullscreen) elem.requestFullscreen();
-            else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-            else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-        } else {
-            if (document.exitFullscreen) document.exitFullscreen();
-            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-            else if (document.msExitFullscreen) document.msExitFullscreen();
-        }
-    }
-
-    document.addEventListener("fullscreenchange", function() {
-        const fsBtn = document.querySelector('.custom-btn-fs');
-        if (document.fullscreenElement) {
-            fsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
-        } else {
-            fsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
-        }
+    // 画面回転時もサイズをリセット
+    window.addEventListener('orientationchange', function() {
+        setTimeout(() => map.invalidateSize(), 200);
     });
 
     // ==========================================
@@ -1059,9 +1094,8 @@
         let found = null;
         const zoom = map.getZoom();
         const radius = zoom >= 9 ? 12 : (zoom >= 7 ? 8 : 4);
-        const hitRadius = Math.max(radius, 8); // 当たり判定の最小ピクセル
+        const hitRadius = Math.max(radius, 8); 
 
-        // 重なりを考慮し、上に描画されるデータ(配列の後方)から判定
         for (let i = stationLayer._data.length - 1; i >= 0; i--) {
             const item = stationLayer._data[i];
             const p = map.latLngToContainerPoint([item.lat, item.lon]);
@@ -2235,7 +2269,7 @@
                 multiEventTimer = setTimeout(playPulse, interval);
             } else {
                 currentIndex = 0;
-                multiEventTimer = setTimeout(playPulse, 5000); // 🚨 1周完了後、5秒間のインターバル
+                multiEventTimer = setTimeout(playPulse, 5000); // 1周完了後、5秒間のインターバル
             }
         }
         
@@ -2250,12 +2284,12 @@
         if (multiEventTimer) { clearTimeout(multiEventTimer); multiEventTimer = null; }
         multiEventMarkers = [];
         let bounds = []; 
-        let stationDrawData = []; // Canvas描画用配列
+        let stationDrawData = []; 
 
         const hypo = eq.earthquake.hypocenter;
+        
+        // 🚨 1. 付加文を上部に配置し、津波情報は後から追加する
         let commentHtml = "";
-
-        // 🚨 1. 付加文を上部に配置
         if (eq.comments && eq.comments.freeFormComment) {
             commentHtml += `<strong>【付加文】</strong><br>${eq.comments.freeFormComment}`;
         }
@@ -2264,10 +2298,11 @@
         let isTsunamiActive = false;
         let tColorVar = "var(--tsunami-none)";
         const matchedTsunami = getMatchingTsunamiInfo(eq.earthquake.time);
+        let tsunamiTextHtml = "";
 
         if (eq.isCsv) {
             if (matchedTsunami) {
-                commentHtml += (commentHtml ? `<br><br>` : "") + `<strong>【津波情報】</strong><br>この地震に関する津波情報が発表されています。`;
+                tsunamiTextHtml = `<strong>【津波情報】</strong><br>この地震に関する津波情報が発表されています。`;
                 isTsunamiActive = true;
                 
                 let maxGrade = "Unknown";
@@ -2299,28 +2334,31 @@
                     if (eq.comments && eq.comments.forecast && eq.comments.forecast.text) tsunamiText = eq.comments.forecast.text;
                     else tsunamiText = `津波に関する情報はありません。`;
             }
-            commentHtml += (commentHtml ? `<br><br>` : "") + `<strong>【津波情報】</strong><br>${tsunamiText}`;
+            tsunamiTextHtml = `<strong>【津波情報】</strong><br>${tsunamiText}`;
+        }
+
+        // 付加文と津波情報を結合
+        if (tsunamiTextHtml) {
+            if (commentHtml !== "") commentHtml += "<br><br>";
+            commentHtml += tsunamiTextHtml;
         }
 
         const commentsBox = document.getElementById('dp-comments'); 
-        document.getElementById('dp-comments-text').innerHTML = commentHtml; 
-        
-        if (isTsunamiActive && matchedTsunami) {
-            commentsBox.style.borderLeftColor = tColorVar;
-            commentsBox.classList.add('clickable'); 
-            updateTsunamiPanelUI(matchedTsunami); 
-            drawTsunamiCoastlines(matchedTsunami);
-            commentsBox.style.display = 'block';
-        } else if (isTsunamiActive && !matchedTsunami) {
-            commentsBox.style.borderLeftColor = tColorVar;
-            commentsBox.classList.remove('clickable'); 
-            commentsBox.style.display = 'block';
-        } else if (!isTsunamiActive && eq.isCsv) {
+        // 🚨 どちらも無い場合のみ全体枠を消す
+        if (commentHtml === "") {
             commentsBox.style.display = 'none';
         } else {
-            commentsBox.style.borderLeftColor = tColorVar;
-            commentsBox.classList.remove('clickable');
             commentsBox.style.display = 'block';
+            document.getElementById('dp-comments-text').innerHTML = commentHtml; 
+            commentsBox.style.borderLeftColor = tColorVar;
+
+            if (isTsunamiActive && matchedTsunami) {
+                commentsBox.classList.add('clickable'); 
+                updateTsunamiPanelUI(matchedTsunami); 
+                drawTsunamiCoastlines(matchedTsunami);
+            } else {
+                commentsBox.classList.remove('clickable'); 
+            }
         }
 
         if (eq.earthquake.epicenters && eq.earthquake.epicenters.length > 0) {
@@ -2372,7 +2410,6 @@
                     const st = matchedStations[0];
                     bounds.push([st.lat, st.lon]); 
                     
-                    // 🚨 Canvas用に配列へプッシュ (name と fullText を追加してツールチップで利用)
                     stationDrawData.push({
                         lat: st.lat,
                         lon: st.lon,
@@ -2398,9 +2435,12 @@
             stationsListContainer.innerHTML = '<div style="padding: 10px; text-align: center; color: var(--text-secondary); font-size: 13px;">詳細な観測点データがありません</div>';
         }
         
+        // 🚨 ズーム時のパディングを計算（横画面のスマホ等でのズレ対策）
         if (bounds.length > 0) {
-            map.fitBounds(bounds, { padding: [30, 30], maxZoom: 8, animate: true });
+            map.invalidateSize();
+            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 8, animate: true });
         } else {
+            map.invalidateSize();
             map.setView([hypo.latitude, hypo.longitude], 7, { animate: true, duration: 0.5 });
         }
 
@@ -2440,6 +2480,7 @@
         else map.removeLayer(allEarthquakesLayer);
         
         if (isKyoshinTab && kyoshinLayer && !map.hasLayer(kyoshinLayer)) map.addLayer(kyoshinLayer);
+        map.invalidateSize();
         map.setView([38.0, 137.0], 5, { animate: true });
     };
 
