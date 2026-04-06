@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>地震情報可視化ツール - サーバーレス版</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -31,7 +31,8 @@
             --drawer-width: 300px;
         }
         body { 
-            margin: 0; padding: 0; display: flex; height: 100vh; 
+            margin: 0; padding: 0; display: flex; 
+            height: 100vh; height: 100dvh; /* スマホブラウザの見切れ防止 */
             background-color: var(--bg-color); color: var(--text-primary); 
             font-family: var(--font-family); overflow: hidden; 
             -webkit-font-smoothing: antialiased;
@@ -40,23 +41,34 @@
         /* ========== 新UI: ナビゲーションレール ========== */
         #nav-rail {
             position: absolute; top: 0; left: 0; width: var(--rail-width); height: 100%;
+            box-sizing: border-box; /* paddingを含めて100%に収める */
             background-color: var(--surface-color); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border-right: 1px solid var(--border-color); z-index: 1000;
-            display: flex; flex-direction: column; align-items: center; padding-top: 30px; gap: 20px;
+            display: flex; flex-direction: column; justify-content: space-between; align-items: center; 
+            padding: 30px 0 calc(20px + env(safe-area-inset-bottom, 0px)) 0; 
+        }
+        .nav-group {
+            display: flex; flex-direction: column; gap: 20px; width: 100%; align-items: center;
         }
         .nav-btn {
             position: relative; width: 44px; height: 44px; border-radius: 12px;
             background-color: rgba(255, 255, 255, 0.1); display: flex; justify-content: center; align-items: center;
             cursor: pointer; transition: all 0.3s ease;
         }
-        .nav-btn svg { width: 22px; height: 22px; fill: var(--text-secondary); transition: fill 0.3s ease; }
+        
+        /* アイコンのカラー制御 */
+        .nav-btn svg { 
+            width: 24px; height: 24px; 
+            color: var(--text-secondary); 
+            transition: color 0.3s ease; 
+        }
         .nav-btn:hover { background-color: rgba(255, 255, 255, 0.2); }
         
-        /* 案A: 選択状態の背景色とアイコン色の反転 */
+        /* 選択状態の背景色とアイコン色の反転 */
         .nav-btn.active { background-color: var(--text-primary); }
-        .nav-btn.active svg { fill: #000000; }
+        .nav-btn.active svg { color: #000000; }
         
-        /* 案C: 選択状態のアクセントインジケーター */
+        /* アクセントインジケーター */
         .nav-btn::before {
             content: ''; position: absolute; left: -12px; top: 50%; transform: translateY(-50%) scaleY(0);
             width: 4px; height: 24px; background-color: var(--accent-color); border-radius: 0 4px 4px 0;
@@ -64,9 +76,12 @@
         }
         .nav-btn.active::before { transform: translateY(-50%) scaleY(1); }
 
+        .nav-btn.action-btn svg { width: 22px; height: 22px; }
+
         /* ========== 新UI: ドロワーパネル ========== */
         #drawer-panel {
             position: absolute; top: 0; left: var(--rail-width); width: var(--drawer-width); height: 100%;
+            box-sizing: border-box; /* はみ出し防止 */
             background-color: var(--surface-drawer); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border-right: 1px solid var(--border-color); z-index: 999;
             transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -80,7 +95,7 @@
         .drawer-content { flex-grow: 1; overflow-y: auto; display: none; flex-direction: column; }
         .drawer-content.active { display: flex; }
 
-        /* 元のリスト系スタイル */
+        /* リスト系スタイル */
         #list-container, #tsunami-list-container, #kyoshin-list-container { 
             flex-grow: 1; overflow-y: auto; padding: 8px; scroll-behavior: smooth; 
         }
@@ -116,12 +131,7 @@
         }
         .dp-close:hover, .tp-close:hover, .sp-close:hover { background: rgba(255,255,255,0.2); }
 
-        /* ========== UI コントロールボタン ========== */
-        .custom-topright-btns { margin-top: 15px !important; margin-right: 15px !important; border: 0.5px solid var(--border-color) !important; overflow: hidden; border-radius: 10px !important; box-shadow: 0 4px 15px rgba(0,0,0,0.6) !important; z-index: 800; }
-        .custom-topright-btns a { display: flex !important; align-items: center; justify-content: center; background-color: rgba(28, 28, 30, 0.45) !important; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: var(--text-primary) !important; border-bottom: 0.5px solid var(--border-color) !important; width: 36px !important; height: 36px !important; transition: background-color 0.2s; text-decoration: none; }
-        .custom-topright-btns a:hover { background-color: rgba(255, 255, 255, 0.15) !important; }
-        .custom-topright-btns a:last-child { border-bottom: none !important; }
-        .leaflet-bar, .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 15px rgba(0,0,0,0.6) !important; border-radius: 10px !important; overflow: hidden; margin-right: 15px !important; }
+        .leaflet-bar, .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 15px rgba(0,0,0,0.6) !important; border-radius: 10px !important; overflow: hidden; margin-top: 15px !important; margin-right: 15px !important; }
         .leaflet-touch .leaflet-control-zoom a, .leaflet-control-zoom a { background-color: rgba(28, 28, 30, 0.45) !important; color: var(--text-primary) !important; border-bottom: 0.5px solid var(--border-color) !important; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); width: 36px !important; height: 36px !important; line-height: 36px !important; transition: background-color 0.2s ease; }
         .leaflet-control-zoom a:hover { background-color: rgba(255, 255, 255, 0.15) !important; }
         .leaflet-control-zoom a:last-child { border-bottom: none !important; }
@@ -141,7 +151,17 @@
         .sp-log-box div:last-child { margin-bottom: 0; border-bottom: none; }
         .sp-log-box .log-err { color: #FF453A; } .sp-log-box .log-succ { color: #30D158; } .sp-log-box .log-warn { color: #FFD60A; } .sp-log-box .log-info { color: #e5e5ea; }
         
-        /* ========== 新UI: フローティング要素のレイアウトシフト設定 ========== */
+        /* ========== CSVドラッグ＆ドロップエリア ========== */
+        .drop-zone {
+            border: 2px dashed var(--border-color); border-radius: 12px; padding: 30px 20px;
+            text-align: center; cursor: pointer; background-color: rgba(255, 255, 255, 0.02);
+            transition: all 0.3s ease; margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .drop-zone:hover, .drop-zone.dragover { background-color: rgba(10, 132, 255, 0.1); border-color: var(--accent-color); }
+        .drop-zone-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+        .drop-zone-text strong { color: var(--accent-color); font-size: 14px; }
+
+        /* ========== フローティング要素のレイアウトシフト ========== */
         .eew-container { position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); display: flex; flex-direction: column-reverse; gap: 12px; max-height: 75vh; overflow-y: auto; z-index: 1500; pointer-events: auto; width: 295px; max-width: calc(100vw - 20px); padding-right: 10px; transition: margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
         .eew-container:empty { display: none; }
         .eew-container::-webkit-scrollbar { width: 6px; } .eew-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
@@ -193,21 +213,16 @@
 
         .eew-marker-plum { position: absolute; top: -12px; left: -12px; pointer-events: none; width: 24px; height: 24px; border: 4px solid #FF453A; border-radius: 50%; box-sizing: border-box; background-color: transparent; box-shadow: 0 0 10px rgba(255, 69, 58, 0.8), inset 0 0 10px rgba(255, 69, 58, 0.8); }
 
+        /* 🚨 最大マグニチュード強調用クラス */
+        .marker-cross-largest { transform: scale(1.8); }
+        .marker-cross-largest::before, .marker-cross-largest::after { width: 4px !important; box-shadow: 0 0 15px #FF453A !important; }
+
         .eew-trigger-btn { width: 100%; margin-top: 12px; display: none; background: rgba(10, 132, 255, 0.15); border: 1px solid rgba(10, 132, 255, 0.4); color: #64D2FF; font-weight: bold; font-size: 13px; padding: 10px; border-radius: 8px; cursor: pointer; transition: all 0.2s; align-items: center; justify-content: center; gap: 8px; }
         .eew-trigger-btn:hover { background: rgba(10, 132, 255, 0.3); }
         .eew-trigger-btn.loading { color: var(--text-secondary); background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); cursor: wait; }
         .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        #eew-panel {
-            position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); width: 280px; max-width: calc(100vw - 20px); max-height: 60vh;
-            background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
-            border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; display: flex; flex-direction: column;
-            opacity: 0; transform: translateY(150%); pointer-events: none; transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); box-sizing: border-box; color: #FFFFFF;
-        }
-        #eew-panel.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
-        
         /* Layout Shift Execution */
         body.drawer-open .eew-container,
         body.drawer-open #detail-panel,
@@ -222,7 +237,7 @@
         .ep-close:hover { background: rgba(255,255,255,0.2); }
 
         /* ========== iOS風 階層化メニューパネル ========== */
-        .ios-panel-container { position: absolute; top: 15px; right: 65px; width: 320px; max-height: calc(100vh - 30px); z-index: 2000; pointer-events: none; transform-origin: top right; }
+        .ios-panel-container { position: absolute; top: 15px; left: calc(var(--rail-width) + 15px); width: 320px; max-height: calc(100vh - 30px); z-index: 2000; pointer-events: none; transform-origin: top left; }
         .ios-panel { position: absolute; top: 0; left: 0; width: 100%; max-height: calc(100vh - 30px); background-color: var(--surface-color); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); color: var(--text-primary); display: flex; flex-direction: column; overflow: hidden; opacity: 0; visibility: hidden; transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1); pointer-events: auto; transform: scale(0.95); }
         .ios-panel.active { opacity: 1; visibility: visible; transform: scale(1); }
         .ios-panel.slide-left { transform: translateX(-30px) scale(0.95); opacity: 0; visibility: hidden; }
@@ -243,8 +258,8 @@
         .app-icon.status { background: linear-gradient(135deg, #32D74B, #249A36); }
         .app-icon.demo { background: linear-gradient(135deg, #FF453A, #C9342B); }
         .app-icon.log { background: linear-gradient(135deg, #0A84FF, #005BB5); }
+        .app-icon.csv { background: linear-gradient(135deg, #FF9500, #E58600); }
         .menu-icon { width: 18px; height: 18px; stroke: #FFF; stroke-width: 2; margin-right: 0; }
-        .menu-text { flex-grow: 1; font-size: 14px; font-weight: 500; }
         .menu-chevron { width: 16px; height: 16px; fill: none; stroke: var(--text-secondary); stroke-width: 2; }
         .panel-content { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;}
         .panel-content::-webkit-scrollbar { width: 4px; } .panel-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
@@ -253,14 +268,44 @@
 <body>
 
 <div id="nav-rail">
-    <div class="nav-btn active" onclick="toggleDrawer('history')" id="btn-history" title="地震履歴">
-        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+    <div class="nav-group">
+        <div class="nav-btn active" onclick="toggleDrawer('history')" id="btn-history" title="地震履歴">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+        </div>
+        
+        <div class="nav-btn" onclick="toggleDrawer('tsunami')" id="btn-tsunami" title="津波情報">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12c3.33 0 3.33-4 6.67-4s3.33 4 6.67 4 3.33-4 6.67-4"></path>
+                <path d="M2 18c3.33 0 3.33-4 6.67-4s3.33 4 6.67 4 3.33-4 6.67-4"></path>
+            </svg>
+        </div>
+        
+        <div class="nav-btn" onclick="toggleDrawer('kyoshin')" id="btn-kyoshin" title="強震モニタ">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"></circle>
+                <circle cx="12" cy="12" r="6"></circle>
+                <circle cx="12" cy="12" r="10"></circle>
+            </svg>
+        </div>
     </div>
-    <div class="nav-btn" onclick="toggleDrawer('tsunami')" id="btn-tsunami" title="津波情報">
-        <svg viewBox="0 0 24 24"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12s4.48 10 10 10 10-4.48 10-10zm-11 5.5l-4-4 1.41-1.41L11 14.67V6h2v8.67l2.59-2.58L17 13.5l-6 4z"/></svg>
-    </div>
-    <div class="nav-btn" onclick="toggleDrawer('kyoshin')" id="btn-kyoshin" title="強震モニタ">
-        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9h-2V7h-2v5H6v2h2v5h2v-5h2v-2z"/></svg>
+    
+    <div class="nav-group">
+        <div class="nav-btn action-btn" onclick="location.reload()" title="再読み込み">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+        </div>
+        
+        <div class="nav-btn action-btn" onclick="toggleSystemMenu()" id="btn-settings" title="システムメニュー">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+        </div>
     </div>
 </div>
 
@@ -355,6 +400,19 @@
                 </button>
             </div>
             <ul class="menu-list">
+                <li class="menu-item" onclick="openChildPanel('panel-csv')">
+                    <div class="app-icon csv">
+                        <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </div>
+                    <span class="menu-text" style="color: #fff;">CSVデータ可視化 (ローカル)</span>
+                    <svg class="menu-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                </li>
                 <li class="menu-item" onclick="openChildPanel('panel-status')">
                     <div class="app-icon status">
                         <svg class="menu-icon" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
@@ -377,6 +435,41 @@
                     <svg class="menu-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                 </li>
             </ul>
+        </div>
+
+        <div id="panel-csv" class="ios-panel child-panel">
+            <div class="panel-header">
+                <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る">
+                    <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"></path></svg>
+                </button>
+                <span class="panel-title">CSVデータ可視化</span>
+                <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる">
+                    <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="panel-content">
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.4;">
+                    気象庁の震源・震度リストCSVを選択してください。複数の震源が含まれている場合も、発生時刻順に連動アニメーションで可視化します。
+                </div>
+                
+                <div id="csv-drop-zone" class="drop-zone">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 40px; height: 40px; color: var(--text-secondary); margin-bottom: 10px;">
+                        <path d="M21.2 15c.7-1.2 1-2.5.7-3.9-.6-2-2.4-3.5-4.4-3.5h-1.2c-.7-3-3.2-5.2-6.2-5.6-3-.3-5.9 1.3-7.3 4-1.2 2.5-1 6.5.5 8.8m8.7-1.6V21"></path>
+                        <path d="M16 16l-4-4-4 4"></path>
+                    </svg>
+                    <div class="drop-zone-text">
+                        <strong>ファイルを選択</strong><br>
+                        またはここにドラッグ＆ドロップ
+                    </div>
+                    <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+                </div>
+                
+                <div id="csv-file-name" style="font-size: 13px; color: var(--text-primary); text-align: center; margin-bottom: 10px; min-height: 18px;"></div>
+                
+                <button class="sp-btn" style="width: 100%; margin-bottom: 10px; background: rgba(10, 132, 255, 0.2); border-color: #0A84FF; color: #64D2FF; font-weight: bold;" onclick="executeCsvLoad()">📄 読み込み・可視化を実行</button>
+                <button class="sp-btn sp-btn-danger" style="width: 100%; margin-bottom: 10px;" onclick="clearCsvData()">🗑 クリア (最新の履歴に戻す)</button>
+                <div id="csv-status" style="font-size: 12px; color: #FFD60A; text-align: center; font-weight: bold; margin-top: 5px;"></div>
+            </div>
         </div>
 
         <div id="panel-status" class="ios-panel child-panel">
@@ -526,24 +619,7 @@
         return (pm && pm.classList.contains('active')) || (ps && ps.classList.contains('active'));
     }
 
-    // === 新しいコントロール UI (歯車 & リロード) ===
-    const SettingsControl = L.Control.extend({
-        options: { position: 'topright' },
-        onAdd: function (map) {
-            const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-topright-btns');
-            const btnSet = L.DomUtil.create('a', '', container);
-            btnSet.href = '#'; btnSet.title = '設定・メニュー';
-            btnSet.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`;
-            btnSet.onclick = function(e){ e.preventDefault(); e.stopPropagation(); toggleSystemMenu(); }
-            
-            const btnReload = L.DomUtil.create('a', '', container);
-            btnReload.href = '#'; btnReload.title = '再読み込み';
-            btnReload.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`;
-            btnReload.onclick = function(e){ e.preventDefault(); e.stopPropagation(); location.reload(); }
-            return container;
-        }
-    });
-    map.addControl(new SettingsControl());
+    // デフォルトのズームコントロールだけ右上に追加
     L.control.zoom({ position: 'topright' }).addTo(map);
 
     // ==========================================
@@ -592,6 +668,219 @@
     const detailLayer = L.layerGroup();
     const tsunamiLineLayer = L.layerGroup().addTo(map); 
     const eewLayer = L.layerGroup().addTo(map);
+
+    // ==========================================
+    // ⭐️気象庁 CSV読み込み・複数震源パース処理
+    // ==========================================
+    const dropZone = document.getElementById('csv-drop-zone');
+    const fileInput = document.getElementById('csv-file-input');
+    const fileNameDisplay = document.getElementById('csv-file-name');
+    let pendingCsvFile = null;
+
+    if (dropZone && fileInput) {
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault(); dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
+        });
+    }
+
+    function handleFileSelect(file) {
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+            document.getElementById('csv-status').innerText = "CSVファイルを選択してください。";
+            return;
+        }
+        pendingCsvFile = file;
+        fileNameDisplay.innerText = `選択中: ${file.name}`;
+        document.getElementById('csv-status').innerText = "";
+    }
+
+    function convertCoordinate(coordStr) {
+        if (!coordStr || coordStr === '-200') return -200;
+        const match = coordStr.match(/(\d+)[°度]([\d.]+)['′分]([NSEW]?)/);
+        if (!match) return parseFloat(coordStr) || -200;
+        let deg = parseFloat(match[1]);
+        let min = parseFloat(match[2]);
+        let decimal = deg + (min / 60);
+        if (match[3] === 'S' || match[3] === 'W') decimal = -decimal;
+        return Number(decimal.toFixed(4));
+    }
+
+    function scaleStrToNum(str) {
+        if(!str) return 0;
+        str = str.replace(/\s+/g, '');
+        if(str.includes('7') || str.includes('７')) return 70;
+        if(str.includes('6強') || str.includes('６強')) return 60;
+        if(str.includes('6弱') || str.includes('６弱')) return 55;
+        if(str.includes('5強') || str.includes('５強')) return 50;
+        if(str.includes('5弱') || str.includes('５弱')) return 45;
+        if(str.includes('4') || str.includes('４')) return 40;
+        if(str.includes('3') || str.includes('３')) return 30;
+        if(str.includes('2') || str.includes('２')) return 20;
+        if(str.includes('1') || str.includes('１')) return 10;
+        return 0;
+    }
+
+    function parseJmaCsv(text) {
+        const lines = text.split(/\r\n|\n/).map(l => l.trim()).filter(l => l.length > 0);
+        let epicenters = [];
+        let points = [];
+        
+        let eqHeaderIndex = lines.findIndex(l => l.includes('最大震度') && l.includes('緯度'));
+        let stHeaderIndex = lines.findIndex(l => l.includes('観測点名') && l.includes('震度'));
+        
+        // 🚨 震源情報（マルチイベント対応）
+        if (eqHeaderIndex !== -1) {
+            let endIdx = stHeaderIndex !== -1 ? stHeaderIndex : lines.length;
+            for (let i = eqHeaderIndex + 1; i < endIdx; i++) {
+                const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+                if (cols[0].match(/^\d{4}$/) || cols[0].match(/^\d{4}\/\d{2}\/\d{2}/)) {
+                    let timeStr, name, latStr, lonStr, depthStr, magStr, maxIntStr;
+                    if (cols[0].includes('/')) {
+                        timeStr = cols[0] + ' ' + cols[1].split('.')[0]; 
+                        name = cols[2]; latStr = cols[3]; lonStr = cols[4];
+                        depthStr = cols[5]; magStr = cols[6]; maxIntStr = cols[7];
+                    } else {
+                        timeStr = `${cols[0]}/${cols[1].padStart(2,'0')}/${cols[2].padStart(2,'0')} ${cols[3].padStart(2,'0')}:${cols[4].padStart(2,'0')}:${cols[5].padStart(2,'0')}`;
+                        name = cols[6]; latStr = cols[7]; lonStr = cols[8]; depthStr = cols[9];
+                        magStr = cols[10]; maxIntStr = cols[11];
+                    }
+                    epicenters.push({
+                        time: timeStr.replace(/-/g, '/'),
+                        name: name,
+                        latitude: convertCoordinate(latStr),
+                        longitude: convertCoordinate(lonStr),
+                        depth: parseInt(depthStr.replace(/[^\d]/g, '')) || 0,
+                        magnitude: parseFloat(magStr) || -1,
+                        maxScale: scaleStrToNum(maxIntStr)
+                    });
+                }
+            }
+        }
+        
+        // 🚨 観測点情報
+        if (stHeaderIndex !== -1) {
+            for (let i = stHeaderIndex + 1; i < lines.length; i++) {
+                const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+                if (cols.length >= 3) {
+                    const pref = cols[0];
+                    const intStr = cols[1];
+                    const scale = scaleStrToNum(intStr);
+                    
+                    const stationNames = cols[2].split(/[\s　]+/).filter(s => s);
+                    
+                    stationNames.forEach(rawName => {
+                        let stName = rawName.replace(/[＊\*]/g, '').trim(); 
+                        if (!stName) return;
+                        if (stName.startsWith(pref)) {
+                            stName = stName.substring(pref.length).trim();
+                        }
+                        points.push({ pref: pref, addr: stName, scale: scale, isArea: false });
+                    });
+                }
+            }
+        }
+
+        if (epicenters.length === 0) return [];
+        
+        // 震源を発生時刻順に並べ替え（アニメーション用）
+        epicenters.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+        
+        // 最大マグニチュードと最大震度を取得
+        let maxMag = -1;
+        let maxScale = -1;
+        epicenters.forEach(epi => {
+            if (epi.magnitude > maxMag) maxMag = epi.magnitude;
+            if (epi.maxScale > maxScale) maxScale = epi.maxScale;
+        });
+        
+        // 代表震源（マグニチュード最大）
+        let mainEpi = epicenters.find(epi => epi.magnitude === maxMag) || epicenters[0];
+        let dispName = epicenters.length > 1 ? `${mainEpi.name} など (計${epicenters.length}震源)` : mainEpi.name;
+        
+        // 単一の地震イベントオブジェクトとしてまとめる
+        let currentEq = {
+            earthquake: {
+                time: epicenters[0].time, // 最初の発生時刻
+                hypocenter: { 
+                    name: dispName, 
+                    latitude: mainEpi.latitude, 
+                    longitude: mainEpi.longitude, 
+                    depth: mainEpi.depth, 
+                    magnitude: maxMag 
+                },
+                maxScale: maxScale,
+                domesticTsunami: "Unknown",
+                epicenters: epicenters // 複数震源データを保持
+            },
+            comments: { freeFormComment: "気象庁の震度データベースCSVから読み込んだ情報です。" },
+            points: points
+        };
+
+        return [currentEq];
+    }
+
+    window.executeCsvLoad = function() {
+        const statusEl = document.getElementById('csv-status');
+        if (!pendingCsvFile) { statusEl.innerText = "ファイルが選択されていません。"; return; }
+
+        statusEl.innerText = "読み込み・変換中...";
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const text = e.target.result;
+                const eqs = parseJmaCsv(text);
+                
+                console.log("[CSV Data Parser] JSONに変換されたデータ:", eqs);
+
+                if (eqs.length === 0) {
+                    statusEl.innerText = "データを抽出できませんでした。気象庁のフォーマットか確認してください。";
+                    return;
+                }
+                
+                const pointsCount = eqs[0].points ? eqs[0].points.length : 0;
+                const epiCount = eqs[0].earthquake.epicenters ? eqs[0].earthquake.epicenters.length : 0;
+                statusEl.innerText = `変換成功！ 震源 ${epiCount}ヶ所、観測点 ${pointsCount}件。`;
+                
+                renderEarthquakeList(eqs);
+                addSystemLog(`[CSV] ローカルから地震データ (震源${epiCount} / 観測点${pointsCount}) を表示しました`, 'success');
+                
+                setTimeout(() => { 
+                    closeAllPanels(); 
+                    ensureMode('history'); 
+                    setTimeout(() => {
+                        const firstItem = document.querySelector('.list-item');
+                        if (firstItem) {
+                            firstItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            firstItem.click(); // 詳細画面とアニメーションを自動で開く
+                        }
+                    }, 300);
+                }, 800);
+                
+            } catch(err) {
+                statusEl.innerText = "CSVの解析中にエラーが発生しました。";
+                console.error(err);
+            }
+        };
+        reader.onerror = function() { statusEl.innerText = "ファイルの読み込みに失敗しました。"; }
+        reader.readAsText(pendingCsvFile, 'Shift_JIS'); 
+    };
+
+    window.clearCsvData = function() {
+        pendingCsvFile = null;
+        if(fileInput) fileInput.value = "";
+        if(fileNameDisplay) fileNameDisplay.innerText = "";
+        document.getElementById('csv-status').innerText = "";
+        fetchEarthquakeHistory();
+        addSystemLog(`[CSV] 読み込んだデータをクリアし、APIからの最新履歴に戻しました`, 'info');
+        setTimeout(() => { closeAllPanels(); ensureMode('history'); }, 500);
+    };
+
 
     // ==========================================
     // EEW履歴パネル処理
@@ -1378,7 +1667,7 @@
     // ==========================================
     // UI制御：ドロワー＆ナビゲーション
     // ==========================================
-    let currentMode = 'history'; // デフォルトモード
+    let currentMode = 'history'; 
 
     window.toggleDrawer = function(mode) {
         const isDrawerOpen = document.body.classList.contains('drawer-open');
@@ -1392,8 +1681,10 @@
     function openDrawer(mode) {
         document.body.classList.add('drawer-open');
         document.getElementById('drawer-panel').classList.add('open');
-        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+        
+        document.querySelectorAll('.nav-group:first-child .nav-btn').forEach(btn => btn.classList.remove('active'));
         document.getElementById(`btn-${mode}`).classList.add('active');
+        
         document.querySelectorAll('.drawer-content').forEach(c => c.classList.remove('active'));
         document.getElementById(`content-${mode}`).classList.add('active');
         const titles = { 'history': '地震履歴', 'tsunami': '津波情報', 'kyoshin': '強震モニタ' };
@@ -1405,11 +1696,10 @@
         document.getElementById('drawer-panel').classList.remove('open');
     };
 
-    // 外部機能から強制的にモードを切り替える（例：EEWテスト時）
     function ensureMode(mode) {
         if (currentMode !== mode) {
             currentMode = mode; executeModeSwitch(mode);
-            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.nav-group:first-child .nav-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`btn-${mode}`).classList.add('active');
             document.querySelectorAll('.drawer-content').forEach(c => c.classList.remove('active'));
             document.getElementById(`content-${mode}`).classList.add('active');
@@ -1579,30 +1869,35 @@
         if (panel.classList.contains('show')) closeTsunamiPanel(); else panel.classList.add('show');
     };
 
+    function renderEarthquakeList(data) {
+        const listContainer = document.getElementById('list-container');
+        listContainer.innerHTML = '';
+        allEarthquakesLayer.clearLayers();
+
+        data.forEach((eq) => {
+            if (!eq.earthquake || !eq.earthquake.hypocenter) return;
+            const hypo = eq.earthquake.hypocenter; const maxScale = eq.earthquake.maxScale;
+            if (hypo.latitude === -200 || hypo.longitude === -200 || maxScale === undefined || maxScale === null || maxScale < 10) return;
+            const color = getIntensityColor(maxScale); const timeStr = safeFormatDateString(eq.earthquake.time);
+            const radius = Math.max((hypo.magnitude || 4) * 2.5, 5);
+            const eqCircle = L.circleMarker([hypo.latitude, hypo.longitude], { radius: radius, fillColor: color, color: color, weight: 1.5, opacity: 0.9, fillOpacity: 0.4 }).bindTooltip(`${hypo.name} (M${hypo.magnitude >= 0 ? hypo.magnitude : '-'})`).addTo(allEarthquakesLayer);
+            const listItem = document.createElement('div'); listItem.className = 'list-item'; listItem.style.borderLeftColor = color; 
+            listItem.innerHTML = `<div class="list-item-title"><span>${hypo.name || "不明"}</span><span style="color:${color};">震度${getIntensityString(maxScale)}</span></div><div class="list-item-details">${timeStr} | M${hypo.magnitude >= 0 ? hypo.magnitude : '-'}</div>`;
+            const activateEarthquake = () => {
+                if (listItem.classList.contains('active')) { closeDetailPanel(); return; }
+                document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
+                listItem.classList.add('active'); listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                showEarthquakeDetails(eq, color);
+            };
+            listItem.addEventListener('click', activateEarthquake); eqCircle.on('click', activateEarthquake);
+            listContainer.appendChild(listItem);
+        });
+    }
+
     function fetchEarthquakeHistory() {
         fetch('https://api.p2pquake.net/v2/history?codes=551&limit=100')
             .then(res => res.json())
-            .then(data => {
-                const listContainer = document.getElementById('list-container');
-                data.forEach((eq) => {
-                    if (!eq.earthquake || !eq.earthquake.hypocenter) return;
-                    const hypo = eq.earthquake.hypocenter; const maxScale = eq.earthquake.maxScale;
-                    if (hypo.latitude === -200 || hypo.longitude === -200 || maxScale === undefined || maxScale === null || maxScale < 10) return;
-                    const color = getIntensityColor(maxScale); const timeStr = safeFormatDateString(eq.earthquake.time);
-                    const radius = Math.max((hypo.magnitude || 4) * 2.5, 5);
-                    const eqCircle = L.circleMarker([hypo.latitude, hypo.longitude], { radius: radius, fillColor: color, color: color, weight: 1.5, opacity: 0.9, fillOpacity: 0.4 }).bindTooltip(`${hypo.name} (M${hypo.magnitude})`).addTo(allEarthquakesLayer);
-                    const listItem = document.createElement('div'); listItem.className = 'list-item'; listItem.style.borderLeftColor = color; 
-                    listItem.innerHTML = `<div class="list-item-title"><span>${hypo.name || "不明"}</span><span style="color:${color};">震度${getIntensityString(maxScale)}</span></div><div class="list-item-details">${timeStr} | M${hypo.magnitude >= 0 ? hypo.magnitude : '-'}</div>`;
-                    const activateEarthquake = () => {
-                        if (listItem.classList.contains('active')) { closeDetailPanel(); return; }
-                        document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
-                        listItem.classList.add('active'); listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                        showEarthquakeDetails(eq, color);
-                    };
-                    listItem.addEventListener('click', activateEarthquake); eqCircle.on('click', activateEarthquake);
-                    listContainer.appendChild(listItem);
-                });
-            });
+            .then(data => renderEarthquakeList(data));
     }
 
     function drawTsunamiCoastlines(matchedData) {
@@ -1695,17 +1990,87 @@
         });
     }
 
+    // 🚨 複数震源（マルチイベント）の時系列アニメーション制御用変数
+    let multiEventTimer = null;
+    let multiEventMarkers = [];
+
+    function startMultiEventAnimation(epicenters) {
+        if (multiEventTimer) clearInterval(multiEventTimer);
+        if (!epicenters || epicenters.length <= 1) return;
+        
+        let currentIndex = 0;
+        // 3秒間で1周するようにインターバルを計算（速すぎないように下限300ms）
+        let interval = Math.max(3000 / epicenters.length, 300);
+        
+        multiEventTimer = setInterval(() => {
+            // 一旦すべてのパルスを隠す
+            multiEventMarkers.forEach(m => {
+                const el = m.getElement().querySelector('.eew-epicenter-pulse');
+                if(el) el.style.display = 'none';
+            });
+            
+            // 順番が回ってきた震源のパルスを表示してアニメーションを再起動
+            if(multiEventMarkers[currentIndex]) {
+                const el = multiEventMarkers[currentIndex].getElement().querySelector('.eew-epicenter-pulse');
+                if(el) {
+                    el.style.display = 'block';
+                    el.style.animation = 'none';
+                    el.offsetHeight; /* trigger reflow */
+                    el.style.animation = null; 
+                }
+            }
+            
+            currentIndex = (currentIndex + 1) % epicenters.length;
+        }, interval);
+    }
+
     function showEarthquakeDetails(eq, mainColor) {
-        map.removeLayer(allEarthquakesLayer);
+        map.removeLayer(allEarthquakesLayer); // 🚨他の地震の円を非表示にする仕様を復元
         if (kyoshinLayer && map.hasLayer(kyoshinLayer)) map.removeLayer(kyoshinLayer); 
         detailLayer.clearLayers(); tsunamiLineLayer.clearLayers(); map.addLayer(detailLayer); closeTsunamiPanel(); 
-        const hypo = eq.earthquake.hypocenter;
         
-        const epicIcon = L.divIcon({ className: 'custom-div-icon', html: '<div class="eew-marker-cross"></div>', iconSize: [0, 0] });
-        L.marker([hypo.latitude, hypo.longitude], { icon: epicIcon, zIndexOffset: 20000 }).addTo(detailLayer);
+        if (multiEventTimer) { clearInterval(multiEventTimer); multiEventTimer = null; }
+        multiEventMarkers = [];
+        let bounds = []; // 自動ズーム用
+
+        const hypo = eq.earthquake.hypocenter;
+        let commentHtml = "";
+
+        // 🚨 複数震源データのプロットとアニメーション設定
+        if (eq.earthquake.epicenters && eq.earthquake.epicenters.length > 0) {
+            const maxMag = Math.max(...eq.earthquake.epicenters.map(e => e.magnitude));
+            
+            eq.earthquake.epicenters.forEach((epi) => {
+                const isLargest = epi.magnitude === maxMag;
+                const crossClass = isLargest ? 'eew-marker-cross marker-cross-largest' : 'eew-marker-cross';
+                
+                const epicIcon = L.divIcon({ 
+                    className: 'custom-div-icon', 
+                    html: `
+                        <div class="${crossClass}"></div>
+                        <div class="eew-epicenter-pulse" style="display: ${eq.earthquake.epicenters.length > 1 ? 'none' : 'block'}; animation-duration: 1.5s; background: rgba(255, 69, 58, 0.8);"></div>
+                    `, 
+                    iconSize: [0, 0] 
+                });
+                
+                const marker = L.marker([epi.latitude, epi.longitude], { icon: epicIcon, zIndexOffset: 20000 + (isLargest ? 100 : 0) }).addTo(detailLayer);
+                bounds.push([epi.latitude, epi.longitude]);
+                multiEventMarkers.push(marker);
+            });
+            
+            if (eq.earthquake.epicenters.length > 1) {
+                startMultiEventAnimation(eq.earthquake.epicenters);
+                commentHtml += `<strong>【マルチイベント情報】</strong><br>このデータには <span style="color:#FF453A; font-weight:bold; font-size:14px;">${eq.earthquake.epicenters.length}ヶ所の震源</span>（サブイベント等）が含まれています。地図上で発生順にハイライトされます。<br><br>`;
+            }
+        } else {
+            // 従来の単一震源プロット
+            const epicIcon = L.divIcon({ className: 'custom-div-icon', html: '<div class="eew-marker-cross"></div>', iconSize: [0, 0] });
+            L.marker([hypo.latitude, hypo.longitude], { icon: epicIcon, zIndexOffset: 20000 }).addTo(detailLayer);
+            bounds.push([hypo.latitude, hypo.longitude]);
+        }
         
         const stationsListContainer = document.getElementById('dp-stations-list'); stationsListContainer.innerHTML = ''; 
-        let commentHtml = "", tStatus = eq.earthquake && eq.earthquake.domesticTsunami ? eq.earthquake.domesticTsunami : "None";
+        let tStatus = eq.earthquake && eq.earthquake.domesticTsunami ? eq.earthquake.domesticTsunami : "None";
         let tColorVar = "var(--tsunami-none)", isTsunamiActive = false; 
         switch (tStatus) {
             case "None": commentHtml += `<strong>【津波情報】</strong><br>この地震による津波の心配はありません。`; break;
@@ -1718,23 +2083,32 @@
                 if (eq.comments && eq.comments.forecast && eq.comments.forecast.text) commentHtml += `<strong>【津波予報】</strong><br>${eq.comments.forecast.text}`;
                 else commentHtml += `<strong>【津波情報】</strong><br>津波に関する情報はありません。`;
         }
-        if (eq.comments && eq.comments.freeFormComment) commentHtml += `<br><br><strong>【気象庁付加文】</strong><br>${eq.comments.freeFormComment}`;
+        if (eq.comments && eq.comments.freeFormComment) commentHtml += `<br><br><strong>【付加文】</strong><br>${eq.comments.freeFormComment}`;
         
         const commentsBox = document.getElementById('dp-comments'); document.getElementById('dp-comments-text').innerHTML = commentHtml; commentsBox.style.borderLeftColor = tColorVar;
         if (isTsunamiActive) {
             commentsBox.classList.add('clickable'); const matchedTsunami = getMatchingTsunamiInfo(eq.earthquake.time);
             updateTsunamiPanelUI(matchedTsunami); drawTsunamiCoastlines(matchedTsunami);
         } else commentsBox.classList.remove('clickable');
+        
         if (eq.points && eq.points.length > 0) {
             const listSortedPoints = [...eq.points].sort((a, b) => b.scale - a.scale);
             eq.points.forEach(p => {
                 const scaleColor = getIntensityColor(p.scale), scaleStr = getIntensityString(p.scale), shortScaleStr = getShortIntensityString(p.scale);
-                let matchedStations = stationsData.filter(st => st.name === p.addr);
-                if (matchedStations.length === 0) matchedStations = stationsData.filter(st => st.name.includes(p.addr) || p.addr.includes(st.city.name));
-                matchedStations.forEach(st => {
+                
+                let matchedStations = stationsData.filter(st => st.name === p.addr && st.pref.name === p.pref);
+                if (matchedStations.length === 0) {
+                    matchedStations = stationsData.filter(st => 
+                        st.pref.name === p.pref && (st.name.includes(p.addr) || p.addr.includes(st.name) || (st.city && st.city.name && p.addr.includes(st.city.name)))
+                    );
+                }
+                
+                if (matchedStations.length > 0) {
+                    const st = matchedStations[0];
+                    bounds.push([st.lat, st.lon]); // 観測点もズーム領域に含める
                     const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="station-dot" style="background-color: ${scaleColor};"><span class="station-scale-text">${shortScaleStr}</span></div>`, iconSize: [0, 0] });
                     L.marker([st.lat, st.lon], { icon: customIcon, zIndexOffset: p.scale * 100 }).bindTooltip(`${st.name}<br>震度${scaleStr}`, { direction: 'top', className: 'custom-tooltip' }).addTo(detailLayer);
-                });
+                }
             });
             listSortedPoints.forEach(p => {
                 const scaleColor = getIntensityColor(p.scale), scaleStr = getIntensityString(p.scale);
@@ -1742,7 +2116,14 @@
                 item.innerHTML = `<span class="dp-station-name">${p.addr}</span><span class="dp-station-scale" style="background-color: ${scaleColor};">${scaleStr}</span>`; stationsListContainer.appendChild(item);
             });
         } else stationsListContainer.innerHTML = '<div style="padding: 10px; text-align: center; color: var(--text-secondary); font-size: 13px;">詳細な観測点データがありません</div>';
-        map.setView([hypo.latitude, hypo.longitude], 7, { animate: true, duration: 0.5 });
+        
+        // 🚨 震源と観測点がすべて収まるように自動ズーム
+        if (bounds.length > 0) {
+            map.fitBounds(bounds, { padding: [30, 30], maxZoom: 8, animate: true });
+        } else {
+            map.setView([hypo.latitude, hypo.longitude], 7, { animate: true, duration: 0.5 });
+        }
+
         document.getElementById('dp-scale-label').innerText = "最大震度"; 
         const scaleValue = document.getElementById('dp-scale'); scaleValue.innerText = getIntensityString(eq.earthquake.maxScale); scaleValue.style.color = mainColor; scaleValue.style.fontSize = "34px"; 
         document.getElementById('dp-box').style.borderColor = mainColor; document.getElementById('dp-box').style.background = "rgba(0,0,0,0.3)";
@@ -1764,6 +2145,7 @@
     }
 
     window.closeDetailPanel = function() {
+        if (multiEventTimer) { clearInterval(multiEventTimer); multiEventTimer = null; }
         document.getElementById('detail-panel').classList.remove('show');
         document.getElementById('detail-panel').style.backgroundColor = "rgba(28, 28, 30, 0.45)";
         document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
@@ -1771,8 +2153,11 @@
         
         const isHistoryTab = (currentMode === 'history');
         const isKyoshinTab = (currentMode === 'kyoshin');
+        
+        // 🚨選択解除されたら、他の地震の円を再表示する
         if (isHistoryTab) map.addLayer(allEarthquakesLayer);
         else map.removeLayer(allEarthquakesLayer);
+        
         if (isKyoshinTab && kyoshinLayer && !map.hasLayer(kyoshinLayer)) map.addLayer(kyoshinLayer);
         map.setView([38.0, 137.0], 5, { animate: true });
     };
