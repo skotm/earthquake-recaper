@@ -117,9 +117,11 @@
         #map-container:fullscreen #detail-panel,
         #map-container:fullscreen .eew-container,
         #map-container:fullscreen .ios-panel-container,
+        #map-container:fullscreen #clock-panel,
         #map-container.pseudo-fullscreen #detail-panel,
         #map-container.pseudo-fullscreen .eew-container,
-        #map-container.pseudo-fullscreen .ios-panel-container { 
+        #map-container.pseudo-fullscreen .ios-panel-container,
+        #map-container.pseudo-fullscreen #clock-panel { 
             left: 20px !important; margin-left: 0 !important; 
         }
 
@@ -258,7 +260,8 @@
         /* Layout Shift Execution */
         body.drawer-open .eew-container,
         body.drawer-open #detail-panel,
-        body.drawer-open #eew-panel {
+        body.drawer-open #eew-panel,
+        body.drawer-open #clock-panel {
             margin-left: calc(var(--drawer-width) + 10px);
         }
 
@@ -309,6 +312,24 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.5);
             line-height: 1.4;
         }
+
+        /* ========== 時計パネル ========== */
+        #clock-panel {
+            position: absolute; top: 20px; left: calc(var(--rail-width) + 10px);
+            z-index: 1000; padding: 8px 14px;
+            background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+            border: 0.5px solid var(--border-color); border-radius: 12px;
+            color: #FFFFFF; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums;
+            transition: margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s;
+            pointer-events: auto; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        /* 時計トグルスイッチ */
+        .clock-toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .clock-toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .clock-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.2); transition: .4s; border-radius: 22px; }
+        .clock-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        .clock-toggle-switch input:checked + .clock-slider { background-color: #30D158; }
+        .clock-toggle-switch input:checked + .clock-slider:before { transform: translateX(18px); }
     </style>
 </head>
 <body>
@@ -438,6 +459,8 @@
     <div id="canvas-tooltip" class="custom-tooltip-canvas" style="display:none; position:absolute; z-index:4000; pointer-events:none;"></div>
 
     <div id="eew-container" class="eew-container"></div>
+    
+    <div id="clock-panel">--/--/-- --:--:--</div>
 
     <div class="ios-panel-container" id="menu-container">
         <div id="parent-menu" class="ios-panel">
@@ -449,6 +472,16 @@
                 </button>
             </div>
             <ul class="menu-list">
+                <li class="menu-item" onclick="openChildPanel('panel-clock')">
+                    <div class="app-icon" style="background: linear-gradient(135deg, #FF9500, #E58600);">
+                        <svg viewBox="0 0 24 24" class="menu-icon" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </div>
+                    <span class="menu-text" style="color: #fff;">時計表示設定</span>
+                    <svg class="menu-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                </li>
                 <li class="menu-item" onclick="openChildPanel('panel-csv')">
                     <div class="app-icon csv">
                         <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -484,6 +517,35 @@
                     <svg class="menu-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                 </li>
             </ul>
+        </div>
+
+        <div id="panel-clock" class="ios-panel child-panel">
+            <div class="panel-header">
+                <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る">
+                    <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"></path></svg>
+                </button>
+                <span class="panel-title">時計表示設定</span>
+                <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる">
+                    <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="panel-content">
+                <div class="sp-info" style="align-items: center;">
+                    <span style="color: #fff; font-weight: bold; font-family: inherit;">時計の表示</span>
+                    <label class="clock-toggle-switch">
+                        <input type="checkbox" id="clock-toggle-btn">
+                        <span class="clock-slider"></span>
+                    </label>
+                </div>
+                <div class="sp-info" style="flex-direction: column; gap: 8px; border-bottom: none; align-items: flex-start;">
+                    <div style="font-size: 13px; color: #e5e5ea; text-align: left;">表示形式</div>
+                    <select id="clock-format-select" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 8px; width: 100%; outline: none; font-size: 14px; cursor: pointer;">
+                        <option value="full" style="color: #000;">年月日時間分秒 (例: 2026/04/06 10:20:30)</option>
+                        <option value="short" style="color: #000;">月日時間分秒 (例: 04/06 10:20:30)</option>
+                        <option value="time" style="color: #000;">時間分秒 (例: 10:20:30)</option>
+                    </select>
+                </div>
+            </div>
         </div>
 
         <div id="panel-csv" class="ios-panel child-panel">
@@ -638,7 +700,6 @@
     // ==========================================
     function safeFormatDateString(rawTimeStr) {
         if (!rawTimeStr) return "--/-- --:--";
-        // .000 などのミリ秒部分を削り落とし、- を / に変換
         const safeStr = rawTimeStr.replace(/\.\d+/, '').replace(/-/g, '/').replace(/T/, ' ').replace(/\+.*/, '').replace(/Z/, ''); 
         const d = new Date(safeStr);
         if (isNaN(d.getTime())) return rawTimeStr; 
@@ -647,7 +708,6 @@
     
     function getSafeDateObj(rawTimeStr) {
         if (!rawTimeStr) return new Date(NaN);
-        // ミリ秒を削除してからパース
         const safeStr = rawTimeStr.replace(/\.\d+/, '').replace(/-/g, '/').replace(/T/, ' ').replace(/\+.*/, '').replace(/Z/, ''); 
         return new Date(safeStr);
     }
@@ -811,6 +871,73 @@
     const detailLayer = L.layerGroup();
     const tsunamiLineLayer = L.layerGroup().addTo(map); 
     const eewLayer = L.layerGroup().addTo(map);
+
+    // ==========================================
+    // 時計表示機能
+    // ==========================================
+    let clockConfig = JSON.parse(localStorage.getItem('eq_clockConfig')) || {
+        visible: true,
+        format: 'short'
+    };
+
+    const clockToggleBtn = document.getElementById('clock-toggle-btn');
+    const clockFormatSelect = document.getElementById('clock-format-select');
+    const clockPanelEl = document.getElementById('clock-panel');
+
+    if (clockToggleBtn && clockFormatSelect) {
+        clockToggleBtn.checked = clockConfig.visible;
+        clockFormatSelect.value = clockConfig.format;
+
+        clockToggleBtn.addEventListener('change', function() {
+            clockConfig.visible = this.checked;
+            saveClockConfig();
+            updateClockVisibility();
+        });
+
+        clockFormatSelect.addEventListener('change', function() {
+            clockConfig.format = this.value;
+            saveClockConfig();
+            updateClock();
+        });
+    }
+
+    function saveClockConfig() { localStorage.setItem('eq_clockConfig', JSON.stringify(clockConfig)); }
+
+    function updateClockVisibility() {
+        if (!clockPanelEl) return;
+        if (clockConfig.visible) {
+            clockPanelEl.style.display = 'block';
+            updateClock();
+        } else {
+            clockPanelEl.style.display = 'none';
+        }
+    }
+
+    function updateClock() {
+        if (!clockConfig.visible || !clockPanelEl) return;
+        
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        const sec = String(now.getSeconds()).padStart(2, '0');
+
+        let timeString = '';
+        if (clockConfig.format === 'full') {
+            timeString = `${yyyy}/${mm}/${dd} ${hh}:${min}:${sec}`;
+        } else if (clockConfig.format === 'short') {
+            timeString = `${mm}/${dd} ${hh}:${min}:${sec}`;
+        } else if (clockConfig.format === 'time') {
+            timeString = `${hh}:${min}:${sec}`;
+        }
+        
+        clockPanelEl.innerText = timeString;
+    }
+
+    updateClockVisibility();
+    setInterval(updateClock, 1000);
 
     // ==========================================
     // 気象庁 CSV読み込み・複数震源パース処理
