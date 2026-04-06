@@ -634,6 +634,25 @@
     ];
 
     // ==========================================
+    // 🚨 日時文字列の安全なパース（iOS Safari等のミリ秒NaN対策）
+    // ==========================================
+    function safeFormatDateString(rawTimeStr) {
+        if (!rawTimeStr) return "--/-- --:--";
+        // .000 などのミリ秒部分を削り落とし、- を / に変換
+        const safeStr = rawTimeStr.replace(/\.\d+/, '').replace(/-/g, '/').replace(/T/, ' ').replace(/\+.*/, '').replace(/Z/, ''); 
+        const d = new Date(safeStr);
+        if (isNaN(d.getTime())) return rawTimeStr; 
+        return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+    
+    function getSafeDateObj(rawTimeStr) {
+        if (!rawTimeStr) return new Date(NaN);
+        // ミリ秒を削除してからパース
+        const safeStr = rawTimeStr.replace(/\.\d+/, '').replace(/-/g, '/').replace(/T/, ' ').replace(/\+.*/, '').replace(/Z/, ''); 
+        return new Date(safeStr);
+    }
+
+    // ==========================================
     // 🚨 カスタムコントロール (全画面 + ズーム)
     // ==========================================
     L.Control.CustomZoom = L.Control.extend({
@@ -664,13 +683,11 @@
                 L.DomEvent.preventDefault(e);
                 var elem = document.getElementById("map-container");
                 
-                // ネイティブフルスクリーンか、擬似フルスクリーンか判定
                 if (!document.fullscreenElement && !isPseudoFS) {
                     if (elem.requestFullscreen) { elem.requestFullscreen(); }
                     else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); }
                     else if (elem.msRequestFullscreen) { elem.msRequestFullscreen(); }
                     else {
-                        // 🚨 iOS等向け擬似フルスクリーンフォールバック
                         elem.classList.add('pseudo-fullscreen');
                         isPseudoFS = true;
                         updateFSIcon(true);
@@ -709,7 +726,6 @@
     });
     map.addControl(new L.Control.CustomZoom());
 
-    // 画面回転時もサイズをリセット
     window.addEventListener('orientationchange', function() {
         setTimeout(() => map.invalidateSize(), 200);
     });
@@ -920,7 +936,7 @@
         });
         
         let mainEpi = epicenters.find(epi => epi.magnitude === maxMag) || epicenters[0];
-        let dispName = `${mainEpi.name}※`; // 🚨 CSVデータは※で統一
+        let dispName = `${mainEpi.name}※`; 
         
         let currentEq = {
             earthquake: {
@@ -2058,16 +2074,6 @@
         fetchEarthquakeHistory(); startTsunamiPolling();
     }).catch(err => { addSystemLog(`Err: 初期データの読み込みに失敗しました`, 'error'); });
 
-    function safeFormatDateString(rawTimeStr) {
-        if (!rawTimeStr) return "--/-- --:--";
-        const safeStr = rawTimeStr.replace(/-/g, '/').replace(/T/, ' ').replace(/\+.*/, '').replace(/Z/, ''); const d = new Date(safeStr);
-        if (isNaN(d.getTime())) return rawTimeStr; 
-        return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    }
-    function getSafeDateObj(rawTimeStr) {
-        if (!rawTimeStr) return new Date(NaN);
-        const safeStr = rawTimeStr.replace(/-/g, '/').replace(/T/, ' ').replace(/\+.*/, '').replace(/Z/, ''); return new Date(safeStr);
-    }
     function getIntensityColor(scale) {
         switch (scale) { case 10: return '#64D2FF'; case 20: return '#0A84FF'; case 30: return '#30D158'; case 40: return '#FFD60A'; case 45: return '#FF9F0A'; case 50: return '#FF453A'; case 55: return '#FF2D55'; case 60: return '#BF5AF2'; case 70: return '#5E5CE6'; default: return '#8E8E93'; }
     }
@@ -2288,13 +2294,11 @@
 
         const hypo = eq.earthquake.hypocenter;
         
-        // 🚨 1. 付加文を上部に配置し、津波情報は後から追加する
         let commentHtml = "";
         if (eq.comments && eq.comments.freeFormComment) {
             commentHtml += `<strong>【付加文】</strong><br>${eq.comments.freeFormComment}`;
         }
 
-        // 🚨 2. 津波情報のスマート処理
         let isTsunamiActive = false;
         let tColorVar = "var(--tsunami-none)";
         const matchedTsunami = getMatchingTsunamiInfo(eq.earthquake.time);
@@ -2337,14 +2341,12 @@
             tsunamiTextHtml = `<strong>【津波情報】</strong><br>${tsunamiText}`;
         }
 
-        // 付加文と津波情報を結合
         if (tsunamiTextHtml) {
             if (commentHtml !== "") commentHtml += "<br><br>";
             commentHtml += tsunamiTextHtml;
         }
 
         const commentsBox = document.getElementById('dp-comments'); 
-        // 🚨 どちらも無い場合のみ全体枠を消す
         if (commentHtml === "") {
             commentsBox.style.display = 'none';
         } else {
@@ -2435,7 +2437,6 @@
             stationsListContainer.innerHTML = '<div style="padding: 10px; text-align: center; color: var(--text-secondary); font-size: 13px;">詳細な観測点データがありません</div>';
         }
         
-        // 🚨 ズーム時のパディングを計算（横画面のスマホ等でのズレ対策）
         if (bounds.length > 0) {
             map.invalidateSize();
             map.fitBounds(bounds, { padding: [40, 40], maxZoom: 8, animate: true });
