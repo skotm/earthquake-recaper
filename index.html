@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>地震情報可視化ツール - サーバーレス版</title>
+    <title>地震情報可視化ツール</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -688,15 +688,17 @@
 </div>
 
 <script>
+    // ==========================================
+    // 🚨 ネットワーク通信・プロキシ設定（フォールバック用）
+    // ==========================================
+    let useProxyForImage = false;
+    let useProxyForJSON = false;
+    const PROXY_BASE = "https://api.codetabs.com/v1/proxy?quest=";
+
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([38.0, 137.0], 5);
-    const proxyList = [
-        "https://api.codetabs.com/v1/proxy/?quest=",
-        "https://api.allorigins.win/raw?url=",
-        "https://corsproxy.io/?"
-    ];
 
     // ==========================================
-    // 🚨 日時文字列の安全なパース（iOS Safari等のミリ秒NaN対策）
+    // 日時文字列の安全なパース
     // ==========================================
     function safeFormatDateString(rawTimeStr) {
         if (!rawTimeStr) return "--/-- --:--";
@@ -713,7 +715,7 @@
     }
 
     // ==========================================
-    // 🚨 カスタムコントロール (全画面 + ズーム)
+    // カスタムコントロール (全画面 + ズーム)
     // ==========================================
     L.Control.CustomZoom = L.Control.extend({
         options: { position: 'topright' },
@@ -1137,7 +1139,7 @@
     };
 
     // ==========================================
-    // 🚨 観測点描画用・軽量Canvasレイヤー (パフォーマンス改善)
+    // 観測点描画用・軽量Canvasレイヤー
     // ==========================================
     L.StationCanvasLayer = L.Layer.extend({
         initialize: function (options) { L.setOptions(this, options); this._data = []; },
@@ -1223,7 +1225,6 @@
     });
     let stationLayer = new L.StationCanvasLayer();
 
-    // 🚨 カスタムツールチップの制御 (Canvasヒットテスト方式)
     const canvasTooltip = document.getElementById('canvas-tooltip');
     let hoverStation = null;
 
@@ -1278,7 +1279,7 @@
     // EEW履歴パネル処理
     // ==========================================
     const eewHistoryCache = new Map();
-    let eewProxyIndex = 0;
+    const eewTimeCache = {}; // アーカイブ再生用の秒数キャッシュ
 
     async function fetchRealEEWHistorySmart(eqTimeStr) {
         const T0 = getSafeDateObj(eqTimeStr).getTime();
@@ -1289,11 +1290,20 @@
         
         async function getEEWAt(timeMs) {
             const t = getFormatTimeStr(new Date(timeMs));
-            const baseUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${t.time}.json`;
-            const proxyUrl = proxyList[eewProxyIndex] + encodeURIComponent(baseUrl);
-            eewProxyIndex = (eewProxyIndex + 1) % proxyList.length;
+            const targetUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${t.time}.json`;
             try {
-                const res = await fetch(proxyUrl);
+                let res;
+                // 🚨 アプリ環境とWebブラウザ環境の両対応フォールバック
+                if (useProxyForJSON) {
+                    res = await fetch(PROXY_BASE + targetUrl);
+                } else {
+                    try {
+                        res = await fetch(targetUrl);
+                    } catch(e) {
+                        res = await fetch(PROXY_BASE + targetUrl);
+                        useProxyForJSON = true;
+                    }
+                }
                 const data = await res.json();
                 if (data && data.result) return data;
             } catch(e) {}
@@ -1528,9 +1538,11 @@
         },
         onRemove: function (map) { L.DomUtil.remove(this._canvas); map.off('moveend zoomend resize', this._updatePosition, this); },
         _updatePosition: function () {
-            const size = this._map.getSize(); const topLeft = this._map.containerPointToLayerPoint([0, 0]);
+            const size = this._map.getSize(); 
+            const topLeft = this._map.containerPointToLayerPoint([0, 0]);
             L.DomUtil.setPosition(this._canvas, topLeft);
-            this._canvas.width = size.x; this._canvas.height = size.y;
+            this._canvas.width = size.x; 
+            this._canvas.height = size.y;
             this.redraw();
         },
         updateData: function(dataArray) {
@@ -1540,7 +1552,9 @@
         },
         redraw: function () {
             if (!this._ctx) return;
-            const ctx = this._ctx; ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+            const ctx = this._ctx; 
+            ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+            
             const zoom = this._map.getZoom();
 
             for (let i = 0; i < this._data.length; i++) {
@@ -1548,6 +1562,7 @@
                 if (item.lat === undefined || item.lon === undefined || !item.color) continue;
                 const intensity = calcIntensityFromColor(item.color);
                 if (intensity < currentIntensityFilterThreshold) continue;
+                
                 const p = this._map.latLngToContainerPoint([parseFloat(item.lat), parseFloat(item.lon)]);
                 if (p.x < -10 || p.y < -10 || p.x > this._canvas.width + 10 || p.y > this._canvas.height + 10) continue;
                 
@@ -1578,12 +1593,15 @@
                         }
                     }
                 } else {
-                    const radius = zoom >= 8 ? 4.5 : (zoom >= 6 ? 2.8 : 1.6);
-                    const lineWidth = zoom >= 8 ? 1.0 : (zoom >= 6 ? 0.8 : 0.4); 
+                    const radius = zoom >= 8 ? 6.5 : (zoom >= 6 ? 3.5 : 2.0);
                     let drawColor = item.color;
-                    if (typeof item.color === 'string' && item.color.startsWith('rgb')) drawColor = item.color.replace('rgb', 'rgba').replace(')', ', 0.9)');
-                    ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2); ctx.fillStyle = drawColor; ctx.fill();
-                    if (lineWidth > 0) { ctx.lineWidth = lineWidth; ctx.strokeStyle = "rgba(255, 255, 255, 0.95)"; ctx.stroke(); }
+                    if (typeof item.color === 'string' && item.color.startsWith('rgb')) {
+                        drawColor = item.color.replace('rgb', 'rgba').replace(')', ', 0.95)');
+                    }
+                    ctx.beginPath(); 
+                    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2); 
+                    ctx.fillStyle = drawColor; 
+                    ctx.fill();
                 }
             }
         }
@@ -1642,10 +1660,20 @@
 
     async function fetchKmoniEEW(timeFmt) {
         if (isEEWMockActive) return null; 
+        const targetUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${timeFmt.time}.json?_=${Date.now()}`;
         try {
-            const baseUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${timeFmt.time}.json?_=${Date.now()}`;
-            const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(baseUrl)}`;
-            const res = await fetch(proxyUrl);
+            let res;
+            // 🚨 フォールバック機構：直通信とプロキシの自動切り替え
+            if (useProxyForJSON) {
+                res = await fetch(PROXY_BASE + targetUrl);
+            } else {
+                try {
+                    res = await fetch(targetUrl);
+                } catch(e) {
+                    res = await fetch(PROXY_BASE + targetUrl);
+                    useProxyForJSON = true;
+                }
+            }
             const data = await res.json();
             processEEWData(data);
         } catch (e) {}
@@ -1888,7 +1916,6 @@
     let intensityPointsData = []; 
     let isArchiveMode = false; let archiveTime = null; let archiveTimer = null; let archiveIsPlaying = false;
     let lastArchiveRealTime = Date.now(); let lastArchiveTimeMs = 0;
-    const eewTimeCache = {};
 
     function getFormatTimeStr(date) {
         const yyyy = date.getFullYear(), MM = String(date.getMonth() + 1).padStart(2, '0'), dd = String(date.getDate()).padStart(2, '0');
@@ -1930,19 +1957,43 @@
     function fetchAndDrawKmoni(targetDate, isLive = true) {
         const t = getFormatTimeStr(targetDate);
         if (isLive) fetchKmoniEEW(t); 
-        const baseUrl = `http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/${t.date}/${t.time}.jma_s.gif`;
-        const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(baseUrl)}`;
-        const img = new Image(); img.crossOrigin = "Anonymous"; 
+        
+        const targetUrl = `http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/${t.date}/${t.time}.jma_s.gif`;
+        
         return new Promise((resolve, reject) => {
-            img.onload = function() { sysStats.success++; extractColorsFromImage(img, t.display + (isLive ? "" : " [過去]")); resolve(true); };
-            img.onerror = function() {
-                sysStats.error++;
-                const ind = document.getElementById('kmoni-indicator'); ind.classList.remove('archive'); ind.classList.add('error');
-                if (isLive) document.getElementById('kmoni-status-text').innerText = "画像取得エラー (ラグ調整中...)";
-                else document.getElementById('kmoni-status-text').innerText = "データなし (保存期間外 または 通信エラー)";
-                reject(false);
+            // 🚨 フォールバック機構：直通信とプロキシの自動切り替え（Canvas制約の回避）
+            const tryFetch = (useProxy) => {
+                const img = new Image();  
+                if (useProxy) {
+                    img.crossOrigin = "Anonymous";
+                    img.src = PROXY_BASE + targetUrl;
+                } else {
+                    img.src = targetUrl;
+                }
+
+                img.onload = function() { 
+                    sysStats.success++;
+                    useProxyForImage = useProxy; // 成功した方式を記憶
+                    extractColorsFromImage(img, t.display + (isLive ? "" : " [過去]")); 
+                    resolve(true); 
+                };
+                
+                img.onerror = function() {
+                    if (!useProxy && !useProxyForImage) {
+                        // 直通信に失敗した場合、プロキシ経由でリトライ
+                        console.warn("[System] 画像の直通信に失敗したため、プロキシ経由で再試行します...");
+                        tryFetch(true);
+                    } else {
+                        sysStats.error++;
+                        const ind = document.getElementById('kmoni-indicator'); ind.classList.remove('archive'); ind.classList.add('error');
+                        if (isLive) document.getElementById('kmoni-status-text').innerText = "画像取得エラー";
+                        else document.getElementById('kmoni-status-text').innerText = "データなし (保存期間外 または 通信エラー)";
+                        reject(false);
+                    }
+                };
             };
-            img.src = proxyUrl;
+            
+            tryFetch(useProxyForImage);
         });
     }
 
@@ -2033,11 +2084,20 @@
             const baseTimeMs = d.getTime(); const checkSeconds = [15, 30, 45, 60, 75, 90]; 
             for (let sec of checkSeconds) {
                 const checkTime = new Date(baseTimeMs + sec * 1000); const t = getFormatTimeStr(checkTime);
-                const baseUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${t.time}.json`;
-                const proxyUrl = proxyList[eewProxyIndex] + encodeURIComponent(baseUrl);
-                eewProxyIndex = (eewProxyIndex + 1) % proxyList.length;
+                const targetUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${t.time}.json`;
                 try {
-                    const res = await fetch(proxyUrl); const data = await res.json();
+                    let res;
+                    if (useProxyForJSON) {
+                        res = await fetch(PROXY_BASE + targetUrl);
+                    } else {
+                        try {
+                            res = await fetch(targetUrl);
+                        } catch(e) {
+                            res = await fetch(PROXY_BASE + targetUrl);
+                            useProxyForJSON = true;
+                        }
+                    }
+                    const data = await res.json();
                     if (data && data.result && data.result.message !== "データがありません" && data.origin_time) {
                         const ot = data.origin_time; 
                         exactOriginTime = new Date(parseInt(ot.slice(0,4)), parseInt(ot.slice(4,6))-1, parseInt(ot.slice(6,8)), parseInt(ot.slice(8,10)), parseInt(ot.slice(10,12)), parseInt(ot.slice(12,14)));
@@ -2164,14 +2224,38 @@
         }, 30000); 
     }
 
+    // 🚨 新規追加：Electronビルド後とWebブラウザの両対応ローカルJSON読み込み関数
+    async function loadLocalJson(filename, defaultValue) {
+        if (typeof require !== 'undefined') {
+            try {
+                const fs = require('fs');
+                const path = require('path');
+                const filePath = path.join(__dirname, filename);
+                const data = fs.readFileSync(filePath, 'utf8');
+                return JSON.parse(data);
+            } catch (err) {
+                console.error(`${filename} の読み込みエラー:`, err);
+                return defaultValue;
+            }
+        } else {
+            // Webブラウザ環境用のフォールバック
+            try {
+                const res = await fetch(filename);
+                return res.ok ? await res.json() : defaultValue;
+            } catch(e) {
+                return defaultValue;
+            }
+        }
+    }
+
     Promise.all([
-        fetch('./japan.geo.json').then(res => res.json()).catch(() => null),
-        fetch('./stations_with_amp_revised.json').then(res => res.json()).catch(() => []),
-        fetch('./津波予報区.json').then(res => res.json()).catch(() => null),
+        loadLocalJson('japan.geo.json', null),
+        loadLocalJson('stations_with_amp_revised.json', []),
+        loadLocalJson('津波予報区.json', null),
         fetchJMATsunamiHistory(), 
         fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=0').then(res => res.ok ? res.json() : []).catch(() => []),
         fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=100').then(res => res.ok ? res.json() : []).catch(() => []),
-        fetch('./intensity-points.json').then(res => res.json()).catch(() => []) 
+        loadLocalJson('intensity-points.json', []) 
     ]).then(([geoData, stations, tGeo, jmaTsunami, p2pTsunami1, p2pTsunami2, intPoints]) => {
         if (geoData) {
             japanGeoData = geoData;
