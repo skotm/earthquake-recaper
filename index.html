@@ -691,8 +691,9 @@
     // ==========================================
     // 🚨 ネットワーク通信・プロキシ設定（フォールバック用）
     // ==========================================
-    let useProxyForImage = false;
-    let useProxyForJSON = false;
+    const isHttps = window.location.protocol === 'https:';
+    let useProxyForImage = isHttps;
+    let useProxyForJSON = isHttps;
     const PROXY_BASE = "https://api.codetabs.com/v1/proxy?quest=";
 
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([38.0, 137.0], 5);
@@ -2230,11 +2231,33 @@
             try {
                 const fs = require('fs');
                 const path = require('path');
-                const filePath = path.join(__dirname, filename);
-                const data = fs.readFileSync(filePath, 'utf8');
+                
+                // HTML内のインラインスクリプトで __dirname が使えない場合のための安全策
+                let basePath = '';
+                if (typeof __dirname !== 'undefined') {
+                    basePath = __dirname;
+                } else {
+                    // window.location.pathname から現在のパスを取得（例: /C:/.../index.html）
+                    let loc = decodeURI(window.location.pathname);
+                    // Windows環境の場合、先頭の「/」を削る (/C:/... -> C:/...)
+                    if (navigator.platform.indexOf('Win') > -1 && loc.startsWith('/')) {
+                        loc = loc.substring(1);
+                    }
+                    basePath = path.dirname(loc);
+                }
+                
+                const filePath = path.join(basePath, filename);
+                let data = fs.readFileSync(filePath, 'utf8');
+                
+                // 🚨 追加：先頭にBOM（隠し文字）があれば取り除く
+                if (data.charCodeAt(0) === 0xFEFF) {
+                    data = data.slice(1);
+                }
+                
                 return JSON.parse(data);
+                
             } catch (err) {
-                console.error(`${filename} の読み込みエラー:`, err);
+                console.error(`[System Error] ${filename} の読み込みに失敗しました:`, err);
                 return defaultValue;
             }
         } else {
