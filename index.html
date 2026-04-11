@@ -867,8 +867,17 @@
 
     map.on('click', function() { closeAllPanels(); });
 
+    // 🚨 レイヤー管理（Pane）の設定
     map.createPane('baseMapPane'); map.getPane('baseMapPane').style.zIndex = 250;
     map.createPane('tsunamiPane'); map.getPane('tsunamiPane').style.zIndex = 260; 
+    
+    // 🚨 EEW用のペインを最前面に作成
+    map.createPane('eewPane'); 
+    map.getPane('eewPane').style.zIndex = 450; 
+    map.getPane('eewPane').style.pointerEvents = 'none';
+    
+    // 🚨 【重要】カスタムペインに円を描画するための専用レンダラー
+    const eewRenderer = L.svg({ pane: 'eewPane' });
 
     const allEarthquakesLayer = L.layerGroup().addTo(map);
     const detailLayer = L.layerGroup();
@@ -1294,7 +1303,6 @@
             const targetUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${t.time}.json`;
             try {
                 let res;
-                // 🚨 アプリ環境とWebブラウザ環境の両対応フォールバック
                 if (useProxyForJSON) {
                     res = await fetch(PROXY_BASE + targetUrl);
                 } else {
@@ -1523,7 +1531,7 @@
     };
 
     // ==========================================
-    // 【強震モニタ】 描画レイヤー
+    // 🚨 【強震モニタ】 描画レイヤー（サイズ最適化版）
     // ==========================================
     L.KyoshinMonitorLayer = L.Layer.extend({
         initialize: function (options) { L.setOptions(this, options); this._data = []; this._isCalcMode = false; },
@@ -1570,7 +1578,7 @@
                 if (this._isCalcMode) {
                     if (intensity < -2.9 && currentIntensityFilterThreshold <= -2.9) continue;
                     if (intensity < 0.5) {
-                        const radius = zoom >= 8 ? 5.5 : (zoom >= 6 ? 3.5 : 2.0);
+                        const radius = zoom >= 8 ? 5.5 : (zoom >= 6 ? 2.5 : 1.0); // 縮小時に小さく
                         let alpha = 0;
                         if (intensity > 0) alpha = 0.3 + (intensity / 0.5) * 0.4;
                         else if (intensity > -1.0) alpha = 0.1 + ((intensity + 1.0) / 1.0) * 0.2;
@@ -1582,7 +1590,8 @@
                         if (intensity >= 6.5) scale = 70; else if (intensity >= 6.0) scale = 60; else if (intensity >= 5.5) scale = 55;
                         else if (intensity >= 5.0) scale = 50; else if (intensity >= 4.5) scale = 45; else if (intensity >= 3.5) scale = 40;
                         else if (intensity >= 2.5) scale = 30; else if (intensity >= 1.5) scale = 20;
-                        const hexColor = getIntensityColor(scale); const radius = zoom >= 9 ? 12 : 6;
+                        const hexColor = getIntensityColor(scale); 
+                        const radius = zoom >= 9 ? 12 : (zoom >= 6 ? 6 : 3.5); // 縮小時に小さく
                         ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
                         ctx.fillStyle = hexColor; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2; ctx.fill();
                         ctx.shadowColor = 'transparent'; ctx.lineWidth = 1.5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
@@ -1594,7 +1603,7 @@
                         }
                     }
                 } else {
-                    const radius = zoom >= 8 ? 6.5 : (zoom >= 6 ? 3.5 : 2.0);
+                    const radius = zoom >= 8 ? 6.5 : (zoom >= 6 ? 2.5 : 1.0); // 縮小時に小さく
                     let drawColor = item.color;
                     if (typeof item.color === 'string' && item.color.startsWith('rgb')) {
                         drawColor = item.color.replace('rgb', 'rgba').replace(')', ', 0.95)');
@@ -1664,7 +1673,6 @@
         const targetUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${timeFmt.time}.json?_=${Date.now()}`;
         try {
             let res;
-            // 🚨 フォールバック機構：直通信とプロキシの自動切り替え
             if (useProxyForJSON) {
                 res = await fetch(PROXY_BASE + targetUrl);
             } else {
@@ -1703,8 +1711,9 @@
             const layerGroup = L.layerGroup().addTo(eewLayer);
             activeEEWs.set(eventId, {
                 data: data, layerGroup: layerGroup, clearTimer: null,
-                pCircle: L.circle([0,0], {radius: 0, color: 'var(--p-wave-color)', weight: 1.5, fill: true, fillOpacity: 0.05, interactive: false}),
-                sCircle: L.circle([0,0], {radius: 0, color: 'var(--s-wave-color)', weight: 2.5, fill: true, fillOpacity: 0.15, interactive: false}),
+                // 🚨 修正：レンダラーを指定し、CSS変数ではなくカラーコードを直書きして確実に描画させる
+                pCircle: L.circle([0,0], {renderer: eewRenderer, radius: 0, color: '#32ADE6', weight: 1.5, fill: true, fillOpacity: 0.05, interactive: false}),
+                sCircle: L.circle([0,0], {renderer: eewRenderer, radius: 0, color: '#FF3B30', weight: 2.5, fill: true, fillOpacity: 0.15, interactive: false}),
                 alertLayer: L.layerGroup(), animFrame: null
             });
             const state = activeEEWs.get(eventId);
@@ -1962,7 +1971,6 @@
         const targetUrl = `http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/${t.date}/${t.time}.jma_s.gif`;
         
         return new Promise((resolve, reject) => {
-            // 🚨 フォールバック機構：直通信とプロキシの自動切り替え（Canvas制約の回避）
             const tryFetch = (useProxy) => {
                 const img = new Image();  
                 if (useProxy) {
@@ -1974,14 +1982,13 @@
 
                 img.onload = function() { 
                     sysStats.success++;
-                    useProxyForImage = useProxy; // 成功した方式を記憶
+                    useProxyForImage = useProxy;
                     extractColorsFromImage(img, t.display + (isLive ? "" : " [過去]")); 
                     resolve(true); 
                 };
                 
                 img.onerror = function() {
                     if (!useProxy && !useProxyForImage) {
-                        // 直通信に失敗した場合、プロキシ経由でリトライ
                         console.warn("[System] 画像の直通信に失敗したため、プロキシ経由で再試行します...");
                         tryFetch(true);
                     } else {
@@ -2225,21 +2232,17 @@
         }, 30000); 
     }
 
-    // 🚨 新規追加：Electronビルド後とWebブラウザの両対応ローカルJSON読み込み関数
     async function loadLocalJson(filename, defaultValue) {
         if (typeof require !== 'undefined') {
             try {
                 const fs = require('fs');
                 const path = require('path');
                 
-                // HTML内のインラインスクリプトで __dirname が使えない場合のための安全策
                 let basePath = '';
                 if (typeof __dirname !== 'undefined') {
                     basePath = __dirname;
                 } else {
-                    // window.location.pathname から現在のパスを取得（例: /C:/.../index.html）
                     let loc = decodeURI(window.location.pathname);
-                    // Windows環境の場合、先頭の「/」を削る (/C:/... -> C:/...)
                     if (navigator.platform.indexOf('Win') > -1 && loc.startsWith('/')) {
                         loc = loc.substring(1);
                     }
@@ -2249,7 +2252,6 @@
                 const filePath = path.join(basePath, filename);
                 let data = fs.readFileSync(filePath, 'utf8');
                 
-                // 🚨 追加：先頭にBOM（隠し文字）があれば取り除く
                 if (data.charCodeAt(0) === 0xFEFF) {
                     data = data.slice(1);
                 }
@@ -2261,7 +2263,6 @@
                 return defaultValue;
             }
         } else {
-            // Webブラウザ環境用のフォールバック
             try {
                 const res = await fetch(filename);
                 return res.ok ? await res.json() : defaultValue;
