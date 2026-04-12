@@ -7,6 +7,7 @@
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
 
     <style>
         :root {
@@ -173,7 +174,7 @@
         .sp-info { font-size: 13px; color: #e5e5ea; margin-bottom: 6px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; }
         .sp-info:last-of-type { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
         .sp-info span { font-family: monospace; color: #64D2FF; text-align: right; font-weight: bold; }
-        .sp-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; flex: 1; transition: 0.2s; white-space: nowrap; }
+        .sp-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; flex: 1; transition: 0.2s; white-space: nowrap; outline: none; }
         .sp-btn:hover { background: rgba(255,255,255,0.2); }
         .sp-btn-danger { background: rgba(255,69,58,0.2); border-color: rgba(255,69,58,0.5); color: #FF453A; }
         .sp-btn-danger:hover { background: rgba(255,69,58,0.4); }
@@ -185,18 +186,8 @@
         .sp-log-box div:last-child { margin-bottom: 0; border-bottom: none; }
         .sp-log-box .log-err { color: #FF453A; } .sp-log-box .log-succ { color: #30D158; } .sp-log-box .log-warn { color: #FFD60A; } .sp-log-box .log-info { color: #e5e5ea; }
         
-        /* ========== CSVドラッグ＆ドロップエリア ========== */
-        .drop-zone {
-            border: 2px dashed var(--border-color); border-radius: 12px; padding: 30px 20px;
-            text-align: center; cursor: pointer; background-color: rgba(255, 255, 255, 0.02);
-            transition: all 0.3s ease; margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-        .drop-zone:hover, .drop-zone.dragover { background-color: rgba(10, 132, 255, 0.1); border-color: var(--accent-color); }
-        .drop-zone-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
-        .drop-zone-text strong { color: var(--accent-color); font-size: 14px; }
-
         /* ========== フローティング要素のレイアウトシフト ========== */
-        .eew-container { position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); display: flex; flex-direction: column-reverse; gap: 12px; max-height: 75vh; overflow-y: auto; z-index: 1500; pointer-events: auto; width: 295px; max-width: calc(100vw - 20px); padding-right: 10px; transition: margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .eew-container { position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); display: flex; flex-direction: column-reverse; gap: 12px; max-height: 75vh; overflow-y: auto; z-index: 1500; pointer-events: auto; width: 310px; max-width: calc(100vw - 20px); padding-right: 10px; transition: margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
         .eew-container:empty { display: none; }
         .eew-container::-webkit-scrollbar { width: 6px; } .eew-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
 
@@ -208,8 +199,8 @@
         .eew-minimized.forecast { background-color: #FFCC00; color: #1C1C1E; }
         @keyframes pulse-minimized-red { 0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 59, 48, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); } }
 
-        /* 🚨 eew-panel と tsunami-panel に共通のCSSを適用し、意図しないスクロールを防止 */
-        .eew-panel, #eew-panel, #tsunami-panel { pointer-events: auto; position: relative; box-sizing: border-box; width: 280px; flex-shrink: 0; background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); color: #FFFFFF; transition: background-color 0.3s, border-color 0.3s, opacity 0.3s, transform 0.3s; }
+        /* 🚨 eew-panel を少し拡大 */
+        .eew-panel, #eew-panel, #tsunami-panel { pointer-events: auto; position: relative; box-sizing: border-box; width: 300px; flex-shrink: 0; background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); color: #FFFFFF; transition: background-color 0.3s, border-color 0.3s, opacity 0.3s, transform 0.3s; }
         .eew-panel { animation: slideInEew 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         #eew-panel, #tsunami-panel { position: absolute; top: 60px; right: 10px; max-width: calc(100vw - 20px); max-height: 40vh; z-index: 1000; opacity: 0; transform: translateX(20px); pointer-events: none; display: flex; flex-direction: column; }
         #eew-panel.show, #tsunami-panel.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
@@ -226,11 +217,11 @@
         .dp-time { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; } 
         .dp-meta { font-size: 13px; line-height: 1.4; } .dp-meta strong { font-size: 15px; color: #fff; }
         .dp-toggle-btn { margin-top: 12px; padding: 10px 0 4px 0; text-align: center; font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); transition: color 0.2s; } .dp-toggle-btn:hover { color: #fff; }
-        .dp-extended-area { overflow-y: auto; padding-right: 4px; transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.4s ease; max-height: 300px; opacity: 1; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; } .dp-extended-area.collapsed { max-height: 0; opacity: 0; margin-top: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; } .dp-extended-area::-webkit-scrollbar { width: 4px; } .dp-extended-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        .dp-extended-area { overflow-y: auto; padding-right: 4px; transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.4s ease; max-height: 350px; opacity: 1; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; } .dp-extended-area.collapsed { max-height: 0; opacity: 0; margin-top: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; } .dp-extended-area::-webkit-scrollbar { width: 4px; } .dp-extended-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
         .dp-comments-box { background: rgba(0, 0, 0, 0.5); border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.5; color: #e5e5ea; border-left: 4px solid var(--tsunami-none); position: relative; transition: background-color 0.2s, border-color 0.3s; } .dp-comments-box.clickable { cursor: pointer; } .dp-comments-box.clickable:hover { background: rgba(255, 255, 255, 0.1); } .dp-comments-hint { display: none; position: absolute; right: 12px; bottom: 8px; font-size: 11px; font-weight: bold; color: var(--text-secondary); } .dp-comments-box.clickable .dp-comments-hint { display: block; }
         .dp-stations-container { display: flex; flex-direction: column; } .dp-station-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.04); } .dp-station-item:last-child { border-bottom: none; } .dp-station-name { font-size: 14px; color: #e5e5ea; } .dp-station-scale { font-size: 13px; font-weight: 700; color: #fff; padding: 4px 10px; border-radius: 6px; }
         
-        #detail-panel { position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); width: 280px; max-width: calc(100vw - 20px); background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; display: flex; flex-direction: column; opacity: 0; transform: translateY(150%); transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s, margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); pointer-events: none; box-sizing: border-box; }
+        #detail-panel { position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); width: 300px; max-width: calc(100vw - 20px); background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; display: flex; flex-direction: column; opacity: 0; transform: translateY(150%); transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s, margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); pointer-events: none; box-sizing: border-box; }
         #detail-panel.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
         
         .tp-header { font-size: 16px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px; color: #fff; padding-right: 28px; flex-shrink: 0; } .tp-list { overflow-y: auto; padding-right: 4px; flex-grow: 1; } .tp-list::-webkit-scrollbar { width: 4px; } .tp-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
@@ -264,6 +255,11 @@
         body.drawer-open #clock-panel {
             margin-left: calc(var(--drawer-width) + 10px);
         }
+        
+        /* 🚨 追加: システムメニュー展開時の時計パネル退避 */
+        body.menu-open #clock-panel {
+            margin-left: 390px;
+        }
 
         .ep-header { font-size: 15px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px; color: #fff; padding-right: 28px; flex-shrink: 0; }
         .ep-list { overflow-y: auto; padding-right: 4px; flex-grow: 1; display: flex; flex-direction: column; gap: 8px;}
@@ -271,8 +267,8 @@
         .ep-close { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; background: rgba(255,255,255,0.1); border-radius: 50%; text-align: center; line-height: 28px; font-size: 14px; cursor: pointer; color: #fff; z-index: 10; transition: background 0.2s;}
         .ep-close:hover { background: rgba(255,255,255,0.2); }
 
-        /* ========== iOS風 階層化メニューパネル ========== */
-        .ios-panel-container { position: absolute; top: 15px; left: calc(var(--rail-width) + 15px); width: 320px; max-height: calc(100vh - 30px); z-index: 2000; pointer-events: none; transform-origin: top left; }
+        /* 🚨 ios-panel の横幅を 380px に拡大 */
+        .ios-panel-container { position: absolute; top: 15px; left: calc(var(--rail-width) + 15px); width: 380px; max-height: calc(100vh - 30px); z-index: 2000; pointer-events: none; transform-origin: top left; }
         .ios-panel { position: absolute; top: 0; left: 0; width: 100%; max-height: calc(100vh - 30px); background-color: var(--surface-color); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); color: var(--text-primary); display: flex; flex-direction: column; overflow: hidden; opacity: 0; visibility: hidden; transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1); pointer-events: auto; transform: scale(0.95); }
         .ios-panel.active { opacity: 1; visibility: visible; transform: scale(1); }
         .ios-panel.slide-left { transform: translateX(-30px) scale(0.95); opacity: 0; visibility: hidden; }
@@ -312,6 +308,17 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.5);
             line-height: 1.4;
         }
+
+        /* 🚨 シミュレーターのタブスタイル */
+        .sim-tab {
+            padding: 6px 12px; background: rgba(255,255,255,0.1); border-radius: 16px; font-size: 12px;
+            white-space: nowrap; cursor: pointer; border: 1px solid transparent; transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .sim-tab:hover { background: rgba(255,255,255,0.2); }
+        .sim-tab.active { background: rgba(10, 132, 255, 0.3); border-color: #0A84FF; color: #fff; font-weight: bold; }
+        #sim-event-tabs::-webkit-scrollbar { height: 4px; }
+        #sim-event-tabs::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
 
         /* ========== 時計パネル ========== */
         #clock-panel {
@@ -624,22 +631,39 @@
                 <button class="sp-btn" style="width: 100%;" onclick="clearAllEEWs()">シミュレーション強制クリア</button>
 
                 <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
-                    <div style="font-size: 13px; font-weight: bold; margin-bottom: 12px; color: #fff; display: flex; justify-content: space-between;">
-                        <span>🎛 カスタムEEWシミュレーター</span>
-                        <span id="eew-sim-status" style="color: #FFD60A; font-size: 11px;">待機中</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span style="font-size: 13px; font-weight: bold; color: #fff;">🎛 カスタムEEWエディタ</span>
+                        <div style="display: flex; gap: 4px;">
+                            <button class="sp-btn" style="padding: 4px 8px; flex: 0;" onclick="addNewSimEvent(false)">＋ 追加</button>
+                            <button class="sp-btn" style="padding: 4px 8px; flex: 0;" onclick="addNewSimEvent(true)">🎲 ﾗﾝﾀﾞﾑ</button>
+                        </div>
                     </div>
                     
-                    <div style="display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">
-                        <div style="display: flex; gap: 8px;">
-                            <input type="text" id="sim-region" value="東京湾" placeholder="震央地名" class="sp-btn" style="flex: 2; text-align: left; background: rgba(255,255,255,0.1);">
-                            <input type="number" id="sim-mag" value="6.5" step="0.1" placeholder="M" class="sp-btn" title="マグニチュード" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
-                            <input type="number" id="sim-depth" value="30" placeholder="深さ" class="sp-btn" title="深さ(km)" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
+                    <div id="sim-event-tabs" style="display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 4px;">
+                        <span style="font-size: 11px; color: #aaa;">イベントを追加してください</span>
+                    </div>
+
+                    <div id="sim-editor-form" style="display: none; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 4px;">
+                            <span style="font-size: 12px; color: #aaa;">ステータス: <span id="sim-status-text" style="color: #fff;">編集中</span></span>
+                            <span style="font-size: 12px; color: #aaa;">報数: <span id="sim-report-badge" style="color: #fff; font-weight: bold;">未発報</span></span>
                         </div>
                         
                         <div style="display: flex; gap: 8px;">
-                            <input type="number" id="sim-lat" value="35.5" step="0.1" placeholder="緯度" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
-                            <input type="number" id="sim-lon" value="139.8" step="0.1" placeholder="経度" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
+                            <input type="text" id="sim-region" list="epicenter-list" placeholder="震央地名" class="sp-btn" style="flex: 2; text-align: left; background: rgba(255,255,255,0.1);">
+                            <input type="time" id="sim-time" step="1" class="sp-btn" style="flex: 1.5; background: rgba(255,255,255,0.1);" title="発生時刻">
                         </div>
+
+                        <div style="display: flex; gap: 8px;">
+                            <input type="number" id="sim-lat" step="0.1" placeholder="緯度" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
+                            <input type="number" id="sim-lon" step="0.1" placeholder="経度" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="number" id="sim-depth" placeholder="深さ(km)" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
+                            <input type="number" id="sim-mag" step="0.1" placeholder="M" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
+                        </div>
+                        
+                        <div style="font-size: 10px; color: var(--text-secondary); text-align: center;">※地図をクリックで座標と地名を自動取得します</div>
 
                         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
@@ -652,22 +676,17 @@
                             </div>
                             <div style="display: flex; gap: 10px;">
                                 <label style="font-size: 11px; color: #fff; cursor: pointer;"><input type="checkbox" id="sim-warn" checked> 警報</label>
-                                <label style="font-size: 11px; color: #fff; cursor: pointer;" title="マグニチュードや深さを不明にします"><input type="checkbox" id="sim-plum"> PLUM</label>
+                                <label style="font-size: 11px; color: #fff; cursor: pointer;"><input type="checkbox" id="sim-plum"> PLUM</label>
                             </div>
                         </div>
-                    </div>
 
-                    <div style="display: flex; gap: 6px; margin-top: 12px;">
-                        <button class="sp-btn" style="flex: 1.5; background: rgba(48, 209, 88, 0.2); border-color: #30D158; color: #30D158;" onclick="stepEEWSimulation()">
-                            ⏭ 手動更新 (<span id="sim-report-num">1</span>報)
-                        </button>
-                        <button class="sp-btn" style="flex: 1; background: rgba(10, 132, 255, 0.2); border-color: #0A84FF; color: #64D2FF;" onclick="finishEEWSimulation()">
-                            🏁 最終報
-                        </button>
-                    </div>
-                    <div style="display: flex; gap: 6px; margin-top: 6px;">
-                        <button class="sp-btn sp-btn-danger" style="flex: 1;" onclick="cancelEEWSimulation()">✖ 取消報</button>
-                        <button class="sp-btn" style="flex: 1;" onclick="resetEEWSimulation()">🔄 リセット</button>
+                        <div style="display: flex; gap: 6px; margin-top: 8px;">
+                            <button class="sp-btn" style="flex: 2; background: rgba(48, 209, 88, 0.2); border-color: #30D158; color: #30D158;" onclick="dispatchSimulatedEEW(false, false)">
+                                📢 発報 / 更新
+                            </button>
+                            <button class="sp-btn" style="flex: 1; background: rgba(10, 132, 255, 0.2); border-color: #0A84FF; color: #64D2FF;" onclick="dispatchSimulatedEEW(true, false)">🏁 最終</button>
+                            <button class="sp-btn sp-btn-danger" style="flex: 1;" onclick="dispatchSimulatedEEW(false, true)">✖ 取消</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -872,6 +891,8 @@
             menuContainer.style.pointerEvents = 'auto';
             parentMenu.classList.add('active');
             parentMenu.classList.remove('slide-left');
+            // 🚨 【追加】システムメニュー展開時に時計パネルを右へスライドさせるクラスを付与
+            document.body.classList.add('menu-open');
             closeTsunamiPanel(); closeEEWPanel();
         } else {
             closeAllPanels();
@@ -894,9 +915,43 @@
         parentMenu.classList.remove('active', 'slide-left');
         allChildPanels.forEach(panel => panel.classList.remove('active'));
         menuContainer.style.pointerEvents = 'none';
+        // 🚨 【追加】システムメニューを閉じた時に時計パネルを元の位置に戻す
+        document.body.classList.remove('menu-open');
     }
 
-    map.on('click', function() { closeAllPanels(); });
+    // 🚨 【追加】マップクリックイベントの拡張（エディタ連携＆空間演算）
+    map.on('click', function(e) { 
+        const demoPanel = document.getElementById('panel-demo');
+        if (demoPanel && demoPanel.classList.contains('active') && currentSimEventId) {
+            document.getElementById('sim-lat').value = e.latlng.lat.toFixed(2);
+            document.getElementById('sim-lon').value = e.latlng.lng.toFixed(2);
+            
+            let regionName = "不明な地域";
+            if (typeof turf !== 'undefined' && epicenterGeoData && epicenterGeoData.features) {
+                const pt = turf.point([e.latlng.lng, e.latlng.lat]);
+                for (let feature of epicenterGeoData.features) {
+                    if (feature.geometry && (feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon')) {
+                        if (turf.booleanPointInPolygon(pt, feature)) {
+                            regionName = feature.properties.name || feature.properties.name_ja;
+                            break;
+                        }
+                    }
+                }
+            }
+            document.getElementById('sim-region').value = regionName;
+            
+            // 状態を同期
+            const ev = simEventsMap.get(currentSimEventId);
+            ev.lat = e.latlng.lat.toFixed(2);
+            ev.lon = e.latlng.lng.toFixed(2);
+            ev.region = regionName;
+            renderSimEventTabs();
+            
+            addSystemLog(`[Simulator] 地図クリックで座標を取得: ${regionName}`, 'info');
+            return;
+        }
+        closeAllPanels(); 
+    });
 
     // 🚨 レイヤー管理（Pane）の設定
     map.createPane('baseMapPane'); map.getPane('baseMapPane').style.zIndex = 250;
@@ -1138,48 +1193,26 @@
     map.on('mouseout', function() { canvasTooltip.style.display = 'none'; hoverStation = null; map.getContainer().style.cursor = ''; });
 
     // ==========================================
-    // 🚨 外部API連携：P2PQuakeからEEWの地域詳細を取得する関数 (シミュレータ対応版)
+    // 🚨 外部API連携：P2PQuakeからEEWの地域詳細を取得する関数 (シミュレータ対応・距離減衰モデル搭載版)
     // ==========================================
     const p2pEewCache = new Map();
 
     async function fetchP2PEEWDetails(originTimeStr, reportNum, isCancel) {
         if (isCancel || !originTimeStr) return null;
 
-        // 🚨 【追加】テストモード（シミュレーター）時のモックデータ生成処理
+        // 🚨 【追加】テストモード（シミュレーター）時のリアルなモックデータ連携
         if (isEEWMockActive) {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    const maxScaleStr = document.getElementById('sim-scale') ? document.getElementById('sim-scale').value : "5弱";
-                    let maxInt = 30; // default 3
-                    if(maxScaleStr==="4") maxInt=40; if(maxScaleStr==="5弱") maxInt=45;
-                    if(maxScaleStr==="5強") maxInt=50; if(maxScaleStr==="6弱") maxInt=55;
-                    if(maxScaleStr==="6強") maxInt=60; if(maxScaleStr==="7") maxInt=70;
-
-                    const regionSelect = document.getElementById('sim-region');
-                    const region = (regionSelect && regionSelect.value) ? regionSelect.value : "テスト地域";
-                    let mockAreas = [];
-
-                    // 最大震度の地域
-                    mockAreas.push({ name: region + "南部", scaleFrom: maxInt, scaleTo: maxInt });
-                    mockAreas.push({ name: region + "北部", scaleFrom: maxInt, scaleTo: maxInt });
-
-                    // 1段階低い震度の地域
-                    if (maxInt > 30) {
-                        let lowerInt1 = maxInt === 45 ? 40 : (maxInt === 50 ? 45 : (maxInt - 5));
-                        mockAreas.push({ name: "隣接県東部", scaleFrom: lowerInt1, scaleTo: lowerInt1 });
-                        mockAreas.push({ name: "隣接県西部", scaleFrom: lowerInt1, scaleTo: lowerInt1 });
-                    }
-                    
-                    // 2段階低い震度の地域
-                    if (maxInt > 40) {
-                        mockAreas.push({ name: "周辺テスト県", scaleFrom: 30, scaleTo: 30 });
-                    }
-
-                    resolve(mockAreas);
-                }, 400); // リアルな通信遅延を演出
-            });
+            let targetEv = null;
+            for (let ev of simEventsMap.values()) {
+                if (ev.originTime === originTimeStr) { targetEv = ev; break; }
+            }
+            if (targetEv && targetEv.mockAreas) {
+                return new Promise(resolve => setTimeout(() => resolve(targetEv.mockAreas), 300));
+            }
+            return new Promise(resolve => setTimeout(() => resolve([]), 300));
         }
 
+        // --- 既存の P2PQuake 通信処理 ---
         const cacheKey = `${originTimeStr}_${reportNum}`;
         if (p2pEewCache.has(cacheKey)) return p2pEewCache.get(cacheKey);
 
@@ -1479,6 +1512,7 @@
     let isEEWMockActive = false;
     let mockEEWTimers = [];
     let japanGeoData = null; 
+    let epicenterGeoData = null; 
 
     function formatEEWTime(timeStr) {
         if (!timeStr || timeStr.length < 14) return "時刻不明";
@@ -1523,6 +1557,9 @@
         const eventId = data.report_id || data.origin_time; 
         const isCancel = data.is_cancel === true, isPlum = data.is_plum === true || (data.region_name === "" && data.calcintensity); 
         const timeStr = `${formatEEWTime(data.origin_time)} 頃発生`;
+
+        // 🚨 【修正】初見のEEWかどうかを判定
+        const isFirstCatch = !activeEEWs.has(eventId);
         
         if (isCancel) {
             updateEEWPanelUI(eventId, data, isPlum, timeStr, true);
@@ -1534,7 +1571,7 @@
             setTimeout(() => removeEEWDOM(eventId), 8000); return;
         }
 
-        if (!activeEEWs.has(eventId)) {
+        if (isFirstCatch) {
             const layerGroup = L.layerGroup().addTo(eewLayer);
             activeEEWs.set(eventId, {
                 data: data, layerGroup: layerGroup, clearTimer: null,
@@ -1558,7 +1595,9 @@
             const epicenterMarker = L.marker([lat, lon], { icon: L.divIcon({ className: 'custom-div-icon', html: iconHtml, iconSize: [0, 0] }), zIndexOffset: 30000 });
             eewState.layerGroup.addLayer(epicenterMarker);
             if (!isPlum) L.marker([lat, lon], { icon: L.divIcon({ className: 'custom-div-icon', html: `<div class="eew-epicenter-pulse"></div>`, iconSize: [0, 0] }) }).addTo(eewState.layerGroup);
-            if (data.report_num === "1" || data.report_num === 1) map.setView([lat, lon], 6, { animate: true, duration: 1.0 });
+            
+            // 🚨 【修正】初回検知時のみズームする
+            if (isFirstCatch) map.setView([lat, lon], 6, { animate: true, duration: 1.0 });
         }
 
         eewState.alertLayer.clearLayers();
@@ -1566,7 +1605,8 @@
             let regionsToHighlight = data.alertRegions || [data.region_name];
             L.geoJSON(japanGeoData, {
                 filter: function(feature) { const name = feature.properties.name || ""; return regionsToHighlight.some(r => name.includes(r) || r.includes(name)); },
-                style: { fillColor: '#FFFF00', fillOpacity: 0.35, color: '#FFFF00', weight: 2, dashArray: '3' }, interactive: false
+                // 🚨 【修正】色を元の黄色に戻し、透明度を0.35に設定
+                style: { fillColor: '#FFFF00', fillOpacity: 0.35, color: '#FFFF00', weight: 2, dashArray: '3' }, interactive: false 
             }).addTo(eewState.alertLayer);
         }
 
@@ -1615,7 +1655,12 @@
         if(intensityStr.includes("6弱")) intNum=55; if(intensityStr.includes("6強")) intNum=60; if(intensityStr.includes("7")) intNum=70;
         let color = getIntensityColor(intNum);
         let plumNotice = isPlum ? '<br><span style="font-size: 11px; color: #aaa;">※観測点の揺れから予測しています。</span>' : '';
-        let regionsText = data.alertRegions && data.alertRegions.length > 0 ? `<div style="font-size:12px; color:#FFD60A; margin-top:2px;">警報対象: ${data.alertRegions.join(', ')}</div>` : '';
+        
+        let regionsDisplay = [];
+        if (data.alertRegions && data.alertRegions.length > 0) {
+            regionsDisplay = data.alertRegions.length > 3 ? [...data.alertRegions.slice(0, 3), '他'] : data.alertRegions;
+        }
+        let regionsText = regionsDisplay.length > 0 ? `<div style="font-size:12px; color:#FFD60A; margin-top:2px;">警報対象: ${regionsDisplay.join(', ')}</div>` : '';
 
         const areasContainerId = `eew-areas-container-${eventId}`;
         let areasHtml = `<div id="${areasContainerId}" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 11px; color: var(--text-secondary); text-align: center;"><div class="spinner" style="width:10px;height:10px;display:inline-block;margin-right:4px;"></div>地域ごとの予想震度を取得中...</div></div>`;
@@ -1713,79 +1758,214 @@
         mockEEWTimers.push(interval);
     }
 
-    // --- 🚨 追加: 高度なEEWシミュレーター 状態管理 ---
-    let simEventId = "SIM_" + Date.now();
-    let simReportNum = 0;
-    let simOriginTime = "";
-    let simIsActive = false;
+    // --- 🚨 高度なEEWシミュレーター 状態管理 (複数イベント・ランダム・空間演算対応) ---
+    let simEventsMap = new Map();
+    let currentSimEventId = null;
+
+    function getOriginTimeFromInput(timeStr) {
+        if (!timeStr) return getFormatTimeStr(new Date()).time;
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const MM = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const timeClean = timeStr.replace(/:/g, '');
+        return `${yyyy}${MM}${dd}${timeClean}`;
+    }
+
+    // 空間演算で距離に応じた地域ごとの震度を計算する
+    function calcSimulatedRegions(lat, lon, maxScaleStr) {
+        let maxInt = 30; // default 3
+        if(maxScaleStr==="4") maxInt=40; if(maxScaleStr==="5弱") maxInt=45;
+        if(maxScaleStr==="5強") maxInt=50; if(maxScaleStr==="6弱") maxInt=55;
+        if(maxScaleStr==="6強") maxInt=60; if(maxScaleStr==="7") maxInt=70;
+
+        if (typeof turf === 'undefined' || !japanGeoData) {
+            return [{ name: "テスト地域", scaleFrom: maxInt, scaleTo: maxInt }];
+        }
+
+        const pt = turf.point([lon, lat]);
+        let areas = [];
+        japanGeoData.features.forEach(feature => {
+            let dist = Infinity;
+            try {
+                const center = turf.centroid(feature);
+                dist = turf.distance(pt, center, {units: 'kilometers'});
+            } catch(e) {}
+            if (turf.booleanPointInPolygon(pt, feature)) dist = 0; // 震源ポリゴン内は距離0
+            areas.push({ name: feature.properties.name || feature.properties.name_ja, dist: dist });
+        });
+
+        areas.sort((a, b) => a.dist - b.dist);
+        let result = [];
+        areas.forEach(area => {
+            if (result.length >= 15) return;
+            let currentInt = maxInt;
+            if (area.dist > 30) currentInt -= 5;   
+            if (area.dist > 80) currentInt -= 5;
+            if (area.dist > 150) currentInt -= 5;
+            if (area.dist > 250) currentInt -= 10; 
+            if (area.dist > 400) currentInt -= 10;
+            
+            if (currentInt >= 30) {
+                result.push({ name: area.name, scaleFrom: currentInt, scaleTo: currentInt });
+            }
+        });
+        return result;
+    }
+
+    window.renderSimEventTabs = function() {
+        const container = document.getElementById('sim-event-tabs');
+        const form = document.getElementById('sim-editor-form');
+        container.innerHTML = '';
+        if (simEventsMap.size === 0) {
+            container.innerHTML = '<span style="font-size: 11px; color: #aaa;">イベントがありません。追加してください。</span>';
+            form.style.display = 'none';
+            return;
+        }
+        form.style.display = 'flex';
+        simEventsMap.forEach((ev, id) => {
+            const tab = document.createElement('div');
+            tab.className = 'sim-tab' + (id === currentSimEventId ? ' active' : '');
+            let title = ev.region || "新規";
+            if (ev.reportNum > 0) title += ` (${ev.isCancel ? '取消' : (ev.isFinal ? '最終' : '第'+ev.reportNum+'報')})`;
+            tab.innerText = title;
+            tab.onclick = () => selectSimEvent(id);
+            container.appendChild(tab);
+        });
+    }
+
+    window.selectSimEvent = function(id) {
+        currentSimEventId = id;
+        const ev = simEventsMap.get(id);
+        document.getElementById('sim-region').value = ev.region || "";
+        document.getElementById('sim-time').value = ev.timeInput || "";
+        document.getElementById('sim-lat').value = ev.lat || "";
+        document.getElementById('sim-lon').value = ev.lon || "";
+        document.getElementById('sim-depth').value = ev.depth || "";
+        document.getElementById('sim-mag').value = ev.mag || "";
+        if (ev.scale) document.getElementById('sim-scale').value = ev.scale;
+        document.getElementById('sim-warn').checked = !!ev.isWarn;
+        document.getElementById('sim-plum').checked = !!ev.isPlum;
+        
+        let badge = "未発報";
+        if (ev.reportNum > 0) badge = ev.isCancel ? "取消済" : (ev.isFinal ? "最終報" : `第${ev.reportNum}報`);
+        document.getElementById('sim-report-badge').innerText = badge;
+        
+        renderSimEventTabs();
+    }
+
+    window.addNewSimEvent = function(isRandom) {
+        const id = "SIM_" + Date.now();
+        let newEv = {
+            id: id, reportNum: 0,
+            region: "", lat: "", lon: "", mag: "", depth: "", scale: "5弱",
+            isWarn: true, isPlum: false, isFinal: false, isCancel: false,
+            timeInput: "", originTime: "", mockAreas: []
+        };
+
+        if (isRandom) {
+            if (typeof turf !== 'undefined' && epicenterGeoData && epicenterGeoData.features && epicenterGeoData.features.length > 0) {
+                const features = epicenterGeoData.features;
+                const feature = features[Math.floor(Math.random() * features.length)];
+                newEv.region = feature.properties.name || feature.properties.name_ja || "不明な地域";
+                try {
+                    const center = turf.centroid(feature);
+                    newEv.lon = center.geometry.coordinates[0].toFixed(2);
+                    newEv.lat = center.geometry.coordinates[1].toFixed(2);
+                } catch(e) {
+                    newEv.lon = "139.0"; newEv.lat = "35.0";
+                }
+            } else {
+                newEv.region = "東京湾"; newEv.lat = "35.5"; newEv.lon = "139.8";
+            }
+            newEv.mag = (Math.random() * 5.0 + 4.0).toFixed(1);
+            newEv.depth = [10, 20, 30, 40, 50, 60, 80, 100][Math.floor(Math.random() * 8)];
+            const scales = ["3", "4", "5弱", "5強", "6弱", "6強", "7"];
+            let scaleIdx = Math.floor(Math.random() * scales.length);
+            if (newEv.mag < 5.0 && scaleIdx > 3) scaleIdx = Math.floor(Math.random() * 3); 
+            newEv.scale = scales[scaleIdx];
+            newEv.isWarn = (scaleIdx >= 2);
+            
+            const now = new Date();
+            newEv.timeInput = String(now.getHours()).padStart(2,'0') + ":" + String(now.getMinutes()).padStart(2,'0') + ":" + String(now.getSeconds()).padStart(2,'0');
+            addSystemLog(`[Simulator] 地理データからランダム生成しました (${newEv.region})`, 'info');
+        } else {
+            const now = new Date();
+            newEv.timeInput = String(now.getHours()).padStart(2,'0') + ":" + String(now.getMinutes()).padStart(2,'0') + ":" + String(now.getSeconds()).padStart(2,'0');
+            newEv.region = "東京湾"; newEv.lat = "35.5"; newEv.lon = "139.8"; newEv.mag = "6.5"; newEv.depth = "30";
+        }
+
+        simEventsMap.set(id, newEv);
+        selectSimEvent(id);
+    }
 
     window.resetEEWSimulation = function() {
-        simEventId = "SIM_" + Date.now();
-        simReportNum = 0;
-        simOriginTime = "";
-        simIsActive = false;
-        document.getElementById('sim-report-num').innerText = "1";
-        document.getElementById('eew-sim-status').innerText = "待機中";
-        document.getElementById('eew-sim-status').style.color = "#FFD60A";
+        currentSimEventId = null;
+        simEventsMap.clear();
+        document.getElementById('sim-status-text').innerText = "編集中";
+        document.getElementById('sim-report-badge').innerText = "未発報";
         clearAllEEWs();
+        renderSimEventTabs();
         addSystemLog(`[Simulator] シミュレーターをリセットしました`, 'info');
     };
 
-    function dispatchSimulatedEEW(isFinal, isCancel) {
+    window.dispatchSimulatedEEW = function(isFinal, isCancel) {
+        if (!currentSimEventId) return;
         ensureMode('kyoshin'); 
         isEEWMockActive = true; 
         closeDetailPanel();
 
-        if (!simIsActive && !isCancel) {
-            simOriginTime = getFormatTimeStr(new Date()).time;
-            simIsActive = true;
+        const ev = simEventsMap.get(currentSimEventId);
+        
+        // フォームから状態を更新
+        ev.region = document.getElementById('sim-region').value;
+        ev.timeInput = document.getElementById('sim-time').value;
+        ev.lat = document.getElementById('sim-lat').value;
+        ev.lon = document.getElementById('sim-lon').value;
+        ev.depth = document.getElementById('sim-depth').value;
+        ev.mag = document.getElementById('sim-mag').value;
+        ev.scale = document.getElementById('sim-scale').value;
+        ev.isWarn = document.getElementById('sim-warn').checked;
+        ev.isPlum = document.getElementById('sim-plum').checked;
+        
+        if (!isCancel) ev.reportNum++;
+        ev.isFinal = isFinal;
+        ev.isCancel = isCancel;
+
+        // 初回のみ入力時刻から originTime を確定
+        if (!ev.originTime || ev.reportNum === 1) {
+            ev.originTime = getOriginTimeFromInput(ev.timeInput);
         }
 
-        if (!isCancel) simReportNum++;
-
-        const region = document.getElementById('sim-region').value || "テスト地域";
-        const isPlum = document.getElementById('sim-plum').checked;
-        const mag = isPlum ? "" : document.getElementById('sim-mag').value;
-        const depth = isPlum ? "" : document.getElementById('sim-depth').value;
-        const lat = document.getElementById('sim-lat').value;
-        const lon = document.getElementById('sim-lon').value;
-        const scale = document.getElementById('sim-scale').value;
-        const isWarn = document.getElementById('sim-warn').checked;
+        // 🚨 Turf.jsで距離を計算し、周辺の予想震度配列を作成
+        const regionsList = calcSimulatedRegions(parseFloat(ev.lat), parseFloat(ev.lon), ev.scale);
+        ev.mockAreas = regionsList; 
+        
+        // 最大震度5弱(45)以上の地域を抽出して警報対象とする
+        const alertRegions = ev.isWarn ? regionsList.filter(r => r.scaleFrom >= 45).map(r => r.name) : [];
 
         let data = {
             result: { status: "success", message: "" },
-            report_id: simEventId,
-            report_num: isCancel ? (simReportNum > 0 ? simReportNum.toString() : "1") : simReportNum.toString(),
+            report_id: ev.id,
+            report_num: isCancel ? (ev.reportNum > 0 ? ev.reportNum.toString() : "1") : ev.reportNum.toString(),
             is_final: isFinal,
             is_cancel: isCancel,
-            is_plum: isPlum,
-            alertflg: isWarn ? "警報" : "予報",
-            region_name: region,
-            latitude: lat,
-            longitude: lon,
-            depth: depth ? depth + "km" : "",
-            magunitude: mag,
-            calcintensity: scale,
-            origin_time: simOriginTime || getFormatTimeStr(new Date()).time,
-            alertRegions: isWarn ? [region, "近隣テスト県"] : []
+            is_plum: ev.isPlum,
+            alertflg: ev.isWarn ? "警報" : "予報",
+            region_name: ev.region,
+            latitude: ev.lat,
+            longitude: ev.lon,
+            depth: ev.isPlum ? "" : (ev.depth ? ev.depth + "km" : ""),
+            magunitude: ev.isPlum ? "" : ev.mag,
+            calcintensity: ev.scale,
+            origin_time: ev.originTime,
+            alertRegions: alertRegions
         };
 
-        let statusText = isCancel ? "取消済" : (isFinal ? "最終報完了" : `第${simReportNum}報 送信済`);
-        document.getElementById('eew-sim-status').innerText = statusText;
-        document.getElementById('eew-sim-status').style.color = isCancel ? "#FF453A" : (isFinal ? "#30D158" : "#64D2FF");
-        document.getElementById('sim-report-num').innerText = isCancel || isFinal ? "1" : (simReportNum + 1);
-
-        addSystemLog(`[Simulator] ${statusText} (M${mag || '-'} / 最大${scale})`, isCancel ? 'error' : 'warn');
+        addSystemLog(`[Simulator] 発報: ${ev.region} (第${ev.reportNum}報)`, isCancel ? 'error' : 'warn');
+        selectSimEvent(ev.id); // UIバッジ等を再描画
         processEEWData(data);
-
-        if (isCancel || isFinal) {
-            setTimeout(() => { simEventId = "SIM_" + Date.now(); simReportNum = 0; simIsActive = false; }, 1000);
-        }
     }
-
-    window.stepEEWSimulation = () => dispatchSimulatedEEW(false, false);
-    window.finishEEWSimulation = () => dispatchSimulatedEEW(true, false);
-    window.cancelEEWSimulation = () => dispatchSimulatedEEW(false, true);
     // ---------------------------------------------
 
     window.runTsunamiTest = function() {
@@ -1853,7 +2033,6 @@
                 };
                 
                 img.onerror = function() {
-                    // 🚨 修正：Electron環境では絶対にプロキシに切り替えない
                     if (!useProxy && !useProxyForImage && !isElectron) { tryFetch(true); } 
                     else {
                         sysStats.error++;
@@ -1886,7 +2065,6 @@
                 };
                 
                 img.onerror = function() {
-                    // 🚨 修正：Electron環境では絶対にプロキシに切り替えない
                     if (!useProxy && !useProxyForImage && !isElectron) { tryFetch(true); } 
                     else { sysStats.error++; kmoniImageCache.set(timeMs, null); reject(false); }
                 };
@@ -2170,10 +2348,29 @@
         fetchJMATsunamiHistory(), 
         fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=0').then(res => res.ok ? res.json() : []).catch(() => []),
         fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=100').then(res => res.ok ? res.json() : []).catch(() => []),
-        loadLocalJson('intensity-points.json', []) 
-    ]).then(([geoData, stations, tGeo, jmaTsunami, p2pTsunami1, p2pTsunami2, intPoints]) => {
+        loadLocalJson('intensity-points.json', []),
+        loadLocalJson('震央地名.geo.json', null) // 🚨 震央地名データのロード
+    ]).then(([geoData, stations, tGeo, jmaTsunami, p2pTsunami1, p2pTsunami2, intPoints, epiGeoData]) => {
         if (geoData) { japanGeoData = geoData; L.geoJSON(geoData, { pane: 'baseMapPane', style: { color: "#3A3A3C", weight: 1, fillColor: "#1C1C1E", fillOpacity: 1 } }).addTo(map); }
         stationsData = stations || []; tsunamiGeoData = tGeo; intensityPointsData = [];
+        
+        epicenterGeoData = epiGeoData;
+        if (epiGeoData && epiGeoData.features) {
+            const datalist = document.createElement('datalist');
+            datalist.id = 'epicenter-list';
+            let names = new Set();
+            epiGeoData.features.forEach(f => {
+                let name = f.properties.name || f.properties.name_ja;
+                if (name && !names.has(name)) {
+                    names.add(name);
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    datalist.appendChild(opt);
+                }
+            });
+            document.body.appendChild(datalist);
+        }
+
         if (intPoints && intPoints.length > 0) {
             intPoints.forEach(st => {
                 if (st.location && st.point && st.point.center_point) { intensityPointsData.push({ name: st.name || st.code, lat: st.location.latitude, lon: st.location.longitude, x: st.point.center_point.x, y: st.point.center_point.y }); }
