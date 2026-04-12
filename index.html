@@ -320,7 +320,7 @@
             background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
             border: 0.5px solid var(--border-color); border-radius: 12px;
             color: #FFFFFF; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums;
-            transition: margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s;
+            transition: margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s, color 0.3s;
             pointer-events: auto; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         }
         /* 時計トグルスイッチ */
@@ -622,6 +622,54 @@
                     <button class="sp-btn" style="flex:1; background: rgba(255, 69, 58, 0.4); border-color: #FF453A;" onclick="runTsunamiTest()">津波自動受信</button>
                 </div>
                 <button class="sp-btn" style="width: 100%;" onclick="clearAllEEWs()">シミュレーション強制クリア</button>
+
+                <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <div style="font-size: 13px; font-weight: bold; margin-bottom: 12px; color: #fff; display: flex; justify-content: space-between;">
+                        <span>🎛 カスタムEEWシミュレーター</span>
+                        <span id="eew-sim-status" style="color: #FFD60A; font-size: 11px;">待機中</span>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="sim-region" value="東京湾" placeholder="震央地名" class="sp-btn" style="flex: 2; text-align: left; background: rgba(255,255,255,0.1);">
+                            <input type="number" id="sim-mag" value="6.5" step="0.1" placeholder="M" class="sp-btn" title="マグニチュード" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
+                            <input type="number" id="sim-depth" value="30" placeholder="深さ" class="sp-btn" title="深さ(km)" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
+                        </div>
+                        
+                        <div style="display: flex; gap: 8px;">
+                            <input type="number" id="sim-lat" value="35.5" step="0.1" placeholder="緯度" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
+                            <input type="number" id="sim-lon" value="139.8" step="0.1" placeholder="経度" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 11px; color: #aaa;">最大震度:</span>
+                                <select id="sim-scale" class="sp-btn" style="background: rgba(255,255,255,0.1); padding: 4px 8px;">
+                                    <option value="3">3</option><option value="4">4</option>
+                                    <option value="5弱" selected>5弱</option><option value="5強">5強</option>
+                                    <option value="6弱">6弱</option><option value="6強">6強</option><option value="7">7</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <label style="font-size: 11px; color: #fff; cursor: pointer;"><input type="checkbox" id="sim-warn" checked> 警報</label>
+                                <label style="font-size: 11px; color: #fff; cursor: pointer;" title="マグニチュードや深さを不明にします"><input type="checkbox" id="sim-plum"> PLUM</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 6px; margin-top: 12px;">
+                        <button class="sp-btn" style="flex: 1.5; background: rgba(48, 209, 88, 0.2); border-color: #30D158; color: #30D158;" onclick="stepEEWSimulation()">
+                            ⏭ 手動更新 (<span id="sim-report-num">1</span>報)
+                        </button>
+                        <button class="sp-btn" style="flex: 1; background: rgba(10, 132, 255, 0.2); border-color: #0A84FF; color: #64D2FF;" onclick="finishEEWSimulation()">
+                            🏁 最終報
+                        </button>
+                    </div>
+                    <div style="display: flex; gap: 6px; margin-top: 6px;">
+                        <button class="sp-btn sp-btn-danger" style="flex: 1;" onclick="cancelEEWSimulation()">✖ 取消報</button>
+                        <button class="sp-btn" style="flex: 1;" onclick="resetEEWSimulation()">🔄 リセット</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -689,12 +737,19 @@
 
 <script>
     // ==========================================
-    // 🚨 ネットワーク通信・プロキシ設定（フォールバック用）
+    // 🚨 ネットワーク通信・プロキシ設定
     // ==========================================
     const isHttps = window.location.protocol === 'https:';
+    const isElectron = window.location.protocol === 'file:' || window.location.protocol === 'app:';
     let useProxyForImage = isHttps;
     let useProxyForJSON = isHttps;
     const PROXY_BASE = "https://api.codetabs.com/v1/proxy?quest=";
+
+    // Electron環境とWeb環境を自動判別し、安全にJSONを取得するラッパー関数
+    async function safeFetchJSON(targetUrl) {
+        if (isElectron) return fetch(targetUrl);
+        return useProxyForJSON ? fetch(PROXY_BASE + targetUrl) : fetch(targetUrl).catch(() => { useProxyForJSON = true; return fetch(PROXY_BASE + targetUrl); });
+    }
 
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([38.0, 137.0], 5);
 
@@ -715,6 +770,12 @@
         return new Date(safeStr);
     }
 
+    function getFormatTimeStr(date) {
+        const yyyy = date.getFullYear(), MM = String(date.getMonth() + 1).padStart(2, '0'), dd = String(date.getDate()).padStart(2, '0');
+        const HH = String(date.getHours()).padStart(2, '0'), mm = String(date.getMinutes()).padStart(2, '0'), ss = String(date.getSeconds()).padStart(2, '0');
+        return { date: `${yyyy}${MM}${dd}`, time: `${yyyy}${MM}${dd}${HH}${mm}${ss}`, display: `${yyyy}/${MM}/${dd} ${HH}:${mm}:${ss}` };
+    }
+
     // ==========================================
     // カスタムコントロール (全画面 + ズーム)
     // ==========================================
@@ -722,76 +783,46 @@
         options: { position: 'topright' },
         onAdd: function (map) {
             var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-control-group');
-            
             var fsBtn = L.DomUtil.create('a', 'custom-btn-fs', container);
             fsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
-            fsBtn.href = '#';
-            fsBtn.title = '全画面表示';
-            
+            fsBtn.href = '#'; fsBtn.title = '全画面表示';
             var inBtn = L.DomUtil.create('a', 'custom-btn-in', container);
-            inBtn.innerHTML = '＋';
-            inBtn.href = '#';
-            inBtn.title = '拡大';
-            
+            inBtn.innerHTML = '＋'; inBtn.href = '#'; inBtn.title = '拡大';
             var outBtn = L.DomUtil.create('a', 'custom-btn-out', container);
-            outBtn.innerHTML = '－';
-            outBtn.href = '#';
-            outBtn.title = '縮小';
+            outBtn.innerHTML = '－'; outBtn.href = '#'; outBtn.title = '縮小';
 
             L.DomEvent.disableClickPropagation(container);
-
             let isPseudoFS = false;
 
             L.DomEvent.on(fsBtn, 'click', function(e) {
                 L.DomEvent.preventDefault(e);
                 var elem = document.getElementById("map-container");
-                
                 if (!document.fullscreenElement && !isPseudoFS) {
                     if (elem.requestFullscreen) { elem.requestFullscreen(); }
                     else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); }
                     else if (elem.msRequestFullscreen) { elem.msRequestFullscreen(); }
-                    else {
-                        elem.classList.add('pseudo-fullscreen');
-                        isPseudoFS = true;
-                        updateFSIcon(true);
-                        setTimeout(() => map.invalidateSize(), 200);
-                    }
+                    else { elem.classList.add('pseudo-fullscreen'); isPseudoFS = true; updateFSIcon(true); setTimeout(() => map.invalidateSize(), 200); }
                 } else {
                     if (document.exitFullscreen && document.fullscreenElement) { document.exitFullscreen(); }
                     else if (document.webkitExitFullscreen && document.fullscreenElement) { document.webkitExitFullscreen(); }
                     else if (document.msExitFullscreen && document.fullscreenElement) { document.msExitFullscreen(); }
-                    else if (isPseudoFS) {
-                        elem.classList.remove('pseudo-fullscreen');
-                        isPseudoFS = false;
-                        updateFSIcon(false);
-                        setTimeout(() => map.invalidateSize(), 200);
-                    }
+                    else if (isPseudoFS) { elem.classList.remove('pseudo-fullscreen'); isPseudoFS = false; updateFSIcon(false); setTimeout(() => map.invalidateSize(), 200); }
                 }
             });
             L.DomEvent.on(inBtn, 'click', function(e) { L.DomEvent.preventDefault(e); map.zoomIn(); });
             L.DomEvent.on(outBtn, 'click', function(e) { L.DomEvent.preventDefault(e); map.zoomOut(); });
 
             function updateFSIcon(isFullscreen) {
-                if (isFullscreen) {
-                    fsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
-                } else {
-                    fsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
-                }
+                if (isFullscreen) fsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+                else fsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
             }
-
-            document.addEventListener("fullscreenchange", function() {
-                updateFSIcon(!!document.fullscreenElement);
-                setTimeout(() => map.invalidateSize(), 200);
-            });
-
+            document.addEventListener("fullscreenchange", function() { updateFSIcon(!!document.fullscreenElement); setTimeout(() => map.invalidateSize(), 200); });
             return container;
         }
     });
     map.addControl(new L.Control.CustomZoom());
 
-    window.addEventListener('orientationchange', function() {
-        setTimeout(() => map.invalidateSize(), 200);
-    });
+    window.addEventListener('orientationchange', function() { setTimeout(() => map.invalidateSize(), 200); });
 
     // ==========================================
     // システム情報可視化用ロジック
@@ -870,13 +901,7 @@
     // 🚨 レイヤー管理（Pane）の設定
     map.createPane('baseMapPane'); map.getPane('baseMapPane').style.zIndex = 250;
     map.createPane('tsunamiPane'); map.getPane('tsunamiPane').style.zIndex = 260; 
-    
-    // 🚨 EEW用のペインを最前面に作成
-    map.createPane('eewPane'); 
-    map.getPane('eewPane').style.zIndex = 450; 
-    map.getPane('eewPane').style.pointerEvents = 'none';
-    
-    // 🚨 【重要】カスタムペインに円を描画するための専用レンダラー
+    map.createPane('eewPane'); map.getPane('eewPane').style.zIndex = 450; map.getPane('eewPane').style.pointerEvents = 'none';
     const eewRenderer = L.svg({ pane: 'eewPane' });
 
     const allEarthquakesLayer = L.layerGroup().addTo(map);
@@ -885,13 +910,16 @@
     const eewLayer = L.layerGroup().addTo(map);
 
     // ==========================================
+    // 🚨 仮想論理時計（Virtual Clock）
+    // ==========================================
+    let virtualTimeMs = 0; 
+    let isArchiveMode = false; 
+    let archiveIsPlaying = false;
+
+    // ==========================================
     // 時計表示機能
     // ==========================================
-    let clockConfig = JSON.parse(localStorage.getItem('eq_clockConfig')) || {
-        visible: true,
-        format: 'short'
-    };
-
+    let clockConfig = JSON.parse(localStorage.getItem('eq_clockConfig')) || { visible: true, format: 'short' };
     const clockToggleBtn = document.getElementById('clock-toggle-btn');
     const clockFormatSelect = document.getElementById('clock-format-select');
     const clockPanelEl = document.getElementById('clock-panel');
@@ -899,57 +927,34 @@
     if (clockToggleBtn && clockFormatSelect) {
         clockToggleBtn.checked = clockConfig.visible;
         clockFormatSelect.value = clockConfig.format;
-
-        clockToggleBtn.addEventListener('change', function() {
-            clockConfig.visible = this.checked;
-            saveClockConfig();
-            updateClockVisibility();
-        });
-
-        clockFormatSelect.addEventListener('change', function() {
-            clockConfig.format = this.value;
-            saveClockConfig();
-            updateClock();
-        });
+        clockToggleBtn.addEventListener('change', function() { clockConfig.visible = this.checked; saveClockConfig(); updateClockVisibility(); });
+        clockFormatSelect.addEventListener('change', function() { clockConfig.format = this.value; saveClockConfig(); updateClock(); });
     }
 
     function saveClockConfig() { localStorage.setItem('eq_clockConfig', JSON.stringify(clockConfig)); }
-
-    function updateClockVisibility() {
-        if (!clockPanelEl) return;
-        if (clockConfig.visible) {
-            clockPanelEl.style.display = 'block';
-            updateClock();
-        } else {
-            clockPanelEl.style.display = 'none';
-        }
-    }
+    function updateClockVisibility() { if (!clockPanelEl) return; clockPanelEl.style.display = clockConfig.visible ? 'block' : 'none'; if(clockConfig.visible) updateClock(); }
 
     function updateClock() {
         if (!clockConfig.visible || !clockPanelEl) return;
-        
-        const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const hh = String(now.getHours()).padStart(2, '0');
-        const min = String(now.getMinutes()).padStart(2, '0');
-        const sec = String(now.getSeconds()).padStart(2, '0');
-
-        let timeString = '';
-        if (clockConfig.format === 'full') {
-            timeString = `${yyyy}/${mm}/${dd} ${hh}:${min}:${sec}`;
-        } else if (clockConfig.format === 'short') {
-            timeString = `${mm}/${dd} ${hh}:${min}:${sec}`;
-        } else if (clockConfig.format === 'time') {
-            timeString = `${hh}:${min}:${sec}`;
+        let now;
+        if (isArchiveMode && archiveIsPlaying) {
+            now = new Date(virtualTimeMs);
+            clockPanelEl.style.color = "#FFD60A";
+            clockPanelEl.style.textShadow = "0 0 10px rgba(255, 214, 10, 0.5)";
+        } else {
+            now = new Date();
+            clockPanelEl.style.color = "#FFFFFF";
+            clockPanelEl.style.textShadow = "none";
         }
-        
-        clockPanelEl.innerText = timeString;
+        const yyyy = now.getFullYear(), mm = String(now.getMonth() + 1).padStart(2, '0'), dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0'), min = String(now.getMinutes()).padStart(2, '0'), sec = String(now.getSeconds()).padStart(2, '0');
+        let timeString = '';
+        if (clockConfig.format === 'full') timeString = `${yyyy}/${mm}/${dd} ${hh}:${min}:${sec}`;
+        else if (clockConfig.format === 'short') timeString = `${mm}/${dd} ${hh}:${min}:${sec}`;
+        else if (clockConfig.format === 'time') timeString = `${hh}:${min}:${sec}`;
+        clockPanelEl.innerText = (isArchiveMode && archiveIsPlaying ? "[過去] " : "") + timeString;
     }
-
-    updateClockVisibility();
-    setInterval(updateClock, 1000);
+    updateClockVisibility(); setInterval(updateClock, 1000);
 
     // ==========================================
     // 気象庁 CSV読み込み・複数震源パース処理
@@ -963,56 +968,35 @@
         dropZone.addEventListener('click', () => fileInput.click());
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
         dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault(); dropZone.classList.remove('dragover');
-            if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]);
-        });
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
-        });
+        dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]); });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFileSelect(e.target.files[0]); });
     }
 
     function handleFileSelect(file) {
-        if (!file.name.toLowerCase().endsWith('.csv')) {
-            document.getElementById('csv-status').innerText = "CSVファイルを選択してください。";
-            return;
-        }
-        pendingCsvFile = file;
-        fileNameDisplay.innerText = `選択中: ${file.name}`;
-        document.getElementById('csv-status').innerText = "";
+        if (!file.name.toLowerCase().endsWith('.csv')) { document.getElementById('csv-status').innerText = "CSVファイルを選択してください。"; return; }
+        pendingCsvFile = file; fileNameDisplay.innerText = `選択中: ${file.name}`; document.getElementById('csv-status').innerText = "";
     }
 
     function convertCoordinate(coordStr) {
         if (!coordStr || coordStr === '-200') return -200;
         const match = coordStr.match(/(\d+)[°度]([\d.]+)['′分]([NSEW]?)/);
         if (!match) return parseFloat(coordStr) || -200;
-        let deg = parseFloat(match[1]);
-        let min = parseFloat(match[2]);
-        let decimal = deg + (min / 60);
-        if (match[3] === 'S' || match[3] === 'W') decimal = -decimal;
-        return Number(decimal.toFixed(4));
+        let deg = parseFloat(match[1]); let min = parseFloat(match[2]); let decimal = deg + (min / 60);
+        if (match[3] === 'S' || match[3] === 'W') decimal = -decimal; return Number(decimal.toFixed(4));
     }
 
     function scaleStrToNum(str) {
-        if(!str) return 0;
-        str = str.replace(/\s+/g, '');
-        if(str.includes('7') || str.includes('７')) return 70;
-        if(str.includes('6強') || str.includes('６強')) return 60;
-        if(str.includes('6弱') || str.includes('６弱')) return 55;
-        if(str.includes('5強') || str.includes('５強')) return 50;
-        if(str.includes('5弱') || str.includes('５弱')) return 45;
-        if(str.includes('4') || str.includes('４')) return 40;
-        if(str.includes('3') || str.includes('３')) return 30;
-        if(str.includes('2') || str.includes('２')) return 20;
-        if(str.includes('1') || str.includes('１')) return 10;
-        return 0;
+        if(!str) return 0; str = str.replace(/\s+/g, '');
+        if(str.includes('7') || str.includes('７')) return 70; if(str.includes('6強') || str.includes('６強')) return 60;
+        if(str.includes('6弱') || str.includes('６弱')) return 55; if(str.includes('5強') || str.includes('５強')) return 50;
+        if(str.includes('5弱') || str.includes('５弱')) return 45; if(str.includes('4') || str.includes('４')) return 40;
+        if(str.includes('3') || str.includes('３')) return 30; if(str.includes('2') || str.includes('２')) return 20;
+        if(str.includes('1') || str.includes('１')) return 10; return 0;
     }
 
     function parseJmaCsv(text) {
         const lines = text.split(/\r\n|\n/).map(l => l.trim()).filter(l => l.length > 0);
-        let epicenters = [];
-        let points = [];
-        
+        let epicenters = []; let points = [];
         let eqHeaderIndex = lines.findIndex(l => l.includes('最大震度') && l.includes('緯度'));
         let stHeaderIndex = lines.findIndex(l => l.includes('観測点名') && l.includes('震度'));
         
@@ -1023,23 +1007,12 @@
                 if (cols[0].match(/^\d{4}$/) || cols[0].match(/^\d{4}\/\d{2}\/\d{2}/)) {
                     let timeStr, name, latStr, lonStr, depthStr, magStr, maxIntStr;
                     if (cols[0].includes('/')) {
-                        timeStr = cols[0] + ' ' + cols[1].split('.')[0]; 
-                        name = cols[2]; latStr = cols[3]; lonStr = cols[4];
-                        depthStr = cols[5]; magStr = cols[6]; maxIntStr = cols[7];
+                        timeStr = cols[0] + ' ' + cols[1].split('.')[0]; name = cols[2]; latStr = cols[3]; lonStr = cols[4]; depthStr = cols[5]; magStr = cols[6]; maxIntStr = cols[7];
                     } else {
                         timeStr = `${cols[0]}/${cols[1].padStart(2,'0')}/${cols[2].padStart(2,'0')} ${cols[3].padStart(2,'0')}:${cols[4].padStart(2,'0')}:${cols[5].padStart(2,'0')}`;
-                        name = cols[6]; latStr = cols[7]; lonStr = cols[8]; depthStr = cols[9];
-                        magStr = cols[10]; maxIntStr = cols[11];
+                        name = cols[6]; latStr = cols[7]; lonStr = cols[8]; depthStr = cols[9]; magStr = cols[10]; maxIntStr = cols[11];
                     }
-                    epicenters.push({
-                        time: timeStr.replace(/-/g, '/'),
-                        name: name,
-                        latitude: convertCoordinate(latStr),
-                        longitude: convertCoordinate(lonStr),
-                        depth: parseInt(depthStr.replace(/[^\d]/g, '')) || 0,
-                        magnitude: parseFloat(magStr) || -1,
-                        maxScale: scaleStrToNum(maxIntStr)
-                    });
+                    epicenters.push({ time: timeStr.replace(/-/g, '/'), name: name, latitude: convertCoordinate(latStr), longitude: convertCoordinate(lonStr), depth: parseInt(depthStr.replace(/[^\d]/g, '')) || 0, magnitude: parseFloat(magStr) || -1, maxScale: scaleStrToNum(maxIntStr) });
                 }
             }
         }
@@ -1048,17 +1021,11 @@
             for (let i = stHeaderIndex + 1; i < lines.length; i++) {
                 const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
                 if (cols.length >= 3) {
-                    const pref = cols[0];
-                    const intStr = cols[1];
-                    const scale = scaleStrToNum(intStr);
-                    const stationNames = cols[2].split(/[\s　]+/).filter(s => s);
-                    
+                    const pref = cols[0], intStr = cols[1], scale = scaleStrToNum(intStr), stationNames = cols[2].split(/[\s　]+/).filter(s => s);
                     stationNames.forEach(rawName => {
                         let stName = rawName.replace(/[＊\*]/g, '').trim(); 
                         if (!stName) return;
-                        if (stName.startsWith(pref)) {
-                            stName = stName.substring(pref.length).trim();
-                        }
+                        if (stName.startsWith(pref)) stName = stName.substring(pref.length).trim();
                         points.push({ pref: pref, addr: stName, scale: scale, isArea: false });
                     });
                 }
@@ -1066,85 +1033,40 @@
         }
 
         if (epicenters.length === 0) return [];
-        
         epicenters.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
         let maxMag = -1; let maxScale = -1;
-        epicenters.forEach(epi => {
-            if (epi.magnitude > maxMag) maxMag = epi.magnitude;
-            if (epi.maxScale > maxScale) maxScale = epi.maxScale;
-        });
-        
+        epicenters.forEach(epi => { if (epi.magnitude > maxMag) maxMag = epi.magnitude; if (epi.maxScale > maxScale) maxScale = epi.maxScale; });
         let mainEpi = epicenters.find(epi => epi.magnitude === maxMag) || epicenters[0];
-        let dispName = `${mainEpi.name}※`; 
         
-        let currentEq = {
-            earthquake: {
-                time: epicenters[0].time, 
-                hypocenter: { name: dispName, latitude: mainEpi.latitude, longitude: mainEpi.longitude, depth: mainEpi.depth, magnitude: maxMag },
-                maxScale: maxScale,
-                domesticTsunami: "Unknown",
-                epicenters: epicenters 
-            },
+        return [{
+            earthquake: { time: epicenters[0].time, hypocenter: { name: `${mainEpi.name}※`, latitude: mainEpi.latitude, longitude: mainEpi.longitude, depth: mainEpi.depth, magnitude: maxMag }, maxScale: maxScale, domesticTsunami: "Unknown", epicenters: epicenters },
             comments: { freeFormComment: "気象庁の震度データベースCSVから読み込んだ情報です。" },
-            points: points,
-            isCsv: true 
-        };
-
-        return [currentEq];
+            points: points, isCsv: true 
+        }];
     }
 
     window.executeCsvLoad = function() {
         const statusEl = document.getElementById('csv-status');
         if (!pendingCsvFile) { statusEl.innerText = "ファイルが選択されていません。"; return; }
-
         statusEl.innerText = "読み込み・変換中...";
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
-                const text = e.target.result;
-                const eqs = parseJmaCsv(text);
-                console.log("[CSV Data Parser] JSONに変換されたデータ:", eqs);
-
-                if (eqs.length === 0) {
-                    statusEl.innerText = "データを抽出できませんでした。気象庁のフォーマットか確認してください。";
-                    return;
-                }
-                
-                const pointsCount = eqs[0].points ? eqs[0].points.length : 0;
-                const epiCount = eqs[0].earthquake.epicenters ? eqs[0].earthquake.epicenters.length : 0;
-                statusEl.innerText = `変換成功！ 震源 ${epiCount}ヶ所、観測点 ${pointsCount}件。`;
-                
+                const eqs = parseJmaCsv(e.target.result);
+                if (eqs.length === 0) { statusEl.innerText = "データを抽出できませんでした。"; return; }
+                statusEl.innerText = `変換成功！`;
                 renderEarthquakeList(eqs);
-                addSystemLog(`[CSV] ローカルから地震データ (震源${epiCount} / 観測点${pointsCount}) を表示しました`, 'success');
-                
-                setTimeout(() => { 
-                    closeAllPanels(); 
-                    ensureMode('history'); 
-                    setTimeout(() => {
-                        const firstItem = document.querySelector('.list-item');
-                        if (firstItem) {
-                            firstItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                            firstItem.click(); 
-                        }
-                    }, 300);
-                }, 800);
-                
-            } catch(err) {
-                statusEl.innerText = "CSVの解析中にエラーが発生しました。";
-                console.error(err);
-            }
+                addSystemLog(`[CSV] ローカルから地震データを表示しました`, 'success');
+                setTimeout(() => { closeAllPanels(); ensureMode('history'); setTimeout(() => { const firstItem = document.querySelector('.list-item'); if (firstItem) { firstItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); firstItem.click(); } }, 300); }, 800);
+            } catch(err) { statusEl.innerText = "解析中にエラーが発生しました。"; }
         };
-        reader.onerror = function() { statusEl.innerText = "ファイルの読み込みに失敗しました。"; }
+        reader.onerror = function() { statusEl.innerText = "読み込みに失敗しました。"; }
         reader.readAsText(pendingCsvFile, 'Shift_JIS'); 
     };
 
     window.clearCsvData = function() {
-        pendingCsvFile = null;
-        if(fileInput) fileInput.value = "";
-        if(fileNameDisplay) fileNameDisplay.innerText = "";
-        document.getElementById('csv-status').innerText = "";
-        fetchEarthquakeHistory();
-        addSystemLog(`[CSV] 読み込んだデータをクリアし、APIからの最新履歴に戻しました`, 'info');
+        pendingCsvFile = null; if(fileInput) fileInput.value = ""; if(fileNameDisplay) fileNameDisplay.innerText = ""; document.getElementById('csv-status').innerText = "";
+        fetchEarthquakeHistory(); addSystemLog(`[CSV] 読み込んだデータをクリアしました`, 'info');
         setTimeout(() => { closeAllPanels(); ensureMode('history'); }, 500);
     };
 
@@ -1156,236 +1078,200 @@
         onAdd: function (map) {
             this._map = map;
             this._canvas = L.DomUtil.create('canvas', 'leaflet-zoom-animated');
-            this._canvas.style.zIndex = 240; 
-            this._canvas.style.pointerEvents = 'none'; 
+            this._canvas.style.zIndex = 240; this._canvas.style.pointerEvents = 'none'; 
             map.getPane(this.options.pane || 'overlayPane').appendChild(this._canvas);
             this._ctx = this._canvas.getContext('2d');
             map.on('moveend zoomend resize', this._updatePosition, this);
             this._updatePosition();
         },
-        onRemove: function (map) { 
-            L.DomUtil.remove(this._canvas); 
-            map.off('moveend zoomend resize', this._updatePosition, this); 
-        },
+        onRemove: function (map) { L.DomUtil.remove(this._canvas); map.off('moveend zoomend resize', this._updatePosition, this); },
         _updatePosition: function () {
-            const size = this._map.getSize(); 
-            const topLeft = this._map.containerPointToLayerPoint([0, 0]);
+            const size = this._map.getSize(), topLeft = this._map.containerPointToLayerPoint([0, 0]);
             L.DomUtil.setPosition(this._canvas, topLeft);
-            
             const dpr = window.devicePixelRatio || 1;
-            this._canvas.width = size.x * dpr; 
-            this._canvas.height = size.y * dpr;
-            this._canvas.style.width = size.x + 'px';
-            this._canvas.style.height = size.y + 'px';
-            
-            this._ctx.scale(dpr, dpr);
-            this.redraw();
+            this._canvas.width = size.x * dpr; this._canvas.height = size.y * dpr;
+            this._canvas.style.width = size.x + 'px'; this._canvas.style.height = size.y + 'px';
+            this._ctx.scale(dpr, dpr); this.redraw();
         },
-        updateData: function(dataArray) {
-            this._data = dataArray || [];
-            this.redraw();
-        },
-        clear: function() {
-            this._data = [];
-            this.redraw();
-        },
+        updateData: function(dataArray) { this._data = dataArray || []; this.redraw(); },
+        clear: function() { this._data = []; this.redraw(); },
         redraw: function () {
             if (!this._ctx) return;
-            const ctx = this._ctx; 
-            const w = parseInt(this._canvas.style.width, 10);
-            const h = parseInt(this._canvas.style.height, 10);
+            const ctx = this._ctx, w = parseInt(this._canvas.style.width, 10), h = parseInt(this._canvas.style.height, 10);
             ctx.clearRect(0, 0, w, h);
-            
-            const zoom = this._map.getZoom();
-            const sortedData = [...this._data].sort((a, b) => a.scale - b.scale);
-
-            const radius = zoom >= 9 ? 12 : (zoom >= 7 ? 8 : 4);
+            const zoom = this._map.getZoom(), sortedData = [...this._data].sort((a, b) => a.scale - b.scale), radius = zoom >= 9 ? 12 : (zoom >= 7 ? 8 : 4);
 
             for (let i = 0; i < sortedData.length; i++) {
-                const item = sortedData[i];
-                const p = this._map.latLngToContainerPoint([item.lat, item.lon]);
+                const item = sortedData[i], p = this._map.latLngToContainerPoint([item.lat, item.lon]);
                 if (p.x < -20 || p.y < -20 || p.x > w + 20 || p.y > h + 20) continue;
-                
-                ctx.beginPath(); 
-                ctx.arc(p.x, p.y, radius, 0, Math.PI * 2); 
-                ctx.fillStyle = item.color; 
-                ctx.shadowColor = 'rgba(0,0,0,0.6)'; 
-                ctx.shadowBlur = 4; 
-                ctx.shadowOffsetY = 2; 
-                ctx.fill();
-                
-                ctx.shadowColor = 'transparent'; 
-                ctx.lineWidth = 1.5; 
-                ctx.strokeStyle = '#ffffff'; 
-                ctx.stroke();
-
+                ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2); 
+                ctx.fillStyle = item.color; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2; ctx.fill();
+                ctx.shadowColor = 'transparent'; ctx.lineWidth = 1.5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
                 if (zoom >= 8) {
-                    ctx.fillStyle = '#ffffff'; 
-                    ctx.font = '800 ' + (zoom >= 9 ? '12px' : '9px') + ' sans-serif'; 
-                    ctx.textAlign = 'center'; 
-                    ctx.textBaseline = 'middle';
-                    ctx.shadowColor = 'rgba(0,0,0,0.9)'; 
-                    ctx.shadowBlur = 2; 
-                    ctx.shadowOffsetY = 1;
-                    ctx.fillText(item.text, p.x, p.y + 1); 
-                    ctx.shadowColor = 'transparent';
+                    ctx.fillStyle = '#ffffff'; ctx.font = '800 ' + (zoom >= 9 ? '12px' : '9px') + ' sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
+                    ctx.fillText(item.text, p.x, p.y + 1); ctx.shadowColor = 'transparent';
                 }
             }
         }
     });
     let stationLayer = new L.StationCanvasLayer();
-
-    const canvasTooltip = document.getElementById('canvas-tooltip');
-    let hoverStation = null;
+    const canvasTooltip = document.getElementById('canvas-tooltip'); let hoverStation = null;
 
     map.on('mousemove', function(e) {
-        if (!map.hasLayer(stationLayer) || !stationLayer._data || stationLayer._data.length === 0) {
-            canvasTooltip.style.display = 'none';
-            return;
-        }
-
-        const mousePoint = map.latLngToContainerPoint(e.latlng);
-        let found = null;
-        const zoom = map.getZoom();
-        const radius = zoom >= 9 ? 12 : (zoom >= 7 ? 8 : 4);
-        const hitRadius = Math.max(radius, 8); 
+        if (!map.hasLayer(stationLayer) || !stationLayer._data || stationLayer._data.length === 0) { canvasTooltip.style.display = 'none'; return; }
+        const mousePoint = map.latLngToContainerPoint(e.latlng); let found = null;
+        const zoom = map.getZoom(), radius = zoom >= 9 ? 12 : (zoom >= 7 ? 8 : 4), hitRadius = Math.max(radius, 8); 
 
         for (let i = stationLayer._data.length - 1; i >= 0; i--) {
-            const item = stationLayer._data[i];
-            const p = map.latLngToContainerPoint([item.lat, item.lon]);
-            const dx = p.x - mousePoint.x;
-            const dy = p.y - mousePoint.y;
-            if (dx * dx + dy * dy <= hitRadius * hitRadius) {
-                found = item;
-                break;
-            }
+            const item = stationLayer._data[i], p = map.latLngToContainerPoint([item.lat, item.lon]), dx = p.x - mousePoint.x, dy = p.y - mousePoint.y;
+            if (dx * dx + dy * dy <= hitRadius * hitRadius) { found = item; break; }
         }
 
         if (found) {
-            if (hoverStation !== found) {
-                hoverStation = found;
-                canvasTooltip.innerHTML = `${found.name}<br>震度${found.fullText}`;
-                canvasTooltip.style.display = 'block';
-            }
-            canvasTooltip.style.left = (mousePoint.x + 15) + 'px';
-            canvasTooltip.style.top = (mousePoint.y + 15) + 'px';
-            map.getContainer().style.cursor = 'pointer';
+            if (hoverStation !== found) { hoverStation = found; canvasTooltip.innerHTML = `${found.name}<br>震度${found.fullText}`; canvasTooltip.style.display = 'block'; }
+            canvasTooltip.style.left = (mousePoint.x + 15) + 'px'; canvasTooltip.style.top = (mousePoint.y + 15) + 'px'; map.getContainer().style.cursor = 'pointer';
         } else {
-            if (hoverStation) {
-                hoverStation = null;
-                canvasTooltip.style.display = 'none';
-                map.getContainer().style.cursor = '';
-            }
+            if (hoverStation) { hoverStation = null; canvasTooltip.style.display = 'none'; map.getContainer().style.cursor = ''; }
         }
     });
+    map.on('mouseout', function() { canvasTooltip.style.display = 'none'; hoverStation = null; map.getContainer().style.cursor = ''; });
 
-    map.on('mouseout', function() {
-        canvasTooltip.style.display = 'none';
-        hoverStation = null;
-        map.getContainer().style.cursor = '';
-    });
+    // ==========================================
+    // 🚨 外部API連携：P2PQuakeからEEWの地域詳細を取得する関数 (シミュレータ対応版)
+    // ==========================================
+    const p2pEewCache = new Map();
+
+    async function fetchP2PEEWDetails(originTimeStr, reportNum, isCancel) {
+        if (isCancel || !originTimeStr) return null;
+
+        // 🚨 【追加】テストモード（シミュレーター）時のモックデータ生成処理
+        if (isEEWMockActive) {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    const maxScaleStr = document.getElementById('sim-scale') ? document.getElementById('sim-scale').value : "5弱";
+                    let maxInt = 30; // default 3
+                    if(maxScaleStr==="4") maxInt=40; if(maxScaleStr==="5弱") maxInt=45;
+                    if(maxScaleStr==="5強") maxInt=50; if(maxScaleStr==="6弱") maxInt=55;
+                    if(maxScaleStr==="6強") maxInt=60; if(maxScaleStr==="7") maxInt=70;
+
+                    const regionSelect = document.getElementById('sim-region');
+                    const region = (regionSelect && regionSelect.value) ? regionSelect.value : "テスト地域";
+                    let mockAreas = [];
+
+                    // 最大震度の地域
+                    mockAreas.push({ name: region + "南部", scaleFrom: maxInt, scaleTo: maxInt });
+                    mockAreas.push({ name: region + "北部", scaleFrom: maxInt, scaleTo: maxInt });
+
+                    // 1段階低い震度の地域
+                    if (maxInt > 30) {
+                        let lowerInt1 = maxInt === 45 ? 40 : (maxInt === 50 ? 45 : (maxInt - 5));
+                        mockAreas.push({ name: "隣接県東部", scaleFrom: lowerInt1, scaleTo: lowerInt1 });
+                        mockAreas.push({ name: "隣接県西部", scaleFrom: lowerInt1, scaleTo: lowerInt1 });
+                    }
+                    
+                    // 2段階低い震度の地域
+                    if (maxInt > 40) {
+                        mockAreas.push({ name: "周辺テスト県", scaleFrom: 30, scaleTo: 30 });
+                    }
+
+                    resolve(mockAreas);
+                }, 400); // リアルな通信遅延を演出
+            });
+        }
+
+        const cacheKey = `${originTimeStr}_${reportNum}`;
+        if (p2pEewCache.has(cacheKey)) return p2pEewCache.get(cacheKey);
+
+        try {
+            const res = await fetch('https://api.p2pquake.net/v2/history?codes=556&limit=100');
+            if (!res.ok) return null;
+            const data = await res.json();
+            
+            const oYear = parseInt(originTimeStr.substring(0, 4)), oMonth = parseInt(originTimeStr.substring(4, 6)) - 1, oDay = parseInt(originTimeStr.substring(6, 8));
+            const oHour = parseInt(originTimeStr.substring(8, 10)), oMin = parseInt(originTimeStr.substring(10, 12)), oSec = parseInt(originTimeStr.substring(12, 14));
+            const niedOriginTime = new Date(oYear, oMonth, oDay, oHour, oMin, oSec).getTime();
+
+            let matchedEEW = null; let minDiff = Infinity;
+            for (const item of data) {
+                if (!item.earthquake || !item.earthquake.originTime) continue;
+                const p2pTime = new Date(item.earthquake.originTime.replace(/-/g, '/')).getTime();
+                const diff = Math.abs(p2pTime - niedOriginTime);
+                if (diff <= 60000 && diff < minDiff) { minDiff = diff; matchedEEW = item; }
+            }
+
+            if (matchedEEW && matchedEEW.areas && matchedEEW.areas.length > 0) { p2pEewCache.set(cacheKey, matchedEEW.areas); return matchedEEW.areas; }
+            p2pEewCache.set(cacheKey, []); return [];
+        } catch (e) { return null; }
+    }
 
     // ==========================================
     // EEW履歴パネル処理
     // ==========================================
-    const eewHistoryCache = new Map();
-    const eewTimeCache = {}; // アーカイブ再生用の秒数キャッシュ
+    const eewHistoryCache = new Map(); const eewTimeCache = {}; 
 
     async function fetchRealEEWHistorySmart(eqTimeStr) {
-        const T0 = getSafeDateObj(eqTimeStr).getTime();
-        const localCache = new Map();
-        const startTimeMs = Date.now();
-        
+        const T0 = getSafeDateObj(eqTimeStr).getTime(); const localCache = new Map(); const startTimeMs = Date.now();
         addSystemLog(`[EEW] 過去データの探索を開始します (発生時刻基準)`, 'info');
         
         async function getEEWAt(timeMs) {
             const t = getFormatTimeStr(new Date(timeMs));
             const targetUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${t.time}.json`;
             try {
-                let res;
-                if (useProxyForJSON) {
-                    res = await fetch(PROXY_BASE + targetUrl);
-                } else {
-                    try {
-                        res = await fetch(targetUrl);
-                    } catch(e) {
-                        res = await fetch(PROXY_BASE + targetUrl);
-                        useProxyForJSON = true;
-                    }
-                }
+                let res = await safeFetchJSON(targetUrl);
                 const data = await res.json();
                 if (data && data.result) return data;
             } catch(e) {}
             return null;
         }
 
-        let T_end = T0 + 150 * 1000;
-        let num_end = 0;
+        let T_end = T0 + 150 * 1000; let num_end = 0;
         const probes = [30, 60, 90, 150, 240];
         const probeResults = await Promise.all(probes.map(sec => getEEWAt(T0 + sec * 1000)));
         
         for (let i = 0; i < probes.length; i++) {
             let data = probeResults[i];
             if (data && parseInt(data.report_num) > 0) {
-                let rNum = parseInt(data.report_num);
-                localCache.set(rNum, data);
+                let rNum = parseInt(data.report_num); localCache.set(rNum, data);
                 if (rNum > num_end) { num_end = rNum; T_end = T0 + probes[i] * 1000; }
             }
         }
-        
         if (num_end === 0) { addSystemLog(`[EEW] データが見つかりませんでした`, 'error'); return null; }
-
         addSystemLog(`[EEW] 最新の報 (第${num_end}報付近) を捕捉。中間データの探索を開始...`, 'info');
         
         async function findChanges(t_start, t_end, num_start, num_end) {
-            if (num_start >= num_end) return; 
-            if (t_end - t_start <= 1000) return;
-            
+            if (num_start >= num_end || t_end - t_start <= 1000) return; 
             let t_mid = Math.floor((t_start + t_end) / 2000) * 1000; 
             if (t_mid <= t_start || t_mid >= t_end) return;
 
-            let data_mid = await getEEWAt(t_mid);
-            let num_mid = -1;
-            
+            let data_mid = await getEEWAt(t_mid); let num_mid = -1;
             if (data_mid) {
-                if (parseInt(data_mid.report_num) > 0) {
-                    num_mid = parseInt(data_mid.report_num);
-                    localCache.set(num_mid, data_mid);
-                } else if (data_mid.result && (data_mid.result.message === "データがありません" || data_mid.result.message === "対象外")) {
-                    num_mid = 0;
-                }
+                if (parseInt(data_mid.report_num) > 0) { num_mid = parseInt(data_mid.report_num); localCache.set(num_mid, data_mid); } 
+                else if (data_mid.result && (data_mid.result.message === "データがありません" || data_mid.result.message === "対象外")) num_mid = 0;
             }
-            
             if (num_mid !== -1) {
                 if (num_mid < num_start || num_mid > num_end) return;
                 if (num_mid > 0 && !localCache.has(num_mid)) addSystemLog(`[EEW] 第${num_mid}報を補完しました`, 'success');
-                await Promise.all([
-                    findChanges(t_start, t_mid, num_start, num_mid),
-                    findChanges(t_mid, t_end, num_mid, num_end)
-                ]);
+                await Promise.all([findChanges(t_start, t_mid, num_start, num_mid), findChanges(t_mid, t_end, num_mid, num_end)]);
             }
         }
-
         await findChanges(T0, T_end, 0, num_end);
         const sortedReports = Array.from(localCache.values()).sort((a, b) => parseInt(a.report_num) - parseInt(b.report_num));
-        const elapsedMs = Date.now() - startTimeMs;
-        addSystemLog(`[EEW] 全${sortedReports.length}件のデータを取得完了 (${elapsedMs}ms)`, 'success');
+        addSystemLog(`[EEW] 全${sortedReports.length}件のデータを取得完了 (${Date.now() - startTimeMs}ms)`, 'success');
 
         return sortedReports.map(data => {
-            const timeStr = data.report_time ? data.report_time.split(' ')[1] : "--:--:--";
             return {
-                reportNum: data.is_final ? "最終報" : `第${data.report_num}報`,
-                time: timeStr, maxInt: data.calcintensity || "?",
-                mag: `M${data.magunitude || "-"}`, isWarning: data.alertflg === "警報",
-                area: data.region_name || "調査中"
+                reportNumText: data.is_final ? "最終報" : `第${data.report_num}報`, 
+                reportNum: data.report_num, originTime: data.origin_time,
+                time: data.report_time ? data.report_time.split(' ')[1] : "--:--:--", maxInt: data.calcintensity || "?",
+                mag: `M${data.magunitude || "-"}`, isWarning: data.alertflg === "警報", area: data.region_name || "調査中"
             };
         }).reverse(); 
     }
 
     function renderEEWPanel(eewHistoryData) {
-        const listContainer = document.getElementById('eew-list');
-        listContainer.innerHTML = ''; 
-        eewHistoryData.forEach(item => {
+        const listContainer = document.getElementById('eew-list'); listContainer.innerHTML = ''; 
+        eewHistoryData.forEach((item, index) => {
             const div = document.createElement('div');
             let intNum = 0;
             if(item.maxInt.includes("1")) intNum=10; if(item.maxInt.includes("2")) intNum=20; if(item.maxInt.includes("3")) intNum=30;
@@ -1394,44 +1280,50 @@
             let color = getIntensityColor(intNum);
             const bgClass = item.isWarning ? 'background: rgba(255, 69, 58, 0.1);' : 'background: rgba(0,0,0,0.2);';
             let warningHtml = item.isWarning ? `<div class="dp-comments-box" style="border-left-color: #FF453A; margin-top: 8px;"><strong>⚠️ 警報対象地域</strong><br><span style="color:#FFD60A; font-size:12px;">${item.area} 等</span></div>` : '';
+            
+            const areasContainerId = `eew-hist-areas-${item.originTime}-${item.reportNum}-${index}`;
+            let areasHtml = `<div id="${areasContainerId}" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 11px; color: var(--text-secondary); text-align: center;"><div class="spinner" style="width:10px;height:10px;display:inline-block;margin-right:4px;"></div>地域ごとの予想震度を取得中...</div></div>`;
+
             div.style.cssText = `margin-bottom: 12px; border-radius: 12px; border-left: 4px solid ${color}; padding: 12px 14px; ${bgClass}`;
-            div.innerHTML = `
-                <div class="dp-main">
-                    <div class="dp-scale-box" style="background: rgba(0,0,0,0.3); border-color: ${color}; min-width: 60px;">
-                        <span class="dp-scale-label">予想最大</span>
-                        <span class="dp-scale-value" style="color: ${color}; font-size: 28px;">${item.maxInt}</span>
-                    </div>
-                    <div class="dp-info">
-                        <div class="dp-name"><span style="color: ${color}; font-weight:800;">${item.reportNum}</span></div>
-                        <div class="dp-time">${item.time} 発表</div>
-                        <div class="dp-meta">予想規模 <strong style="color:#fff;">${item.mag}</strong></div>
-                    </div>
-                </div>
-                ${warningHtml}
-            `;
+            div.innerHTML = `<div class="dp-main"><div class="dp-scale-box" style="background: rgba(0,0,0,0.3); border-color: ${color}; min-width: 60px;"><span class="dp-scale-label">予想最大</span><span class="dp-scale-value" style="color: ${color}; font-size: 28px;">${item.maxInt}</span></div><div class="dp-info"><div class="dp-name"><span style="color: ${color}; font-weight:800;">${item.reportNumText}</span></div><div class="dp-time">${item.time} 発表</div><div class="dp-meta">予想規模 <strong style="color:#fff;">${item.mag}</strong></div></div></div>${warningHtml}${areasHtml}`;
             listContainer.appendChild(div);
+
+            fetchP2PEEWDetails(item.originTime, item.reportNum, false).then(areas => {
+                const container = document.getElementById(areasContainerId); if (!container) return;
+                if (areas === null) { container.innerHTML = `<div style="font-size: 11px; color: var(--text-secondary); text-align: center;">地域データへのアクセスに失敗しました</div>`; return; }
+                if (areas.length === 0) { container.innerHTML = `<div style="font-size: 11px; color: var(--text-secondary); text-align: center;">詳細な地域データはありません</div>`; return; }
+
+                areas.sort((a, b) => (b.scaleTo || b.scaleFrom || 0) - (a.scaleTo || a.scaleFrom || 0));
+                const scaleGroups = new Map();
+                areas.forEach(area => {
+                    const s = area.scaleTo || area.scaleFrom || 0; if (s < 10) return; 
+                    if (!scaleGroups.has(s)) scaleGroups.set(s, []); scaleGroups.get(s).push(area.name);
+                });
+                if (scaleGroups.size === 0) { container.innerHTML = `<div style="font-size: 11px; color: var(--text-secondary); text-align: center;">予想震度1以上の地域データはありません</div>`; return; }
+
+                let listHtml = '<div style="font-size: 12px; font-weight: bold; margin-bottom: 6px; color: #fff;">地域別 予想震度</div><div style="display: flex; flex-direction: column; gap: 4px;">';
+                const sortedKeys = Array.from(scaleGroups.keys()).sort((a, b) => b - a);
+                for (const scale of sortedKeys) {
+                    const names = scaleGroups.get(scale), scaleColor = getIntensityColor(scale), scaleStr = getIntensityString(scale), textColor = (scale === 40 || scale === 45) ? '#000' : '#fff';
+                    listHtml += `<div style="display: flex; align-items: flex-start; gap: 8px; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 6px; border-left: 3px solid ${scaleColor};"><div style="background: ${scaleColor}; color: ${textColor}; font-weight: bold; font-size: 11px; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">震度${scaleStr}</div><div style="font-size: 11px; color: #e5e5ea; line-height: 1.4;">${names.join(', ')}</div></div>`;
+                }
+                container.innerHTML = listHtml + '</div>';
+            });
         });
         document.getElementById('eew-panel').classList.add('show');
     }
 
     document.getElementById('show-eew-btn').onclick = async function() {
-        const eqTime = this.dataset.eqTime;
-        if (!eqTime) return;
+        const eqTime = this.dataset.eqTime; if (!eqTime) return;
         if (eewHistoryCache.has(eqTime)) { renderEEWPanel(eewHistoryCache.get(eqTime)); return; }
-        const originalHtml = this.innerHTML;
-        this.classList.add('loading'); this.innerHTML = '<div class="spinner"></div> <span>データを取得中...</span>';
+        const originalHtml = this.innerHTML; this.classList.add('loading'); this.innerHTML = '<div class="spinner"></div> <span>データを取得中...</span>';
         const eewHistoryData = await fetchRealEEWHistorySmart(eqTime);
         this.classList.remove('loading'); this.innerHTML = originalHtml;
-        if (!eewHistoryData || eewHistoryData.length === 0) {
-            alert("この地震のEEW履歴データは見つかりませんでした。\n（保存期間外、または小規模地震のため発表されていない可能性があります）"); return;
-        }
-        eewHistoryCache.set(eqTime, eewHistoryData);
-        renderEEWPanel(eewHistoryData);
+        if (!eewHistoryData || eewHistoryData.length === 0) { alert("この地震のEEW履歴データは見つかりませんでした。"); return; }
+        eewHistoryCache.set(eqTime, eewHistoryData); renderEEWPanel(eewHistoryData);
     };
 
-    window.closeEEWPanel = function() {
-        document.getElementById('eew-panel').classList.remove('show');
-    };
+    window.closeEEWPanel = function() { document.getElementById('eew-panel').classList.remove('show'); };
 
     // ==========================================
     // 津波情報
@@ -1444,20 +1336,14 @@
             if (forecast.Item) {
                 const items = Array.isArray(forecast.Item) ? forecast.Item : [forecast.Item];
                 items.forEach(item => {
-                    const areaName = item.Area ? item.Area.Name : "";
-                    const kindName = (item.Category && item.Category.Kind && item.Category.Kind.Name) ? item.Category.Kind.Name : "";
+                    const areaName = item.Area ? item.Area.Name : "", kindName = (item.Category && item.Category.Kind && item.Category.Kind.Name) ? item.Category.Kind.Name : "";
                     let grade = "Unknown";
                     if (!kindName.includes("解除")) {
-                        if (kindName.includes("大津波")) grade = "MajorWarning";
-                        else if (kindName.includes("警報")) grade = "Warning";
-                        else if (kindName.includes("注意報")) grade = "Watch";
-                        else if (kindName.includes("海面変動") || kindName.includes("予報")) grade = "NonEffective";
+                        if (kindName.includes("大津波")) grade = "MajorWarning"; else if (kindName.includes("警報")) grade = "Warning";
+                        else if (kindName.includes("注意報")) grade = "Watch"; else if (kindName.includes("海面変動") || kindName.includes("予報")) grade = "NonEffective";
                     }
                     let firstHeight = {};
-                    if (item.FirstHeight) {
-                        if (item.FirstHeight.Condition) firstHeight.condition = item.FirstHeight.Condition;
-                        if (item.FirstHeight.ArrivalTime) firstHeight.time = item.FirstHeight.ArrivalTime;
-                    }
+                    if (item.FirstHeight) { if (item.FirstHeight.Condition) firstHeight.condition = item.FirstHeight.Condition; if (item.FirstHeight.ArrivalTime) firstHeight.time = item.FirstHeight.ArrivalTime; }
                     let maxHeight = {};
                     if (item.MaxHeight && item.MaxHeight.TsunamiHeight && item.MaxHeight.TsunamiHeight.Description) maxHeight.description = item.MaxHeight.TsunamiHeight.Description;
                     if (grade !== "Unknown" && areaName) p2pData.areas.push({ name: areaName, grade: grade, firstHeight: Object.keys(firstHeight).length > 0 ? firstHeight : null, maxHeight: Object.keys(maxHeight).length > 0 ? maxHeight : null });
@@ -1472,17 +1358,14 @@
             const res = await fetch('https://www.jma.go.jp/bosai/tsunami/data/list.json');
             if(!res.ok) return [];
             const list = await res.json();
-            const recentList = list.slice(0, 10);
-            const promises = recentList.map(async (item) => {
+            const promises = list.slice(0, 10).map(async (item) => {
                 try {
                     const dRes = await fetch(`https://www.jma.go.jp/bosai/tsunami/data/${item.json}`);
                     if(!dRes.ok) return null;
-                    const detail = await dRes.json();
-                    return convertJMAToP2P(detail, item.reportDatetime);
+                    return convertJMAToP2P(await dRes.json(), item.reportDatetime);
                 } catch(e) { return null; }
             });
-            const results = await Promise.all(promises);
-            return results.filter(r => r !== null);
+            return (await Promise.all(promises)).filter(r => r !== null);
         } catch(e) { return []; }
     }
 
@@ -1490,48 +1373,36 @@
     // 計測震度 逆算ロジック
     // ==========================================
     function rgbToHsv(r, g, b) {
-        let max = Math.max(r, g, b), min = Math.min(r, g, b);
-        let h = 0, s = 0, v = max / 255.0;
-        let d = max - min;
+        let max = Math.max(r, g, b), min = Math.min(r, g, b), h = 0, s = 0, v = max / 255.0, d = max - min;
         s = max === 0 ? 0 : d / max;
         if (max !== min) {
-            switch (max) {
-                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-                case g: h = (b - r) / d + 2; break;
-                case b: h = (r - g) / d + 4; break;
-            }
-            h /= 6;
+            switch (max) { case r: h = (g - b) / d + (g < b ? 6 : 0); break; case g: h = (b - r) / d + 2; break; case b: h = (r - g) / d + 4; break; } h /= 6;
         }
         return [h, s, v];
     }
 
     function calcIntensityFromColor(colorStr) {
         if (!colorStr) return -3.0;
-        const match = colorStr.match(/\d+/g);
-        if (!match || match.length < 3) return -3.0;
-        const r = parseInt(match[0]), g = parseInt(match[1]), b = parseInt(match[2]);
-        const [h, s, v] = rgbToHsv(r, g, b);
+        const match = colorStr.match(/\d+/g); if (!match || match.length < 3) return -3.0;
+        const r = parseInt(match[0]), g = parseInt(match[1]), b = parseInt(match[2]), [h, s, v] = rgbToHsv(r, g, b);
         if (v > 0.1 && s > 0.75) {
             let p = 0; 
             if (h > 0.1476) p = 280.31 * Math.pow(h, 6) - 916.05 * Math.pow(h, 5) + 1142.6 * Math.pow(h, 4) - 709.95 * Math.pow(h, 3) + 234.65 * Math.pow(h, 2) - 40.27 * h + 3.2217;
             else if (h <= 0.1476 && h > 0.001) p = 151.4 * Math.pow(h, 4) - 49.32 * Math.pow(h, 3) + 6.753 * Math.pow(h, 2) - 2.481 * h + 0.9033;
             else if (h <= 0.001) p = -0.005171 * Math.pow(v, 2) - 0.3282 * v + 1.2236;
-            if (p < 0) p = 0; if (p > 1.0) p = 1.0; 
-            return 10 * p - 3.0;
+            if (p < 0) p = 0; if (p > 1.0) p = 1.0; return 10 * p - 3.0;
         } else return -999;
     }
 
     let currentIntensityFilterThreshold = -3.0;
     window.updateIntensityFilter = function(val) {
-        let displayVal = parseFloat(val).toFixed(1);
-        if (displayVal > 0) displayVal = "+" + displayVal;
-        document.getElementById('intensity-filter-val').innerText = displayVal;
-        currentIntensityFilterThreshold = parseFloat(val);
+        let displayVal = parseFloat(val).toFixed(1); if (displayVal > 0) displayVal = "+" + displayVal;
+        document.getElementById('intensity-filter-val').innerText = displayVal; currentIntensityFilterThreshold = parseFloat(val);
         if (kyoshinLayer && map.hasLayer(kyoshinLayer)) kyoshinLayer.redraw();
     };
 
     // ==========================================
-    // 🚨 【強震モニタ】 描画レイヤー（サイズ最適化版）
+    // 🚨 【強震モニタ】 描画レイヤー
     // ==========================================
     L.KyoshinMonitorLayer = L.Layer.extend({
         initialize: function (options) { L.setOptions(this, options); this._data = []; this._isCalcMode = false; },
@@ -1539,79 +1410,59 @@
         onAdd: function (map) {
             this._map = map;
             this._canvas = L.DomUtil.create('canvas', 'leaflet-kyoshin-layer leaflet-zoom-animated');
-            this._canvas.style.zIndex = 255; 
-            map.getPane(this.options.pane || 'overlayPane').appendChild(this._canvas);
+            this._canvas.style.zIndex = 255; map.getPane(this.options.pane || 'overlayPane').appendChild(this._canvas);
             this._ctx = this._canvas.getContext('2d');
-            map.on('moveend zoomend resize', this._updatePosition, this);
-            this._updatePosition();
+            map.on('moveend zoomend resize', this._updatePosition, this); this._updatePosition();
         },
         onRemove: function (map) { L.DomUtil.remove(this._canvas); map.off('moveend zoomend resize', this._updatePosition, this); },
         _updatePosition: function () {
-            const size = this._map.getSize(); 
-            const topLeft = this._map.containerPointToLayerPoint([0, 0]);
-            L.DomUtil.setPosition(this._canvas, topLeft);
-            this._canvas.width = size.x; 
-            this._canvas.height = size.y;
-            this.redraw();
+            const size = this._map.getSize(), topLeft = this._map.containerPointToLayerPoint([0, 0]);
+            L.DomUtil.setPosition(this._canvas, topLeft); this._canvas.width = size.x; this._canvas.height = size.y; this.redraw();
         },
         updateData: function(dataArray) {
             if (!dataArray || !Array.isArray(dataArray)) return;
-            this._data = dataArray.sort((a, b) => calcIntensityFromColor(a.color) - calcIntensityFromColor(b.color));
-            this.redraw();
+            this._data = dataArray.sort((a, b) => calcIntensityFromColor(a.color) - calcIntensityFromColor(b.color)); this.redraw();
         },
         redraw: function () {
             if (!this._ctx) return;
-            const ctx = this._ctx; 
-            ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
-            
-            const zoom = this._map.getZoom();
+            const ctx = this._ctx; ctx.clearRect(0, 0, this._canvas.width, this._canvas.height); const zoom = this._map.getZoom();
 
             for (let i = 0; i < this._data.length; i++) {
                 const item = this._data[i];
                 if (item.lat === undefined || item.lon === undefined || !item.color) continue;
                 const intensity = calcIntensityFromColor(item.color);
                 if (intensity < currentIntensityFilterThreshold) continue;
-                
                 const p = this._map.latLngToContainerPoint([parseFloat(item.lat), parseFloat(item.lon)]);
                 if (p.x < -10 || p.y < -10 || p.x > this._canvas.width + 10 || p.y > this._canvas.height + 10) continue;
                 
                 if (this._isCalcMode) {
                     if (intensity < -2.9 && currentIntensityFilterThreshold <= -2.9) continue;
                     if (intensity < 0.5) {
-                        const radius = zoom >= 8 ? 5.5 : (zoom >= 6 ? 2.5 : 1.0); // 縮小時に小さく
+                        const radius = zoom >= 8 ? 5.5 : (zoom >= 6 ? 2.5 : 1.0); 
                         let alpha = 0;
                         if (intensity > 0) alpha = 0.3 + (intensity / 0.5) * 0.4;
-                        else if (intensity > -1.0) alpha = 0.1 + ((intensity + 1.0) / 1.0) * 0.2;
-                        else alpha = 0.05;
-                        ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`; ctx.fill();
+                        else if (intensity > -1.0) alpha = 0.1 + ((intensity + 1.0) / 1.0) * 0.2; else alpha = 0.05;
+                        ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2); ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`; ctx.fill();
                     } else {
                         let scale = 10;
                         if (intensity >= 6.5) scale = 70; else if (intensity >= 6.0) scale = 60; else if (intensity >= 5.5) scale = 55;
                         else if (intensity >= 5.0) scale = 50; else if (intensity >= 4.5) scale = 45; else if (intensity >= 3.5) scale = 40;
                         else if (intensity >= 2.5) scale = 30; else if (intensity >= 1.5) scale = 20;
-                        const hexColor = getIntensityColor(scale); 
-                        const radius = zoom >= 9 ? 12 : (zoom >= 6 ? 6 : 3.5); // 縮小時に小さく
+                        const hexColor = getIntensityColor(scale); const radius = zoom >= 9 ? 12 : (zoom >= 6 ? 6 : 3.5); 
                         ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
                         ctx.fillStyle = hexColor; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2; ctx.fill();
                         ctx.shadowColor = 'transparent'; ctx.lineWidth = 1.5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
                         if (zoom >= 9) {
-                            const text = getShortIntensityString(scale);
                             ctx.fillStyle = '#ffffff'; ctx.font = '800 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                             ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
-                            ctx.fillText(text, p.x, p.y + 0.5); ctx.shadowColor = 'transparent';
+                            ctx.fillText(getShortIntensityString(scale), p.x, p.y + 0.5); ctx.shadowColor = 'transparent';
                         }
                     }
                 } else {
-                    const radius = zoom >= 8 ? 6.5 : (zoom >= 6 ? 2.5 : 1.0); // 縮小時に小さく
+                    const radius = zoom >= 8 ? 6.5 : (zoom >= 6 ? 2.5 : 1.0); 
                     let drawColor = item.color;
-                    if (typeof item.color === 'string' && item.color.startsWith('rgb')) {
-                        drawColor = item.color.replace('rgb', 'rgba').replace(')', ', 0.95)');
-                    }
-                    ctx.beginPath(); 
-                    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2); 
-                    ctx.fillStyle = drawColor; 
-                    ctx.fill();
+                    if (typeof item.color === 'string' && item.color.startsWith('rgb')) drawColor = item.color.replace('rgb', 'rgba').replace(')', ', 0.95)');
+                    ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2); ctx.fillStyle = drawColor; ctx.fill();
                 }
             }
         }
@@ -1637,31 +1488,21 @@
     function startWaveAnimation(eventId) {
         function animate() {
             if (!activeEEWs.has(eventId)) return; 
-            const currentState = activeEEWs.get(eventId);
-            const data = currentState.data;
+            const currentState = activeEEWs.get(eventId), data = currentState.data;
             if (!data || !data.origin_time || !data.latitude || !data.longitude) { currentState.animFrame = requestAnimationFrame(animate); return; }
             const tStr = data.origin_time;
             const originTimeMs = new Date(parseInt(tStr.slice(0,4)), parseInt(tStr.slice(4,6))-1, parseInt(tStr.slice(6,8)), parseInt(tStr.slice(8,10)), parseInt(tStr.slice(10,12)), parseInt(tStr.slice(12,14))).getTime();
             
-            let nowMs;
-            if (isArchiveMode && archiveTime) {
-                const speed = parseInt(document.getElementById('archive-speed').value) || 1;
-                const elapsedRealMs = Date.now() - lastArchiveRealTime;
-                nowMs = lastArchiveTimeMs + (elapsedRealMs * speed);
-            } else { nowMs = Date.now(); }
-
-            let t = (nowMs - originTimeMs) / 1000;
-            let depthKm = parseInt(data.depth) || 10;
+            let nowMs = (isArchiveMode && archiveIsPlaying) ? virtualTimeMs : Date.now();
+            let t = (nowMs - originTimeMs) / 1000, depthKm = parseInt(data.depth) || 10;
             if (depthKm < 0 || isNaN(depthKm)) depthKm = 10;
             if (data.depth === "ごく浅い" || data.depth === "ごく浅いkm") depthKm = 0;
 
             if (t > 0) {
                 const pDistance = 6.0 * t;
-                if (pDistance > depthKm) currentState.pCircle.setRadius(Math.sqrt(Math.pow(pDistance, 2) - Math.pow(depthKm, 2)) * 1000);
-                else currentState.pCircle.setRadius(0);
+                if (pDistance > depthKm) currentState.pCircle.setRadius(Math.sqrt(Math.pow(pDistance, 2) - Math.pow(depthKm, 2)) * 1000); else currentState.pCircle.setRadius(0);
                 const sDistance = 3.5 * t;
-                if (sDistance > depthKm) currentState.sCircle.setRadius(Math.sqrt(Math.pow(sDistance, 2) - Math.pow(depthKm, 2)) * 1000);
-                else currentState.sCircle.setRadius(0);
+                if (sDistance > depthKm) currentState.sCircle.setRadius(Math.sqrt(Math.pow(sDistance, 2) - Math.pow(depthKm, 2)) * 1000); else currentState.sCircle.setRadius(0);
             }
             currentState.animFrame = requestAnimationFrame(animate);
         }
@@ -1672,27 +1513,15 @@
         if (isEEWMockActive) return null; 
         const targetUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${timeFmt.time}.json?_=${Date.now()}`;
         try {
-            let res;
-            if (useProxyForJSON) {
-                res = await fetch(PROXY_BASE + targetUrl);
-            } else {
-                try {
-                    res = await fetch(targetUrl);
-                } catch(e) {
-                    res = await fetch(PROXY_BASE + targetUrl);
-                    useProxyForJSON = true;
-                }
-            }
-            const data = await res.json();
-            processEEWData(data);
+            let res = await safeFetchJSON(targetUrl);
+            processEEWData(await res.json());
         } catch (e) {}
     }
 
     function processEEWData(data) {
         if (!data || !data.result || data.result.message === "データがありません" || data.result.message === "対象外") return;
         const eventId = data.report_id || data.origin_time; 
-        const isCancel = data.is_cancel === true;
-        const isPlum = data.is_plum === true || (data.region_name === "" && data.calcintensity); 
+        const isCancel = data.is_cancel === true, isPlum = data.is_plum === true || (data.region_name === "" && data.calcintensity); 
         const timeStr = `${formatEEWTime(data.origin_time)} 頃発生`;
         
         if (isCancel) {
@@ -1700,18 +1529,15 @@
             if (activeEEWs.has(eventId)) {
                 const state = activeEEWs.get(eventId);
                 if (state.animFrame) cancelAnimationFrame(state.animFrame);
-                eewLayer.removeLayer(state.layerGroup);
-                activeEEWs.delete(eventId);
+                eewLayer.removeLayer(state.layerGroup); activeEEWs.delete(eventId);
             }
-            setTimeout(() => removeEEWDOM(eventId), 8000);
-            return;
+            setTimeout(() => removeEEWDOM(eventId), 8000); return;
         }
 
         if (!activeEEWs.has(eventId)) {
             const layerGroup = L.layerGroup().addTo(eewLayer);
             activeEEWs.set(eventId, {
                 data: data, layerGroup: layerGroup, clearTimer: null,
-                // 🚨 修正：レンダラーを指定し、CSS変数ではなくカラーコードを直書きして確実に描画させる
                 pCircle: L.circle([0,0], {renderer: eewRenderer, radius: 0, color: '#32ADE6', weight: 1.5, fill: true, fillOpacity: 0.05, interactive: false}),
                 sCircle: L.circle([0,0], {renderer: eewRenderer, radius: 0, color: '#FF3B30', weight: 2.5, fill: true, fillOpacity: 0.15, interactive: false}),
                 alertLayer: L.layerGroup(), animFrame: null
@@ -1722,20 +1548,16 @@
         }
 
         const eewState = activeEEWs.get(eventId);
-        eewState.data = data;
-        eewState.layerGroup.clearLayers(); 
+        eewState.data = data; eewState.layerGroup.clearLayers(); 
         eewState.pCircle.addTo(eewState.layerGroup); eewState.sCircle.addTo(eewState.layerGroup); eewState.alertLayer.addTo(eewState.layerGroup);
 
         if (data.latitude && data.longitude) {
-            const lat = parseFloat(data.latitude); const lon = parseFloat(data.longitude);
+            const lat = parseFloat(data.latitude), lon = parseFloat(data.longitude);
             eewState.pCircle.setLatLng([lat, lon]); eewState.sCircle.setLatLng([lat, lon]);
             const iconHtml = isPlum ? `<div class="eew-marker-plum"></div>` : `<div class="eew-marker-cross"></div>`;
             const epicenterMarker = L.marker([lat, lon], { icon: L.divIcon({ className: 'custom-div-icon', html: iconHtml, iconSize: [0, 0] }), zIndexOffset: 30000 });
             eewState.layerGroup.addLayer(epicenterMarker);
-            if (!isPlum) {
-                const pulseIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="eew-epicenter-pulse"></div>`, iconSize: [0, 0] });
-                L.marker([lat, lon], { icon: pulseIcon }).addTo(eewState.layerGroup);
-            }
+            if (!isPlum) L.marker([lat, lon], { icon: L.divIcon({ className: 'custom-div-icon', html: `<div class="eew-epicenter-pulse"></div>`, iconSize: [0, 0] }) }).addTo(eewState.layerGroup);
             if (data.report_num === "1" || data.report_num === 1) map.setView([lat, lon], 6, { animate: true, duration: 1.0 });
         }
 
@@ -1744,8 +1566,7 @@
             let regionsToHighlight = data.alertRegions || [data.region_name];
             L.geoJSON(japanGeoData, {
                 filter: function(feature) { const name = feature.properties.name || ""; return regionsToHighlight.some(r => name.includes(r) || r.includes(name)); },
-                style: { fillColor: '#FFFF00', fillOpacity: 0.35, color: '#FFFF00', weight: 2, dashArray: '3' },
-                interactive: false
+                style: { fillColor: '#FFFF00', fillOpacity: 0.35, color: '#FFFF00', weight: 2, dashArray: '3' }, interactive: false
             }).addTo(eewState.alertLayer);
         }
 
@@ -1774,24 +1595,8 @@
         const collapsedClass = isCollapsed ? ' collapsed' : '';
 
         if (isCancel) {
-            restoreEEW(eventId); 
-            panel.style.backgroundColor = "rgba(28, 28, 30, 0.45)"; panel.style.borderColor = "#8E8E93";
-            panel.innerHTML = `
-                <div class="dp-close" onclick="closeEEW('${eventId}')">✕</div>
-                <div class="dp-main">
-                    <div class="dp-scale-box" style="background: rgba(0,0,0,0.5); border-color: #8E8E93;">
-                        <span class="dp-scale-label">緊急速報</span><span class="dp-scale-value" style="color: #8E8E93; font-size: 26px;">取消</span>
-                    </div>
-                    <div class="dp-info">
-                        <div class="dp-name"><span style="color:#FF453A; font-weight:800; font-size:16px;">【緊急地震速報】 取消</span></div>
-                        <div class="dp-time">この速報は取り消されました</div><div class="dp-meta"></div>
-                    </div>
-                </div>
-                <div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')">${btnText}</div>
-                <div id="eew-extended-${eventId}" class="dp-extended-area${collapsedClass}">
-                    <div class="dp-comments-box" style="border-left-color: #8E8E93;"><strong>【誤報・取消】</strong><br>先ほどの緊急地震速報は取り消されました。</div>
-                </div>
-            `;
+            restoreEEW(eventId); panel.style.backgroundColor = "rgba(28, 28, 30, 0.45)"; panel.style.borderColor = "#8E8E93";
+            panel.innerHTML = `<div class="dp-close" onclick="closeEEW('${eventId}')">✕</div><div class="dp-main"><div class="dp-scale-box" style="background: rgba(0,0,0,0.5); border-color: #8E8E93;"><span class="dp-scale-label">緊急速報</span><span class="dp-scale-value" style="color: #8E8E93; font-size: 26px;">取消</span></div><div class="dp-info"><div class="dp-name"><span style="color:#FF453A; font-weight:800; font-size:16px;">【緊急地震速報】 取消</span></div><div class="dp-time">この速報は取り消されました</div><div class="dp-meta"></div></div></div><div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')">${btnText}</div><div id="eew-extended-${eventId}" class="dp-extended-area${collapsedClass}"><div class="dp-comments-box" style="border-left-color: #8E8E93;"><strong>【誤報・取消】</strong><br>先ほどの緊急地震速報は取り消されました。</div></div>`;
             return;
         }
 
@@ -1801,11 +1606,8 @@
         panel.style.borderColor = isWarning ? "rgba(255, 69, 58, 0.6)" : "var(--border-color)";
         const badgeHtml = isPlum ? `<span class="plum-badge">PLUM法</span>` : '';
         const reportText = data.is_final ? "最終報" : `第${data.report_num}報`;
-        const titleColor = isWarning ? "#FF453A" : "#FFD60A";
-        const regionName = data.region_name || '調査中';
-        const magnitude = data.magunitude ? data.magunitude : '-.-';
-        let depth = data.depth ? data.depth.replace('km', '') : '--'; 
-        if(depth === "ごく浅いkm" || depth === "ごく浅い") depth = "ごく浅い";
+        const titleColor = isWarning ? "#FF453A" : "#FFD60A", regionName = data.region_name || '調査中', magnitude = data.magunitude ? data.magunitude : '-.-';
+        let depth = data.depth ? data.depth.replace('km', '') : '--'; if(depth === "ごく浅いkm" || depth === "ごく浅い") depth = "ごく浅い";
         let intensityStr = data.calcintensity || "?";
         let intNum = 0;
         if(intensityStr.includes("1")) intNum=10; if(intensityStr.includes("2")) intNum=20; if(intensityStr.includes("3")) intNum=30;
@@ -1815,45 +1617,48 @@
         let plumNotice = isPlum ? '<br><span style="font-size: 11px; color: #aaa;">※観測点の揺れから予測しています。</span>' : '';
         let regionsText = data.alertRegions && data.alertRegions.length > 0 ? `<div style="font-size:12px; color:#FFD60A; margin-top:2px;">警報対象: ${data.alertRegions.join(', ')}</div>` : '';
 
-        panel.innerHTML = `
-            <div class="dp-close" onclick="minimizeEEW('${eventId}')">✕</div>
-            <div class="dp-main">
-                <div class="dp-scale-box" style="background: rgba(0,0,0,0.3); border-color: ${color};">
-                    <span class="dp-scale-label">最大予測</span><span class="dp-scale-value" style="color: ${color}; font-size: 34px;">${intensityStr}</span>
-                </div>
-                <div class="dp-info">
-                    <div class="dp-name" title="${regionName}"><span style="color:${titleColor}; font-weight:800;">【緊急地震速報】 ${reportText}</span> ${badgeHtml}<br><span style="font-size:14px; font-weight:normal;">${regionName}</span></div>
-                    <div class="dp-time">${timeStr}</div>
-                    <div class="dp-meta">M <strong style="color:#fff;">${magnitude}</strong> / 深さ <strong style="color:#fff;">${depth}</strong>${depth !== 'ごく浅い' && depth !== '--' ? 'km' : ''}</div>
-                </div>
-            </div>
-            ${regionsText}
-            <div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')">${btnText}</div>
-            <div id="eew-extended-${eventId}" class="dp-extended-area${collapsedClass}">
-                <div class="dp-comments-box" style="border-left-color: ${color};">
-                    <strong>【予測情報】</strong><br>強い揺れに警戒してください。${isWarning ? '<br><span style="color:#FF453A;">※これは緊急地震速報（警報）です。</span>' : ''}${plumNotice}
-                </div>
-            </div>
-        `;
+        const areasContainerId = `eew-areas-container-${eventId}`;
+        let areasHtml = `<div id="${areasContainerId}" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 11px; color: var(--text-secondary); text-align: center;"><div class="spinner" style="width:10px;height:10px;display:inline-block;margin-right:4px;"></div>地域ごとの予想震度を取得中...</div></div>`;
+
+        panel.innerHTML = `<div class="dp-close" onclick="minimizeEEW('${eventId}')">✕</div><div class="dp-main"><div class="dp-scale-box" style="background: rgba(0,0,0,0.3); border-color: ${color};"><span class="dp-scale-label">最大予測</span><span class="dp-scale-value" style="color: ${color}; font-size: 34px;">${intensityStr}</span></div><div class="dp-info"><div class="dp-name" title="${regionName}"><span style="color:${titleColor}; font-weight:800;">【緊急地震速報】 ${reportText}</span> ${badgeHtml}<br><span style="font-size:14px; font-weight:normal;">${regionName}</span></div><div class="dp-time">${timeStr}</div><div class="dp-meta">M <strong style="color:#fff;">${magnitude}</strong> / 深さ <strong style="color:#fff;">${depth}</strong>${depth !== 'ごく浅い' && depth !== '--' ? 'km' : ''}</div></div></div>${regionsText}<div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')">${btnText}</div><div id="eew-extended-${eventId}" class="dp-extended-area${collapsedClass}"><div class="dp-comments-box" style="border-left-color: ${color};"><strong>【予測情報】</strong><br>強い揺れに警戒してください。${isWarning ? '<br><span style="color:#FF453A;">※これは緊急地震速報（警報）です。</span>' : ''}${plumNotice}</div>${areasHtml}</div>`;
+
+        fetchP2PEEWDetails(data.origin_time, data.report_num, isCancel).then(areas => {
+            const container = document.getElementById(areasContainerId); if (!container) return;
+            if (areas === null) { container.innerHTML = `<div style="font-size: 11px; color: var(--text-secondary); text-align: center;">地域データへのアクセスに失敗しました</div>`; return; }
+            if (areas.length === 0) { container.innerHTML = `<div style="font-size: 11px; color: var(--text-secondary); text-align: center;">詳細な地域データはありません</div>`; return; }
+
+            areas.sort((a, b) => (b.scaleTo || b.scaleFrom || 0) - (a.scaleTo || a.scaleFrom || 0));
+            const scaleGroups = new Map();
+            areas.forEach(area => {
+                const s = area.scaleTo || area.scaleFrom || 0; if (s < 10) return; 
+                if (!scaleGroups.has(s)) scaleGroups.set(s, []); scaleGroups.get(s).push(area.name);
+            });
+            if (scaleGroups.size === 0) { container.innerHTML = `<div style="font-size: 11px; color: var(--text-secondary); text-align: center;">予想震度1以上の地域データはありません</div>`; return; }
+
+            let listHtml = '<div style="font-size: 12px; font-weight: bold; margin-bottom: 6px; color: #fff;">地域別 予想震度</div><div style="display: flex; flex-direction: column; gap: 4px;">';
+            const sortedKeys = Array.from(scaleGroups.keys()).sort((a, b) => b - a);
+            for (const scale of sortedKeys) {
+                const names = scaleGroups.get(scale), scaleColor = getIntensityColor(scale), scaleStr = getIntensityString(scale), textColor = (scale === 40 || scale === 45) ? '#000' : '#fff';
+                listHtml += `<div style="display: flex; align-items: flex-start; gap: 8px; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 6px; border-left: 3px solid ${scaleColor};"><div style="background: ${scaleColor}; color: ${textColor}; font-weight: bold; font-size: 11px; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">震度${scaleStr}</div><div style="font-size: 11px; color: #e5e5ea; line-height: 1.4;">${names.join(', ')}</div></div>`;
+            }
+            container.innerHTML = listHtml + '</div>';
+        });
     }
 
     window.toggleEEWExtendedArea = function(eventId) {
-        const area = document.getElementById(`eew-extended-${eventId}`);
-        const btn = document.getElementById(`eew-toggle-${eventId}`);
+        const area = document.getElementById(`eew-extended-${eventId}`), btn = document.getElementById(`eew-toggle-${eventId}`);
         if (!area || !btn) return;
         if (area.classList.contains('collapsed')) { area.classList.remove('collapsed'); btn.innerHTML = '詳細情報を閉じる ▲'; }
         else { area.classList.add('collapsed'); btn.innerHTML = '詳細情報を表示 ▼'; }
     };
 
     window.minimizeEEW = function(eventId) {
-        const panel = document.getElementById(`eew-panel-${eventId}`);
-        const minIcon = document.getElementById(`eew-minimized-${eventId}`);
+        const panel = document.getElementById(`eew-panel-${eventId}`), minIcon = document.getElementById(`eew-minimized-${eventId}`);
         if (panel && minIcon) { panel.style.display = 'none'; minIcon.style.display = 'flex'; minIcon.style.animation = 'none'; void minIcon.offsetWidth; minIcon.style.animation = null; }
     };
 
     window.restoreEEW = function(eventId) {
-        const panel = document.getElementById(`eew-panel-${eventId}`);
-        const minIcon = document.getElementById(`eew-minimized-${eventId}`);
+        const panel = document.getElementById(`eew-panel-${eventId}`), minIcon = document.getElementById(`eew-minimized-${eventId}`);
         if (panel && minIcon) { panel.style.display = 'block'; minIcon.style.display = 'none'; }
     };
 
@@ -1879,14 +1684,13 @@
             if (state.animFrame) cancelAnimationFrame(state.animFrame);
             eewLayer.removeLayer(state.layerGroup); removeEEWDOM(eventId);
         });
-        activeEEWs.clear(); addSystemLog(`[EEW Test] 全てのシミュレーションとUIを強制クリアしました`, 'info');
+        activeEEWs.clear(); addSystemLog(`[EEW Test] 全てのシミュレーションをクリアしました`, 'info');
     }
 
+    // --- 既存のプリセットテスト ---
     window.runEEWTest = function(type) {
-        ensureMode('kyoshin'); 
-        isEEWMockActive = true; closeDetailPanel();
-        const baseTime = getFormatTimeStr(new Date()).time;
-        addSystemLog(`[EEW Test] ${type} テストを開始しました`, 'warn');
+        ensureMode('kyoshin'); isEEWMockActive = true; closeDetailPanel();
+        const baseTime = getFormatTimeStr(new Date()).time; addSystemLog(`[EEW Test] ${type} テストを開始`, 'warn');
         if (type === 'normal') startMockEEWSequence("TEST_001", false, "東京湾", 35.5, 139.8, 30, 4.5, ["3", "4", "5弱"], baseTime, 0, false, ["東京都", "神奈川県", "千葉県", "埼玉県"]);
         else if (type === 'plum') startMockEEWSequence("TEST_PLUM_01", true, "関東地方", 36.0, 140.0, null, null, ["3", "5弱", "5弱"], baseTime, 0, false, ["茨城県"]);
         else if (type === 'cancel') startMockEEWSequence("TEST_CAN_01", false, "紀伊水道", 33.8, 134.8, 10, 5.5, ["3"], baseTime, 0, true);
@@ -1900,8 +1704,7 @@
         let step = 0; let isWarning = false;
         const interval = setInterval(() => {
             if (step >= intensities.length) { clearInterval(interval); return; }
-            let isFinal = (step === intensities.length - 1);
-            let intensity = intensities[Math.min(step, intensities.length - 1)];
+            let isFinal = (step === intensities.length - 1), intensity = intensities[Math.min(step, intensities.length - 1)];
             if (intensity.includes("4") || intensity.includes("5") || intensity.includes("6") || intensity.includes("7")) isWarning = true;
             let isCancel = forceCancel && step === 0; if (isCancel) isFinal = false;
             let data = { result: { status: "success", message: "" }, report_id: id, report_num: (step + 1).toString(), is_final: isFinal, is_cancel: isCancel, is_plum: isPlum, alertflg: isWarning ? "警報" : "予報", region_name: region, latitude: lat ? lat.toString() : "", longitude: lon ? lon.toString() : "", depth: depth ? depth + "km" : "", magunitude: mag ? mag.toString() : "", calcintensity: intensity, origin_time: originTime, alertRegions: alertRegions };
@@ -1909,6 +1712,81 @@
         }, 3000);
         mockEEWTimers.push(interval);
     }
+
+    // --- 🚨 追加: 高度なEEWシミュレーター 状態管理 ---
+    let simEventId = "SIM_" + Date.now();
+    let simReportNum = 0;
+    let simOriginTime = "";
+    let simIsActive = false;
+
+    window.resetEEWSimulation = function() {
+        simEventId = "SIM_" + Date.now();
+        simReportNum = 0;
+        simOriginTime = "";
+        simIsActive = false;
+        document.getElementById('sim-report-num').innerText = "1";
+        document.getElementById('eew-sim-status').innerText = "待機中";
+        document.getElementById('eew-sim-status').style.color = "#FFD60A";
+        clearAllEEWs();
+        addSystemLog(`[Simulator] シミュレーターをリセットしました`, 'info');
+    };
+
+    function dispatchSimulatedEEW(isFinal, isCancel) {
+        ensureMode('kyoshin'); 
+        isEEWMockActive = true; 
+        closeDetailPanel();
+
+        if (!simIsActive && !isCancel) {
+            simOriginTime = getFormatTimeStr(new Date()).time;
+            simIsActive = true;
+        }
+
+        if (!isCancel) simReportNum++;
+
+        const region = document.getElementById('sim-region').value || "テスト地域";
+        const isPlum = document.getElementById('sim-plum').checked;
+        const mag = isPlum ? "" : document.getElementById('sim-mag').value;
+        const depth = isPlum ? "" : document.getElementById('sim-depth').value;
+        const lat = document.getElementById('sim-lat').value;
+        const lon = document.getElementById('sim-lon').value;
+        const scale = document.getElementById('sim-scale').value;
+        const isWarn = document.getElementById('sim-warn').checked;
+
+        let data = {
+            result: { status: "success", message: "" },
+            report_id: simEventId,
+            report_num: isCancel ? (simReportNum > 0 ? simReportNum.toString() : "1") : simReportNum.toString(),
+            is_final: isFinal,
+            is_cancel: isCancel,
+            is_plum: isPlum,
+            alertflg: isWarn ? "警報" : "予報",
+            region_name: region,
+            latitude: lat,
+            longitude: lon,
+            depth: depth ? depth + "km" : "",
+            magunitude: mag,
+            calcintensity: scale,
+            origin_time: simOriginTime || getFormatTimeStr(new Date()).time,
+            alertRegions: isWarn ? [region, "近隣テスト県"] : []
+        };
+
+        let statusText = isCancel ? "取消済" : (isFinal ? "最終報完了" : `第${simReportNum}報 送信済`);
+        document.getElementById('eew-sim-status').innerText = statusText;
+        document.getElementById('eew-sim-status').style.color = isCancel ? "#FF453A" : (isFinal ? "#30D158" : "#64D2FF");
+        document.getElementById('sim-report-num').innerText = isCancel || isFinal ? "1" : (simReportNum + 1);
+
+        addSystemLog(`[Simulator] ${statusText} (M${mag || '-'} / 最大${scale})`, isCancel ? 'error' : 'warn');
+        processEEWData(data);
+
+        if (isCancel || isFinal) {
+            setTimeout(() => { simEventId = "SIM_" + Date.now(); simReportNum = 0; simIsActive = false; }, 1000);
+        }
+    }
+
+    window.stepEEWSimulation = () => dispatchSimulatedEEW(false, false);
+    window.finishEEWSimulation = () => dispatchSimulatedEEW(true, false);
+    window.cancelEEWSimulation = () => dispatchSimulatedEEW(false, true);
+    // ---------------------------------------------
 
     window.runTsunamiTest = function() {
         addSystemLog(`[Tsunami Test] 津波自動受信テストを開始しました`, 'warn');
@@ -1920,20 +1798,19 @@
     };
 
     // ==========================================
-    // サーバーレス完全フロントエンド画像解析処理 ＆ アーカイブ機能
+    // 🚨 非同期アーキテクチャによるサーバーレス解析処理
     // ==========================================
     let currentKmoniTimeOffset = 2000; 
     let intensityPointsData = []; 
-    let isArchiveMode = false; let archiveTime = null; let archiveTimer = null; let archiveIsPlaying = false;
-    let lastArchiveRealTime = Date.now(); let lastArchiveTimeMs = 0;
+    let archiveAnimFrame = null; 
+    let prefetchTimer = null;
+    let archiveSpeed = 1;
+    let kmoniImageCache = new Map();
+    let lastDrawnTimeMs = 0;
+    let lastRenderTime = 0;
+    let isBuffering = false;
 
-    function getFormatTimeStr(date) {
-        const yyyy = date.getFullYear(), MM = String(date.getMonth() + 1).padStart(2, '0'), dd = String(date.getDate()).padStart(2, '0');
-        const HH = String(date.getHours()).padStart(2, '0'), mm = String(date.getMinutes()).padStart(2, '0'), ss = String(date.getSeconds()).padStart(2, '0');
-        return { date: `${yyyy}${MM}${dd}`, time: `${yyyy}${MM}${dd}${HH}${mm}${ss}`, display: `${yyyy}/${MM}/${dd} ${HH}:${mm}:${ss}` };
-    }
-
-    function extractColorsFromImage(img, targetTimeDisplay) {
+    function extractColorsToArray(img) {
         const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
         const ctx = canvas.getContext('2d', { willReadFrequently: true }); ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
@@ -1947,60 +1824,73 @@
                 dataArray.push({ lat: pt.lat, lon: pt.lon, color: `rgb(${r}, ${g}, ${b})` });
             }
         });
-        
-        const ind = document.getElementById('kmoni-indicator'), statusTextEl = document.getElementById('kmoni-status-text');
-        if (img.width < 10 || dataArray.length === 0) {
-            ind.classList.remove('archive'); ind.classList.add('error');
-            if (isArchiveMode) { statusTextEl.innerText = "過去データなし (保存期間外など)"; if (archiveIsPlaying) pauseArchive(); }
-            else { statusTextEl.innerText = "データがありません"; }
-            document.getElementById('kmoni-time').innerText = targetTimeDisplay;
-            if (kyoshinLayer) kyoshinLayer.updateData([]); 
-            return;
-        }
-        if (kyoshinLayer) kyoshinLayer.updateData(dataArray);
-        ind.classList.remove('error');
-        if (isArchiveMode) { ind.classList.add('archive'); statusTextEl.innerText = archiveIsPlaying ? "アーカイブ再生中" : "アーカイブ一時停止"; }
-        else { ind.classList.remove('archive'); statusTextEl.innerText = "リアルタイム監視中"; }
-        document.getElementById('kmoni-time').innerText = targetTimeDisplay;
+        return dataArray;
     }
 
-    function fetchAndDrawKmoni(targetDate, isLive = true) {
+    function fetchAndDrawKmoni(targetDate) {
         const t = getFormatTimeStr(targetDate);
-        if (isLive) fetchKmoniEEW(t); 
-        
+        fetchKmoniEEW(t); 
         const targetUrl = `http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/${t.date}/${t.time}.jma_s.gif`;
         
         return new Promise((resolve, reject) => {
             const tryFetch = (useProxy) => {
                 const img = new Image();  
-                if (useProxy) {
-                    img.crossOrigin = "Anonymous";
-                    img.src = PROXY_BASE + targetUrl;
-                } else {
-                    img.src = targetUrl;
-                }
+                if (useProxy) { img.crossOrigin = "Anonymous"; img.src = PROXY_BASE + targetUrl; } else { img.src = targetUrl; }
 
                 img.onload = function() { 
-                    sysStats.success++;
-                    useProxyForImage = useProxy;
-                    extractColorsFromImage(img, t.display + (isLive ? "" : " [過去]")); 
-                    resolve(true); 
+                    sysStats.success++; useProxyForImage = useProxy;
+                    const dataArray = extractColorsToArray(img);
+                    const ind = document.getElementById('kmoni-indicator'), statusTextEl = document.getElementById('kmoni-status-text');
+                    if (img.width < 10 || dataArray.length === 0) {
+                        ind.classList.remove('archive'); ind.classList.add('error');
+                        statusTextEl.innerText = "データがありません"; document.getElementById('kmoni-time').innerText = t.display;
+                        if (kyoshinLayer) kyoshinLayer.updateData([]); 
+                        resolve(false); return;
+                    }
+                    if (kyoshinLayer) kyoshinLayer.updateData(dataArray);
+                    ind.classList.remove('error', 'archive'); statusTextEl.innerText = "リアルタイム監視中";
+                    document.getElementById('kmoni-time').innerText = t.display; resolve(true); 
                 };
                 
                 img.onerror = function() {
-                    if (!useProxy && !useProxyForImage) {
-                        console.warn("[System] 画像の直通信に失敗したため、プロキシ経由で再試行します...");
-                        tryFetch(true);
-                    } else {
+                    // 🚨 修正：Electron環境では絶対にプロキシに切り替えない
+                    if (!useProxy && !useProxyForImage && !isElectron) { tryFetch(true); } 
+                    else {
                         sysStats.error++;
                         const ind = document.getElementById('kmoni-indicator'); ind.classList.remove('archive'); ind.classList.add('error');
-                        if (isLive) document.getElementById('kmoni-status-text').innerText = "画像取得エラー";
-                        else document.getElementById('kmoni-status-text').innerText = "データなし (保存期間外 または 通信エラー)";
+                        document.getElementById('kmoni-status-text').innerText = "画像取得エラー";
                         reject(false);
                     }
                 };
             };
-            
+            tryFetch(useProxyForImage);
+        });
+    }
+
+    function fetchAndCacheKmoni(targetDate) {
+        const t = getFormatTimeStr(targetDate); const timeMs = targetDate.getTime();
+        if (kmoniImageCache.has(timeMs)) return Promise.resolve(true);
+
+        const targetUrl = `http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/${t.date}/${t.time}.jma_s.gif`;
+        
+        return new Promise((resolve, reject) => {
+            const tryFetch = (useProxy) => {
+                const img = new Image();  
+                if (useProxy) { img.crossOrigin = "Anonymous"; img.src = PROXY_BASE + targetUrl; } else { img.src = targetUrl; }
+
+                img.onload = function() { 
+                    sysStats.success++; useProxyForImage = useProxy;
+                    const dataArray = extractColorsToArray(img);
+                    kmoniImageCache.set(timeMs, img.width < 10 || dataArray.length === 0 ? null : dataArray);
+                    resolve(true); 
+                };
+                
+                img.onerror = function() {
+                    // 🚨 修正：Electron環境では絶対にプロキシに切り替えない
+                    if (!useProxy && !useProxyForImage && !isElectron) { tryFetch(true); } 
+                    else { sysStats.error++; kmoniImageCache.set(timeMs, null); reject(false); }
+                };
+            };
             tryFetch(useProxyForImage);
         });
     }
@@ -2008,7 +1898,7 @@
     function fetchKmoniImage() {
         if (!isKyoshinActive || isArchiveMode) return;
         const now = new Date(), targetTime = new Date(now.getTime() - currentKmoniTimeOffset);
-        fetchAndDrawKmoni(targetTime, true).then(() => {
+        fetchAndDrawKmoni(targetTime).then(() => {
             currentDelay = Math.floor((Date.now() - targetTime.getTime()) / 1000);
             if (isMenuOpen()) updateSettingsUI();
             currentKmoniTimeOffset = 2000; kmoniTimeout = setTimeout(fetchKmoniImage, 1000);
@@ -2034,77 +1924,108 @@
         if(isMenuOpen()) updateSettingsUI();
     }
 
+    document.getElementById('archive-speed').addEventListener('change', function() { archiveSpeed = parseFloat(this.value) || 1; });
+
     window.startArchive = function() {
         const dtInput = document.getElementById('archive-datetime').value;
-        if (!dtInput && !archiveTime) return;
+        if (!dtInput && !virtualTimeMs) return;
         ensureMode('kyoshin');
-        if (dtInput) { archiveTime = new Date(dtInput); }
-        isArchiveMode = true; archiveIsPlaying = true;
-        if (kmoniTimeout) clearTimeout(kmoniTimeout); if (archiveTimer) clearTimeout(archiveTimer);
+        if (dtInput) { const d = new Date(dtInput); virtualTimeMs = d.getTime(); kmoniImageCache.clear(); lastDrawnTimeMs = 0; }
+        
+        archiveSpeed = parseFloat(document.getElementById('archive-speed').value) || 1;
+        isArchiveMode = true; archiveIsPlaying = true; isBuffering = false; lastRenderTime = performance.now();
+
+        if (kmoniTimeout) clearTimeout(kmoniTimeout); if (archiveAnimFrame) cancelAnimationFrame(archiveAnimFrame); if (prefetchTimer) clearTimeout(prefetchTimer);
+
         const ind = document.getElementById('kmoni-indicator'); ind.classList.remove('error'); ind.classList.add('archive');
         document.getElementById('kmoni-status-text').innerText = "アーカイブ再生中";
-        addSystemLog(`[Archive] タイムマシン再生を開始: ${archiveTime.toLocaleString()}`, 'info');
-        archiveLoop();
+        addSystemLog(`[Archive] タイムマシン再生を開始: ${new Date(virtualTimeMs).toLocaleString()}`, 'info');
+        
+        archiveRenderLoop(performance.now()); prefetchWorker();
     };
 
     window.pauseArchive = function() {
-        archiveIsPlaying = false; if (archiveTimer) clearTimeout(archiveTimer);
+        archiveIsPlaying = false; if (archiveAnimFrame) cancelAnimationFrame(archiveAnimFrame); if (prefetchTimer) clearTimeout(prefetchTimer);
         const ind = document.getElementById('kmoni-indicator');
         if (!ind.classList.contains('error')) document.getElementById('kmoni-status-text').innerText = "アーカイブ一時停止";
     };
 
     window.stopArchive = function() {
         isArchiveMode = false; archiveIsPlaying = false;
-        if (archiveTimer) clearTimeout(archiveTimer);
-        clearAllEEWs();
-        const ind = document.getElementById('kmoni-indicator'); ind.classList.remove('archive'); ind.classList.remove('error');
+        if (archiveAnimFrame) cancelAnimationFrame(archiveAnimFrame); if (prefetchTimer) clearTimeout(prefetchTimer);
+        clearAllEEWs(); kmoniImageCache.clear();
+        
+        const ind = document.getElementById('kmoni-indicator'); ind.classList.remove('archive', 'error');
         document.getElementById('kmoni-status-text').innerText = "ライブ復帰中...";
         addSystemLog(`[Archive] ライブ監視モードに復帰しました`, 'info');
-        currentKmoniTimeOffset = 2000; fetchKmoniImage();
+        currentKmoniTimeOffset = 2000; clockPanelEl.style.color = "#FFFFFF"; clockPanelEl.style.textShadow = "none";
+        fetchKmoniImage();
     };
 
-    function archiveLoop() {
-        if (!archiveIsPlaying || !isArchiveMode) return;
-        const speed = parseInt(document.getElementById('archive-speed').value) || 1;
-        lastArchiveRealTime = Date.now(); lastArchiveTimeMs = archiveTime.getTime();
-        const tFmt = getFormatTimeStr(archiveTime); fetchKmoniEEW(tFmt);
-        fetchAndDrawKmoni(archiveTime, false).then(() => {
-            updateArchiveUITime(); archiveTime = new Date(archiveTime.getTime() + speed * 1000); archiveTimer = setTimeout(archiveLoop, 1000); 
-        }).catch(() => { updateArchiveUITime(); pauseArchive(); addSystemLog(`[Archive] 画像が見つからないため自動停止しました`, 'error'); });
+    function archiveRenderLoop(timestamp) {
+        if (!isArchiveMode || !archiveIsPlaying) return;
+        if (!lastRenderTime) lastRenderTime = timestamp;
+        const delta = timestamp - lastRenderTime; lastRenderTime = timestamp;
+        if (!isBuffering) { virtualTimeMs += delta * archiveSpeed; }
+        updateClock();
+
+        const targetSecMs = Math.floor(virtualTimeMs / 1000) * 1000;
+        if (targetSecMs !== lastDrawnTimeMs) {
+            if (kmoniImageCache.has(targetSecMs)) {
+                const dataArray = kmoniImageCache.get(targetSecMs);
+                if (dataArray) {
+                    kyoshinLayer.updateData(dataArray);
+                    document.getElementById('kmoni-indicator').classList.remove('error'); document.getElementById('kmoni-status-text').innerText = "アーカイブ再生中";
+                } else {
+                    kyoshinLayer.updateData([]);
+                    document.getElementById('kmoni-indicator').classList.add('error'); document.getElementById('kmoni-status-text').innerText = "過去データなし";
+                }
+                
+                const tFmt = getFormatTimeStr(new Date(targetSecMs));
+                fetchKmoniEEW(tFmt);
+                document.getElementById('kmoni-time').innerText = tFmt.display + " [過去]";
+                updateArchiveUITime();
+                lastDrawnTimeMs = targetSecMs; isBuffering = false;
+            } else {
+                isBuffering = true; document.getElementById('kmoni-status-text').innerText = "バッファリング中...";
+            }
+        }
+        archiveAnimFrame = requestAnimationFrame(archiveRenderLoop);
+    }
+
+    async function prefetchWorker() {
+        if (!isArchiveMode || !archiveIsPlaying) return;
+        const currentSecMs = Math.floor(virtualTimeMs / 1000) * 1000; const prefetchCount = 10; 
+        let fetchPromises = [];
+        for (let i = 0; i < prefetchCount; i++) {
+            const tMs = currentSecMs + (i * 1000);
+            if (!kmoniImageCache.has(tMs)) { fetchPromises.push(fetchAndCacheKmoni(new Date(tMs)).catch(()=>{})); }
+        }
+        if (fetchPromises.length > 0) { await Promise.all(fetchPromises); }
+        prefetchTimer = setTimeout(prefetchWorker, 500);
     }
 
     function updateArchiveUITime() {
-        const tzOffset = archiveTime.getTimezoneOffset() * 60000;
-        const localISOTime = (new Date(archiveTime - tzOffset)).toISOString().slice(0, 19);
-        document.getElementById('archive-datetime').value = localISOTime;
+        const d = new Date(virtualTimeMs), tzOffset = d.getTimezoneOffset() * 60000;
+        document.getElementById('archive-datetime').value = (new Date(d - tzOffset)).toISOString().slice(0, 19);
     }
 
     window.playArchiveFromEQ = async function(timeStr) {
         const btn = document.querySelector('#dp-archive-btn-container button');
         const originalHtml = btn ? btn.innerHTML : "▶ この地震の強震モニタを再生";
-        if (btn) { btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;margin-right:4px;"></div><span>発生時刻(秒)を検索中...</span>'; btn.style.pointerEvents = 'none'; }
+        if (btn) { btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;margin-right:4px;"></div><span>発生時刻を検索中...</span>'; btn.style.pointerEvents = 'none'; }
         let d = getSafeDateObj(timeStr);
         if (isNaN(d.getTime())) { if (btn) { btn.innerHTML = originalHtml; btn.style.pointerEvents = 'auto'; } return; }
         
         let exactOriginTime = null;
-        if (eewTimeCache[timeStr]) { exactOriginTime = eewTimeCache[timeStr]; addSystemLog(`[Archive] キャッシュから発生時刻を読み込みました。`, 'info'); } 
+        if (eewTimeCache[timeStr]) { exactOriginTime = eewTimeCache[timeStr]; } 
         else {
             const baseTimeMs = d.getTime(); const checkSeconds = [15, 30, 45, 60, 75, 90]; 
             for (let sec of checkSeconds) {
                 const checkTime = new Date(baseTimeMs + sec * 1000); const t = getFormatTimeStr(checkTime);
                 const targetUrl = `http://www.kmoni.bosai.go.jp/webservice/hypo/eew/${t.time}.json`;
                 try {
-                    let res;
-                    if (useProxyForJSON) {
-                        res = await fetch(PROXY_BASE + targetUrl);
-                    } else {
-                        try {
-                            res = await fetch(targetUrl);
-                        } catch(e) {
-                            res = await fetch(PROXY_BASE + targetUrl);
-                            useProxyForJSON = true;
-                        }
-                    }
+                    let res = await safeFetchJSON(targetUrl);
                     const data = await res.json();
                     if (data && data.result && data.result.message !== "データがありません" && data.origin_time) {
                         const ot = data.origin_time; 
@@ -2120,8 +2041,8 @@
         const tzOffset = playStartTime.getTimezoneOffset() * 60000;
         document.getElementById('archive-datetime').value = (new Date(playStartTime - tzOffset)).toISOString().slice(0, 19);
         startArchive();
-        if (exactOriginTime) { if (!eewTimeCache[timeStr] || eewTimeCache[timeStr] === exactOriginTime) addSystemLog(`[Archive] EEWから秒単位の発生時刻を特定しました。発生5秒前から再生します。`, 'success'); } 
-        else { addSystemLog(`[Archive] EEWが発表されていない地震のため、発表時刻の5秒前から再生します。`, 'warn'); }
+        if (exactOriginTime) addSystemLog(`[Archive] EEWから発生時刻を特定。5秒前から再生します。`, 'success');
+        else addSystemLog(`[Archive] 発表時刻の5秒前から再生します。`, 'warn');
     };
 
     // ==========================================
@@ -2131,30 +2052,21 @@
 
     window.toggleDrawer = function(mode) {
         const isDrawerOpen = document.body.classList.contains('drawer-open');
-        if (currentMode === mode) {
-            if (isDrawerOpen) closeDrawer(); else openDrawer(mode);
-        } else {
-            currentMode = mode; executeModeSwitch(mode); openDrawer(mode);
-        }
+        if (currentMode === mode) { if (isDrawerOpen) closeDrawer(); else openDrawer(mode); } 
+        else { currentMode = mode; executeModeSwitch(mode); openDrawer(mode); }
     };
 
     function openDrawer(mode) {
-        document.body.classList.add('drawer-open');
-        document.getElementById('drawer-panel').classList.add('open');
-        
+        document.body.classList.add('drawer-open'); document.getElementById('drawer-panel').classList.add('open');
         document.querySelectorAll('.nav-group:first-child .nav-btn').forEach(btn => btn.classList.remove('active'));
         document.getElementById(`btn-${mode}`).classList.add('active');
-        
         document.querySelectorAll('.drawer-content').forEach(c => c.classList.remove('active'));
         document.getElementById(`content-${mode}`).classList.add('active');
         const titles = { 'history': '地震履歴', 'tsunami': '津波情報', 'kyoshin': '強震モニタ' };
         document.getElementById('drawer-title').innerText = titles[mode];
     }
 
-    window.closeDrawer = function() {
-        document.body.classList.remove('drawer-open');
-        document.getElementById('drawer-panel').classList.remove('open');
-    };
+    window.closeDrawer = function() { document.body.classList.remove('drawer-open'); document.getElementById('drawer-panel').classList.remove('open'); };
 
     function ensureMode(mode) {
         if (currentMode !== mode) {
@@ -2198,8 +2110,7 @@
     const ZOOM_THRESHOLD = 9;
     map.on('zoomend', function() {
         const container = document.getElementById('map-container');
-        if (map.getZoom() >= ZOOM_THRESHOLD) container.classList.add('map-zoomed');
-        else container.classList.remove('map-zoomed');
+        if (map.getZoom() >= ZOOM_THRESHOLD) container.classList.add('map-zoomed'); else container.classList.remove('map-zoomed');
     });
 
     function startTsunamiPolling() {
@@ -2214,8 +2125,7 @@
                     if (lastTsunamiId && latestId !== lastTsunamiId) {
                         const detailRes = await fetch(`https://www.jma.go.jp/bosai/tsunami/data/${latestItem.json}`);
                         if(!detailRes.ok) return;
-                        const detailData = await detailRes.json();
-                        const latest = convertJMAToP2P(detailData, latestItem.reportDatetime);
+                        const latest = convertJMAToP2P(await detailRes.json(), latestItem.reportDatetime);
                         lastTsunamiId = latestId;
                         const isDuplicate = tsunamiDataList.some(item => Math.abs(new Date(item.created_at).getTime() - new Date(latest.created_at).getTime()) < 3600000);
                         if(!isDuplicate) {
@@ -2235,40 +2145,21 @@
     async function loadLocalJson(filename, defaultValue) {
         if (typeof require !== 'undefined') {
             try {
-                const fs = require('fs');
-                const path = require('path');
-                
+                const fs = require('fs'); const path = require('path');
                 let basePath = '';
-                if (typeof __dirname !== 'undefined') {
-                    basePath = __dirname;
-                } else {
+                if (typeof __dirname !== 'undefined') { basePath = __dirname; } 
+                else {
                     let loc = decodeURI(window.location.pathname);
-                    if (navigator.platform.indexOf('Win') > -1 && loc.startsWith('/')) {
-                        loc = loc.substring(1);
-                    }
+                    if (navigator.platform.indexOf('Win') > -1 && loc.startsWith('/')) { loc = loc.substring(1); }
                     basePath = path.dirname(loc);
                 }
-                
                 const filePath = path.join(basePath, filename);
                 let data = fs.readFileSync(filePath, 'utf8');
-                
-                if (data.charCodeAt(0) === 0xFEFF) {
-                    data = data.slice(1);
-                }
-                
+                if (data.charCodeAt(0) === 0xFEFF) { data = data.slice(1); }
                 return JSON.parse(data);
-                
-            } catch (err) {
-                console.error(`[System Error] ${filename} の読み込みに失敗しました:`, err);
-                return defaultValue;
-            }
+            } catch (err) { return defaultValue; }
         } else {
-            try {
-                const res = await fetch(filename);
-                return res.ok ? await res.json() : defaultValue;
-            } catch(e) {
-                return defaultValue;
-            }
+            try { const res = await fetch(filename); return res.ok ? await res.json() : defaultValue; } catch(e) { return defaultValue; }
         }
     }
 
@@ -2281,16 +2172,11 @@
         fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=100').then(res => res.ok ? res.json() : []).catch(() => []),
         loadLocalJson('intensity-points.json', []) 
     ]).then(([geoData, stations, tGeo, jmaTsunami, p2pTsunami1, p2pTsunami2, intPoints]) => {
-        if (geoData) {
-            japanGeoData = geoData;
-            L.geoJSON(geoData, { pane: 'baseMapPane', style: { color: "#3A3A3C", weight: 1, fillColor: "#1C1C1E", fillOpacity: 1 } }).addTo(map);
-        }
+        if (geoData) { japanGeoData = geoData; L.geoJSON(geoData, { pane: 'baseMapPane', style: { color: "#3A3A3C", weight: 1, fillColor: "#1C1C1E", fillOpacity: 1 } }).addTo(map); }
         stationsData = stations || []; tsunamiGeoData = tGeo; intensityPointsData = [];
         if (intPoints && intPoints.length > 0) {
             intPoints.forEach(st => {
-                if (st.location && st.point && st.point.center_point) {
-                    intensityPointsData.push({ name: st.name || st.code, lat: st.location.latitude, lon: st.location.longitude, x: st.point.center_point.x, y: st.point.center_point.y });
-                }
+                if (st.location && st.point && st.point.center_point) { intensityPointsData.push({ name: st.name || st.code, lat: st.location.latitude, lon: st.location.longitude, x: st.point.center_point.x, y: st.point.center_point.y }); }
             });
         }
         
@@ -2360,9 +2246,7 @@
     };
 
     function renderEarthquakeList(data) {
-        const listContainer = document.getElementById('list-container');
-        listContainer.innerHTML = '';
-        allEarthquakesLayer.clearLayers();
+        const listContainer = document.getElementById('list-container'); listContainer.innerHTML = ''; allEarthquakesLayer.clearLayers();
 
         data.forEach((eq) => {
             if (!eq.earthquake || !eq.earthquake.hypocenter) return;
@@ -2376,27 +2260,20 @@
             const activateEarthquake = () => {
                 if (listItem.classList.contains('active')) { closeDetailPanel(); return; }
                 document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
-                listItem.classList.add('active'); listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                showEarthquakeDetails(eq, color);
+                listItem.classList.add('active'); listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); showEarthquakeDetails(eq, color);
             };
-            listItem.addEventListener('click', activateEarthquake); eqCircle.on('click', activateEarthquake);
-            listContainer.appendChild(listItem);
+            listItem.addEventListener('click', activateEarthquake); eqCircle.on('click', activateEarthquake); listContainer.appendChild(listItem);
         });
     }
 
-    function fetchEarthquakeHistory() {
-        fetch('https://api.p2pquake.net/v2/history?codes=551&limit=100')
-            .then(res => res.json())
-            .then(data => renderEarthquakeList(data));
-    }
+    function fetchEarthquakeHistory() { fetch('https://api.p2pquake.net/v2/history?codes=551&limit=100').then(res => res.json()).then(data => renderEarthquakeList(data)); }
 
     function drawTsunamiCoastlines(matchedData) {
         tsunamiLineLayer.clearLayers(); 
         if (!tsunamiGeoData || !matchedData || !matchedData.areas || matchedData.cancelled) return; 
         const gradeMap = new Map(); matchedData.areas.forEach(area => gradeMap.set(area.name, area.grade));
         L.geoJSON(tsunamiGeoData, {
-            pane: 'tsunamiPane',
-            filter: function(feature) { const featureName = feature.properties.name || feature.properties.NAME || feature.properties.name_ja; return gradeMap.has(featureName); },
+            pane: 'tsunamiPane', filter: function(feature) { const featureName = feature.properties.name || feature.properties.NAME || feature.properties.name_ja; return gradeMap.has(featureName); },
             style: function(feature) {
                 const featureName = feature.properties.name || feature.properties.NAME || feature.properties.name_ja; const grade = gradeMap.get(featureName);
                 let lineColor = '#8E8E93'; 
@@ -2486,34 +2363,17 @@
     function startMultiEventAnimation(epicenters) {
         if (multiEventTimer) clearTimeout(multiEventTimer);
         if (!epicenters || epicenters.length <= 1) return;
-        
-        let currentIndex = 0;
-        let interval = Math.max(3000 / epicenters.length, 300);
-        
+        let currentIndex = 0; let interval = Math.max(3000 / epicenters.length, 300);
         function playPulse() {
-            multiEventMarkers.forEach(m => {
-                const el = m.getElement().querySelector('.eew-epicenter-pulse');
-                if(el) el.style.display = 'none';
-            });
-            
+            multiEventMarkers.forEach(m => { const el = m.getElement().querySelector('.eew-epicenter-pulse'); if(el) el.style.display = 'none'; });
             if (currentIndex < epicenters.length) {
                 if(multiEventMarkers[currentIndex]) {
                     const el = multiEventMarkers[currentIndex].getElement().querySelector('.eew-epicenter-pulse');
-                    if(el) {
-                        el.style.display = 'block';
-                        el.style.animation = 'none';
-                        el.offsetHeight; 
-                        el.style.animation = null; 
-                    }
+                    if(el) { el.style.display = 'block'; el.style.animation = 'none'; el.offsetHeight; el.style.animation = null; }
                 }
-                currentIndex++;
-                multiEventTimer = setTimeout(playPulse, interval);
-            } else {
-                currentIndex = 0;
-                multiEventTimer = setTimeout(playPulse, 5000); // 1周完了後、5秒間のインターバル
-            }
+                currentIndex++; multiEventTimer = setTimeout(playPulse, interval);
+            } else { currentIndex = 0; multiEventTimer = setTimeout(playPulse, 5000); }
         }
-        
         playPulse();
     }
 
@@ -2523,45 +2383,24 @@
         detailLayer.clearLayers(); tsunamiLineLayer.clearLayers(); map.addLayer(detailLayer); closeTsunamiPanel(); 
         
         if (multiEventTimer) { clearTimeout(multiEventTimer); multiEventTimer = null; }
-        multiEventMarkers = [];
-        let bounds = []; 
-        let stationDrawData = []; 
+        multiEventMarkers = []; let bounds = []; let stationDrawData = []; 
 
         const hypo = eq.earthquake.hypocenter;
-        
-        let commentHtml = "";
-        if (eq.comments && eq.comments.freeFormComment) {
-            commentHtml += `<strong>【付加文】</strong><br>${eq.comments.freeFormComment}`;
-        }
+        let commentHtml = ""; if (eq.comments && eq.comments.freeFormComment) { commentHtml += `<strong>【付加文】</strong><br>${eq.comments.freeFormComment}`; }
 
-        let isTsunamiActive = false;
-        let tColorVar = "var(--tsunami-none)";
+        let isTsunamiActive = false; let tColorVar = "var(--tsunami-none)";
         const matchedTsunami = getMatchingTsunamiInfo(eq.earthquake.time);
         let tsunamiTextHtml = "";
 
         if (eq.isCsv) {
             if (matchedTsunami) {
-                tsunamiTextHtml = `<strong>【津波情報】</strong><br>この地震に関する津波情報が発表されています。`;
-                isTsunamiActive = true;
-                
-                let maxGrade = "Unknown";
-                const gradeWeight = { "MajorWarning": 3, "Warning": 2, "Watch": 1, "NonEffective": 0.5, "Unknown": 0 };
-                let highestWeight = -1;
-                if (matchedTsunami.areas) {
-                    matchedTsunami.areas.forEach(area => {
-                        const w = gradeWeight[area.grade] || 0;
-                        if (w > highestWeight) { highestWeight = w; maxGrade = area.grade; }
-                    });
-                }
-                if (maxGrade === "MajorWarning") tColorVar = "var(--tsunami-major)";
-                else if (maxGrade === "Warning") tColorVar = "var(--tsunami-warning)";
-                else if (maxGrade === "Watch") tColorVar = "var(--tsunami-watch)";
-                else if (highestWeight === 0.5) tColorVar = "var(--tsunami-slight)";
-                else tColorVar = "var(--tsunami-none)";
+                tsunamiTextHtml = `<strong>【津波情報】</strong><br>この地震に関する津波情報が発表されています。`; isTsunamiActive = true;
+                let maxGrade = "Unknown"; const gradeWeight = { "MajorWarning": 3, "Warning": 2, "Watch": 1, "NonEffective": 0.5, "Unknown": 0 }; let highestWeight = -1;
+                if (matchedTsunami.areas) { matchedTsunami.areas.forEach(area => { const w = gradeWeight[area.grade] || 0; if (w > highestWeight) { highestWeight = w; maxGrade = area.grade; } }); }
+                if (maxGrade === "MajorWarning") tColorVar = "var(--tsunami-major)"; else if (maxGrade === "Warning") tColorVar = "var(--tsunami-warning)"; else if (maxGrade === "Watch") tColorVar = "var(--tsunami-watch)"; else if (highestWeight === 0.5) tColorVar = "var(--tsunami-slight)"; else tColorVar = "var(--tsunami-none)";
             }
         } else {
-            let tStatus = eq.earthquake && eq.earthquake.domesticTsunami ? eq.earthquake.domesticTsunami : "None";
-            let tsunamiText = "";
+            let tStatus = eq.earthquake && eq.earthquake.domesticTsunami ? eq.earthquake.domesticTsunami : "None"; let tsunamiText = "";
             switch (tStatus) {
                 case "None": tsunamiText = `この地震による津波の心配はありません。`; break;
                 case "Unknown": case "Checking": tsunamiText = `津波の影響は現在調査中です。`; break;
@@ -2569,59 +2408,30 @@
                 case "Watch": tColorVar = "var(--tsunami-watch)"; tsunamiText = `この地震により、津波注意報が発表されています。`; isTsunamiActive = true; break;
                 case "Warning": tColorVar = "var(--tsunami-warning)"; tsunamiText = `この地震により、津波警報が発表されています。`; isTsunamiActive = true; break;
                 case "MajorWarning": tColorVar = "var(--tsunami-major)"; tsunamiText = `この地震により、大津波警報が発表されています。`; isTsunamiActive = true; break;
-                default:
-                    if (eq.comments && eq.comments.forecast && eq.comments.forecast.text) tsunamiText = eq.comments.forecast.text;
-                    else tsunamiText = `津波に関する情報はありません。`;
+                default: if (eq.comments && eq.comments.forecast && eq.comments.forecast.text) tsunamiText = eq.comments.forecast.text; else tsunamiText = `津波に関する情報はありません。`;
             }
             tsunamiTextHtml = `<strong>【津波情報】</strong><br>${tsunamiText}`;
         }
 
-        if (tsunamiTextHtml) {
-            if (commentHtml !== "") commentHtml += "<br><br>";
-            commentHtml += tsunamiTextHtml;
-        }
+        if (tsunamiTextHtml) { if (commentHtml !== "") commentHtml += "<br><br>"; commentHtml += tsunamiTextHtml; }
 
         const commentsBox = document.getElementById('dp-comments'); 
-        if (commentHtml === "") {
-            commentsBox.style.display = 'none';
-        } else {
-            commentsBox.style.display = 'block';
-            document.getElementById('dp-comments-text').innerHTML = commentHtml; 
-            commentsBox.style.borderLeftColor = tColorVar;
-
-            if (isTsunamiActive && matchedTsunami) {
-                commentsBox.classList.add('clickable'); 
-                updateTsunamiPanelUI(matchedTsunami); 
-                drawTsunamiCoastlines(matchedTsunami);
-            } else {
-                commentsBox.classList.remove('clickable'); 
-            }
+        if (commentHtml === "") { commentsBox.style.display = 'none'; } 
+        else {
+            commentsBox.style.display = 'block'; document.getElementById('dp-comments-text').innerHTML = commentHtml; commentsBox.style.borderLeftColor = tColorVar;
+            if (isTsunamiActive && matchedTsunami) { commentsBox.classList.add('clickable'); updateTsunamiPanelUI(matchedTsunami); drawTsunamiCoastlines(matchedTsunami); } 
+            else { commentsBox.classList.remove('clickable'); }
         }
 
         if (eq.earthquake.epicenters && eq.earthquake.epicenters.length > 0) {
             const maxMag = Math.max(...eq.earthquake.epicenters.map(e => e.magnitude));
-            
             eq.earthquake.epicenters.forEach((epi) => {
-                const isLargest = epi.magnitude === maxMag;
-                const crossClass = isLargest ? 'eew-marker-cross marker-cross-largest' : 'eew-marker-cross';
-                
-                const epicIcon = L.divIcon({ 
-                    className: 'custom-div-icon', 
-                    html: `
-                        <div class="${crossClass}"></div>
-                        <div class="eew-epicenter-pulse" style="display: ${eq.earthquake.epicenters.length > 1 ? 'none' : 'block'}; animation-duration: 1.5s; background: rgba(255, 69, 58, 0.8);"></div>
-                    `, 
-                    iconSize: [0, 0] 
-                });
-                
+                const isLargest = epi.magnitude === maxMag; const crossClass = isLargest ? 'eew-marker-cross marker-cross-largest' : 'eew-marker-cross';
+                const epicIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="${crossClass}"></div><div class="eew-epicenter-pulse" style="display: ${eq.earthquake.epicenters.length > 1 ? 'none' : 'block'}; animation-duration: 1.5s; background: rgba(255, 69, 58, 0.8);"></div>`, iconSize: [0, 0] });
                 const marker = L.marker([epi.latitude, epi.longitude], { icon: epicIcon, zIndexOffset: 20000 + (isLargest ? 100 : 0) }).addTo(detailLayer);
-                bounds.push([epi.latitude, epi.longitude]);
-                multiEventMarkers.push(marker);
+                bounds.push([epi.latitude, epi.longitude]); multiEventMarkers.push(marker);
             });
-            
-            if (eq.earthquake.epicenters.length > 1) {
-                startMultiEventAnimation(eq.earthquake.epicenters);
-            }
+            if (eq.earthquake.epicenters.length > 1) { startMultiEventAnimation(eq.earthquake.epicenters); }
         } else {
             const epicIcon = L.divIcon({ className: 'custom-div-icon', html: '<div class="eew-marker-cross"></div>', iconSize: [0, 0] });
             L.marker([hypo.latitude, hypo.longitude], { icon: epicIcon, zIndexOffset: 20000 }).addTo(detailLayer);
@@ -2632,53 +2442,22 @@
         
         if (eq.points && eq.points.length > 0) {
             const listSortedPoints = [...eq.points].sort((a, b) => b.scale - a.scale);
-            
             eq.points.forEach(p => {
                 const scaleColor = getIntensityColor(p.scale), scaleStr = getIntensityString(p.scale), shortScaleStr = getShortIntensityString(p.scale);
-                
                 let matchedStations = stationsData.filter(st => st.name === p.addr && st.pref.name === p.pref);
-                if (matchedStations.length === 0) {
-                    matchedStations = stationsData.filter(st => 
-                        st.pref.name === p.pref && (st.name.includes(p.addr) || p.addr.includes(st.name) || (st.city && st.city.name && p.addr.includes(st.city.name)))
-                    );
-                }
-                
-                if (matchedStations.length > 0) {
-                    const st = matchedStations[0];
-                    bounds.push([st.lat, st.lon]); 
-                    
-                    stationDrawData.push({
-                        lat: st.lat,
-                        lon: st.lon,
-                        color: scaleColor,
-                        scale: p.scale,
-                        text: shortScaleStr,
-                        name: st.name,
-                        fullText: scaleStr
-                    });
-                }
+                if (matchedStations.length === 0) { matchedStations = stationsData.filter(st => st.pref.name === p.pref && (st.name.includes(p.addr) || p.addr.includes(st.name) || (st.city && st.city.name && p.addr.includes(st.city.name)))); }
+                if (matchedStations.length > 0) { const st = matchedStations[0]; bounds.push([st.lat, st.lon]); stationDrawData.push({ lat: st.lat, lon: st.lon, color: scaleColor, scale: p.scale, text: shortScaleStr, name: st.name, fullText: scaleStr }); }
             });
-            
             listSortedPoints.forEach(p => {
-                const scaleColor = getIntensityColor(p.scale), scaleStr = getIntensityString(p.scale);
-                const item = document.createElement('div'); item.className = 'dp-station-item';
+                const scaleColor = getIntensityColor(p.scale), scaleStr = getIntensityString(p.scale); const item = document.createElement('div'); item.className = 'dp-station-item';
                 item.innerHTML = `<span class="dp-station-name">${p.addr}</span><span class="dp-station-scale" style="background-color: ${scaleColor};">${scaleStr}</span>`; stationsListContainer.appendChild(item);
             });
-            
             if (stationLayer && !map.hasLayer(stationLayer)) map.addLayer(stationLayer);
             stationLayer.updateData(stationDrawData);
-
-        } else {
-            stationsListContainer.innerHTML = '<div style="padding: 10px; text-align: center; color: var(--text-secondary); font-size: 13px;">詳細な観測点データがありません</div>';
-        }
+        } else { stationsListContainer.innerHTML = '<div style="padding: 10px; text-align: center; color: var(--text-secondary); font-size: 13px;">詳細な観測点データがありません</div>'; }
         
-        if (bounds.length > 0) {
-            map.invalidateSize();
-            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 8, animate: true });
-        } else {
-            map.invalidateSize();
-            map.setView([hypo.latitude, hypo.longitude], 7, { animate: true, duration: 0.5 });
-        }
+        if (bounds.length > 0) { map.invalidateSize(); map.fitBounds(bounds, { padding: [40, 40], maxZoom: 8, animate: true }); } 
+        else { map.invalidateSize(); map.setView([hypo.latitude, hypo.longitude], 7, { animate: true, duration: 0.5 }); }
 
         document.getElementById('dp-scale-label').innerText = "最大震度"; 
         const scaleValue = document.getElementById('dp-scale'); scaleValue.innerText = getIntensityString(eq.earthquake.maxScale); scaleValue.style.color = mainColor; scaleValue.style.fontSize = "34px"; 
@@ -2695,7 +2474,7 @@
         const archiveContainer = document.getElementById('dp-archive-btn-container');
 
         if (isWithin4Hours) {
-            archiveContainer.innerHTML = `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);"><button class="sp-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(100, 210, 255, 0.2); border-color: rgba(100, 210, 255, 0.5); color: #64D2FF;" onclick="playArchiveFromEQ('${eq.earthquake.time}')">▶ この地震の強震モニタを再生</button><div style="font-size: 10px; color: #aaa; margin-top: 6px; text-align: center;">※発生時刻(秒)を検索し、5秒前から自動再生</div></div>`;
+            archiveContainer.innerHTML = `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);"><button class="sp-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(100, 210, 255, 0.2); border-color: rgba(100, 210, 255, 0.5); color: #64D2FF;" onclick="playArchiveFromEQ('${eq.earthquake.time}')">▶ この地震の強震モニタを再生</button><div style="font-size: 10px; color: #aaa; margin-top: 6px; text-align: center;">※発生時刻を検索し、5秒前から自動再生</div></div>`;
             archiveContainer.style.display = 'block';
         } else { archiveContainer.innerHTML = ''; archiveContainer.style.display = 'none'; }
     }
@@ -2709,15 +2488,11 @@
         map.removeLayer(detailLayer); closeTsunamiPanel(); 
         if (stationLayer && map.hasLayer(stationLayer)) map.removeLayer(stationLayer);
         
-        const isHistoryTab = (currentMode === 'history');
-        const isKyoshinTab = (currentMode === 'kyoshin');
+        const isHistoryTab = (currentMode === 'history'), isKyoshinTab = (currentMode === 'kyoshin');
         
-        if (isHistoryTab) map.addLayer(allEarthquakesLayer);
-        else map.removeLayer(allEarthquakesLayer);
-        
+        if (isHistoryTab) map.addLayer(allEarthquakesLayer); else map.removeLayer(allEarthquakesLayer);
         if (isKyoshinTab && kyoshinLayer && !map.hasLayer(kyoshinLayer)) map.addLayer(kyoshinLayer);
-        map.invalidateSize();
-        map.setView([38.0, 137.0], 5, { animate: true });
+        map.invalidateSize(); map.setView([38.0, 137.0], 5, { animate: true });
     };
 
     window.closeTsunamiPanel = function() {
@@ -2730,9 +2505,7 @@
     legend.onAdd = function () { legendDiv = L.DomUtil.create('div', 'legend'); updateLegend('earthquake'); return legendDiv; };
     legend.addTo(map);
 
-    const style = document.createElement('style');
-    style.innerHTML = `.custom-tooltip { background: rgba(0,0,0,0.8); border: 1px solid #555; color: #fff; font-size: 11px; backdrop-filter: blur(10px); }`;
-    document.head.appendChild(style);
+    const style = document.createElement('style'); style.innerHTML = `.custom-tooltip { background: rgba(0,0,0,0.8); border: 1px solid #555; color: #fff; font-size: 11px; backdrop-filter: blur(10px); }`; document.head.appendChild(style);
 </script>
 
 </body>
