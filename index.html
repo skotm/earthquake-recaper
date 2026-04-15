@@ -15,7 +15,8 @@
             --surface-color: rgba(28, 28, 30, 0.75);
             --surface-drawer: rgba(28, 28, 30, 0.85);
             --text-primary: #FFFFFF;
-            --text-secondary: rgba(235, 235, 245, 0.6);
+            /* 🚨 視認性向上: テキストの不透明度を 0.6 -> 0.8 に引き上げコントラスト改善 */
+            --text-secondary: rgba(235, 235, 245, 0.8);
             --border-color: rgba(84, 84, 88, 0.5);
             --accent-color: #0A84FF;
             --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
@@ -30,6 +31,8 @@
 
             --rail-width: 68px;
             --drawer-width: 300px;
+            /* 🚨 モバイル用ボトムナビの高さ */
+            --bottom-nav-height: 64px;
         }
         body { 
             margin: 0; padding: 0; display: flex; 
@@ -52,7 +55,7 @@
             display: flex; flex-direction: column; gap: 20px; width: 100%; align-items: center;
         }
         .nav-btn {
-            position: relative; width: 44px; height: 44px; border-radius: 12px;
+            position: relative; width: 48px; height: 48px; border-radius: 12px; /* 🚨 タップ領域確保: 44px -> 48px */
             background-color: rgba(255, 255, 255, 0.1); display: flex; justify-content: center; align-items: center;
             cursor: pointer; transition: all 0.3s ease;
         }
@@ -61,7 +64,7 @@
         .nav-btn.active { background-color: var(--text-primary); }
         .nav-btn.active svg { color: #000000; }
         .nav-btn::before {
-            content: ''; position: absolute; left: -12px; top: 50%; transform: translateY(-50%) scaleY(0);
+            content: ''; position: absolute; left: -10px; top: 50%; transform: translateY(-50%) scaleY(0);
             width: 4px; height: 24px; background-color: var(--accent-color); border-radius: 0 4px 4px 0;
             transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
@@ -90,14 +93,14 @@
         }
         #list-container::-webkit-scrollbar, #tsunami-list-container::-webkit-scrollbar, #kyoshin-list-container::-webkit-scrollbar { width: 0px; }
         .list-item, .t-list-item {
-            padding: 10px; margin-bottom: 4px; border-radius: 8px; cursor: pointer;
+            padding: 12px 10px; margin-bottom: 4px; border-radius: 8px; cursor: pointer; /* 🚨 タップ領域確保: padding 10px -> 12px 10px */
             border-left: 4px solid transparent; background: rgba(255,255,255,0.02);
             transition: background-color 0.2s, transform 0.1s;
         }
         .list-item:hover, .t-list-item:hover { background-color: rgba(255, 255, 255, 0.08); }
         .list-item.active, .t-list-item.active { background-color: rgba(255, 255, 255, 0.15); }
-        .list-item-title, .t-list-item-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; display: flex; justify-content: space-between;}
-        .list-item-details, .t-list-item-details { font-size: 11px; color: var(--text-secondary); }
+        .list-item-title, .t-list-item-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; display: flex; justify-content: space-between;} /* 🚨 視認性: 14px/600 -> 15px/700 */
+        .list-item-details, .t-list-item-details { font-size: 12px; color: var(--text-secondary); font-weight: 500; } /* 🚨 視認性: 11px -> 12px */
         .kyoshin-status-box { padding: 16px; text-align: center; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
         
         .live-indicator {
@@ -110,7 +113,6 @@
 
         #map-container { flex-grow: 1; position: relative; background-color: #0c0c0e; }
         
-        /* 🚨 フルスクリーン（ネイティブ & 擬似）のレイアウト補正 */
         #map-container:fullscreen, #map-container.pseudo-fullscreen { 
             background-color: #0c0c0e; width: 100vw !important; height: 100dvh !important; 
             position: fixed !important; top: 0 !important; left: 0 !important; z-index: 9999 !important;
@@ -130,15 +132,16 @@
         
         .legend {
             background: var(--surface-color); backdrop-filter: blur(20px); padding: 10px 14px; border-radius: 12px; border: 0.5px solid var(--border-color); line-height: 1.6; color: var(--text-primary); font-size: 12px;
+            /* 🚨 モバイル表示時に他のUIと被らないようにz-indexと下余白を調整 */
+            margin-bottom: env(safe-area-inset-bottom, 0px);
         }
-        .legend strong { display: block; margin-bottom: 6px; font-size: 13px; }
+        .legend strong { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
         .legend i { width: 12px; height: 12px; float: left; margin-top: 4px; margin-right: 8px; border-radius: 50%; }
-        .dp-close, .tp-close, .sp-close {
-            position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; background: rgba(255,255,255,0.1); border-radius: 50%; text-align: center; line-height: 28px; font-size: 14px; cursor: pointer; color: #fff; z-index: 10; transition: background 0.2s;
-        }
-        .dp-close:hover, .tp-close:hover, .sp-close:hover { background: rgba(255,255,255,0.2); }
+        .dp-close, .tp-close, .sp-close, .ep-close {
+            position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; background: rgba(255,255,255,0.15); border-radius: 50%; text-align: center; line-height: 32px; font-size: 14px; cursor: pointer; color: #fff; z-index: 10; transition: background 0.2s;
+        } /* 🚨 タップ領域確保: 28px -> 32px, 背景少し明るく */
+        .dp-close:hover, .tp-close:hover, .sp-close:hover, .ep-close:hover { background: rgba(255,255,255,0.25); }
 
-        /* 🚨 カスタムコントロール（全画面 ＋ ズーム） */
         .custom-control-group {
             border: none !important; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.6) !important; 
@@ -155,9 +158,9 @@
             color: var(--text-primary) !important; 
             border-radius: 0 !important; 
             border-bottom: 1px solid rgba(84, 84, 88, 0.5) !important; 
-            width: 36px !important; 
-            height: 36px !important; 
-            line-height: 36px !important; 
+            width: 40px !important; /* 🚨 タップ領域確保: 36px -> 40px */
+            height: 40px !important; 
+            line-height: 40px !important; 
             display: flex;
             justify-content: center;
             align-items: center;
@@ -169,12 +172,12 @@
         }
         .custom-control-group a:last-child { border-bottom: none !important; }
         .custom-control-group a:hover { background-color: rgba(255, 255, 255, 0.2) !important; }
-        .custom-control-group a svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; }
+        .custom-control-group a svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; }
 
         .sp-info { font-size: 13px; color: #e5e5ea; margin-bottom: 6px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; }
         .sp-info:last-of-type { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
         .sp-info span { font-family: monospace; color: #64D2FF; text-align: right; font-weight: bold; }
-        .sp-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; flex: 1; transition: 0.2s; white-space: nowrap; outline: none; }
+        .sp-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; flex: 1; transition: 0.2s; white-space: nowrap; outline: none; } /* 🚨 タップ領域と視認性確保 */
         .sp-btn:hover { background: rgba(255,255,255,0.2); }
         .sp-btn-danger { background: rgba(255,69,58,0.2); border-color: rgba(255,69,58,0.5); color: #FF453A; }
         .sp-btn-danger:hover { background: rgba(255,69,58,0.4); }
@@ -187,19 +190,18 @@
         .sp-log-box .log-err { color: #FF453A; } .sp-log-box .log-succ { color: #30D158; } .sp-log-box .log-warn { color: #FFD60A; } .sp-log-box .log-info { color: #e5e5ea; }
         
         /* ========== フローティング要素のレイアウトシフト ========== */
-        .eew-container { position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); display: flex; flex-direction: column-reverse; gap: 12px; max-height: 75vh; overflow-y: auto; z-index: 1500; pointer-events: auto; width: 310px; max-width: calc(100vw - 20px); padding-right: 10px; transition: margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .eew-container { position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); display: flex; flex-direction: column-reverse; gap: 12px; max-height: 75vh; overflow-y: auto; z-index: 1500; pointer-events: auto; width: 310px; max-width: calc(100vw - 20px); padding-right: 10px; transition: margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), bottom 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
         .eew-container:empty { display: none; }
         .eew-container::-webkit-scrollbar { width: 6px; } .eew-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
 
         .eew-wrapper { position: relative; pointer-events: none; display: flex; flex-direction: column; align-items: flex-start; }
-        .eew-minimized { width: 48px; height: 48px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 26px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255, 255, 255, 0.2); pointer-events: auto; transition: transform 0.2s, background-color 0.3s; margin-bottom: 4px; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .eew-minimized { width: 52px; height: 52px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 28px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255, 255, 255, 0.2); pointer-events: auto; transition: transform 0.2s, background-color 0.3s; margin-bottom: 4px; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .eew-minimized:hover { transform: scale(1.1); }
         .eew-minimized.warning { background-color: #FF3B30; color: #FFFFFF; animation: pulse-minimized-red 1.5s infinite; }
         .eew-minimized.forecast { background-color: #FFCC00; color: #1C1C1E; }
         @keyframes pulse-minimized-red { 0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 59, 48, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); } }
 
-        /* 🚨 eew-panel を少し拡大 */
         .eew-panel, #eew-panel, #tsunami-panel { pointer-events: auto; position: relative; box-sizing: border-box; width: 300px; flex-shrink: 0; background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); color: #FFFFFF; transition: background-color 0.3s, border-color 0.3s, opacity 0.3s, transform 0.3s; }
         .eew-panel { animation: slideInEew 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         #eew-panel, #tsunami-panel { position: absolute; top: 60px; right: 10px; max-width: calc(100vw - 20px); max-height: 40vh; z-index: 1000; opacity: 0; transform: translateX(20px); pointer-events: none; display: flex; flex-direction: column; }
@@ -210,22 +212,22 @@
 
         .dp-main { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
         .dp-scale-box { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 10px 8px; min-width: 64px; background: rgba(0,0,0,0.3); border: 2px solid transparent; transition: border-color 0.3s, background-color 0.3s; white-space: nowrap; }
-        .dp-scale-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; white-space: nowrap; } 
-        .dp-scale-value { font-size: 34px; font-weight: 700; line-height: 1; transition: color 0.3s, font-size 0.3s; white-space: nowrap; } 
+        .dp-scale-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 2px; white-space: nowrap; } 
+        .dp-scale-value { font-size: 34px; font-weight: 800; line-height: 1; transition: color 0.3s, font-size 0.3s; white-space: nowrap; } /* 🚨 視認性: 700 -> 800 */
         .dp-info { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding-right: 4px; }
-        .dp-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; line-height: 1.3; } 
-        .dp-time { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; } 
-        .dp-meta { font-size: 13px; line-height: 1.4; } .dp-meta strong { font-size: 15px; color: #fff; }
-        .dp-toggle-btn { margin-top: 12px; padding: 10px 0 4px 0; text-align: center; font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); transition: color 0.2s; } .dp-toggle-btn:hover { color: #fff; }
+        .dp-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; } /* 🚨 視認性: 600 -> 700 */
+        .dp-time { font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; } 
+        .dp-meta { font-size: 13px; line-height: 1.4; color: var(--text-secondary); } .dp-meta strong { font-size: 15px; color: #fff; font-weight: 700; }
+        .dp-toggle-btn { margin-top: 12px; padding: 12px 0 6px 0; text-align: center; font-size: 14px; font-weight: 700; color: var(--text-secondary); cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); transition: color 0.2s; } .dp-toggle-btn:hover { color: #fff; } /* 🚨 タップ領域確保 */
         .dp-extended-area { overflow-y: auto; padding-right: 4px; transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.4s ease; max-height: 350px; opacity: 1; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; } .dp-extended-area.collapsed { max-height: 0; opacity: 0; margin-top: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; } .dp-extended-area::-webkit-scrollbar { width: 4px; } .dp-extended-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
         .dp-comments-box { background: rgba(0, 0, 0, 0.5); border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.5; color: #e5e5ea; border-left: 4px solid var(--tsunami-none); position: relative; transition: background-color 0.2s, border-color 0.3s; } .dp-comments-box.clickable { cursor: pointer; } .dp-comments-box.clickable:hover { background: rgba(255, 255, 255, 0.1); } .dp-comments-hint { display: none; position: absolute; right: 12px; bottom: 8px; font-size: 11px; font-weight: bold; color: var(--text-secondary); } .dp-comments-box.clickable .dp-comments-hint { display: block; }
-        .dp-stations-container { display: flex; flex-direction: column; } .dp-station-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.04); } .dp-station-item:last-child { border-bottom: none; } .dp-station-name { font-size: 14px; color: #e5e5ea; } .dp-station-scale { font-size: 13px; font-weight: 700; color: #fff; padding: 4px 10px; border-radius: 6px; }
+        .dp-stations-container { display: flex; flex-direction: column; } .dp-station-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.04); } .dp-station-item:last-child { border-bottom: none; } .dp-station-name { font-size: 14px; font-weight: 500; color: #e5e5ea; } .dp-station-scale { font-size: 13px; font-weight: 800; color: #fff; padding: 4px 10px; border-radius: 6px; }
         
-        #detail-panel { position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); width: 300px; max-width: calc(100vw - 20px); background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; display: flex; flex-direction: column; opacity: 0; transform: translateY(150%); transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s, margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); pointer-events: none; box-sizing: border-box; }
+        #detail-panel { position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); width: 300px; max-width: calc(100vw - 20px); background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; display: flex; flex-direction: column; opacity: 0; transform: translateY(150%); transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s, margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), bottom 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); pointer-events: none; box-sizing: border-box; }
         #detail-panel.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
         
         .tp-header { font-size: 16px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px; color: #fff; padding-right: 28px; flex-shrink: 0; } .tp-list { overflow-y: auto; padding-right: 4px; flex-grow: 1; } .tp-list::-webkit-scrollbar { width: 4px; } .tp-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-        .tp-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); } .tp-item:last-child { border-bottom: none; } .tp-area { font-size: 15px; font-weight: 600; color: #e5e5ea; } .tp-details { font-size: 13px; color: var(--text-secondary); text-align: right;} .tp-height { font-size: 15px; font-weight: bold; margin-left: 8px;} 
+        .tp-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); } .tp-item:last-child { border-bottom: none; } .tp-area { font-size: 15px; font-weight: 700; color: #e5e5ea; } .tp-details { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-align: right;} .tp-height { font-size: 16px; font-weight: 800; margin-left: 8px;} 
         
         .custom-div-icon { overflow: visible; }
         
@@ -242,13 +244,13 @@
         .marker-cross-largest { transform: scale(1.6); }
         .marker-cross-largest::before, .marker-cross-largest::after { width: 3px !important; box-shadow: 0 0 12px #FF453A !important; }
 
-        .eew-trigger-btn { width: 100%; margin-top: 12px; display: none; background: rgba(10, 132, 255, 0.15); border: 1px solid rgba(10, 132, 255, 0.4); color: #64D2FF; font-weight: bold; font-size: 13px; padding: 10px; border-radius: 8px; cursor: pointer; transition: all 0.2s; align-items: center; justify-content: center; gap: 8px; }
+        .eew-trigger-btn { width: 100%; margin-top: 12px; display: none; background: rgba(10, 132, 255, 0.15); border: 1px solid rgba(10, 132, 255, 0.4); color: #64D2FF; font-weight: bold; font-size: 14px; padding: 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; align-items: center; justify-content: center; gap: 8px; }
         .eew-trigger-btn:hover { background: rgba(10, 132, 255, 0.3); }
         .eew-trigger-btn.loading { color: var(--text-secondary); background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); cursor: wait; }
         .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        /* Layout Shift Execution */
+        /* Layout Shift Execution (PC用) */
         body.drawer-open .eew-container,
         body.drawer-open #detail-panel,
         body.drawer-open #eew-panel,
@@ -256,7 +258,6 @@
             margin-left: calc(var(--drawer-width) + 10px);
         }
         
-        /* 🚨 追加: システムメニュー展開時の時計パネル退避 */
         body.menu-open #clock-panel {
             margin-left: 390px;
         }
@@ -264,25 +265,22 @@
         .ep-header { font-size: 15px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px; color: #fff; padding-right: 28px; flex-shrink: 0; }
         .ep-list { overflow-y: auto; padding-right: 4px; flex-grow: 1; display: flex; flex-direction: column; gap: 8px;}
         .ep-list::-webkit-scrollbar { width: 4px; } .ep-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-        .ep-close { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; background: rgba(255,255,255,0.1); border-radius: 50%; text-align: center; line-height: 28px; font-size: 14px; cursor: pointer; color: #fff; z-index: 10; transition: background 0.2s;}
-        .ep-close:hover { background: rgba(255,255,255,0.2); }
 
-        /* 🚨 ios-panel の横幅を 380px に拡大 */
-        .ios-panel-container { position: absolute; top: 15px; left: calc(var(--rail-width) + 15px); width: 380px; max-height: calc(100vh - 30px); z-index: 2000; pointer-events: none; transform-origin: top left; }
+        .ios-panel-container { position: absolute; top: 15px; left: calc(var(--rail-width) + 15px); width: 380px; max-width: calc(100vw - 20px); max-height: calc(100vh - 30px); z-index: 2000; pointer-events: none; transform-origin: top left; transition: left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
         .ios-panel { position: absolute; top: 0; left: 0; width: 100%; max-height: calc(100vh - 30px); background-color: var(--surface-color); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); color: var(--text-primary); display: flex; flex-direction: column; overflow: hidden; opacity: 0; visibility: hidden; transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1); pointer-events: auto; transform: scale(0.95); }
         .ios-panel.active { opacity: 1; visibility: visible; transform: scale(1); }
         .ios-panel.slide-left { transform: translateX(-30px) scale(0.95); opacity: 0; visibility: hidden; }
         .ios-panel.child-panel { transform: translateX(100%); }
         .ios-panel.child-panel.active { transform: translateX(0); }
         .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(255, 255, 255, 0.02); flex-shrink: 0; }
-        .panel-header-btn { width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); border: none; color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; padding: 0; flex-shrink: 0; }
+        .panel-header-btn { width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); border: none; color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; padding: 0; flex-shrink: 0; } /* 🚨 タップ領域確保 */
         .panel-header-btn:hover { background: rgba(255, 255, 255, 0.25); }
         .panel-header-btn:active { background: rgba(255, 255, 255, 0.15); transform: scale(0.92); }
-        .panel-header-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-        .panel-title { flex-grow: 1; text-align: center; font-size: 15px; font-weight: 700; color: #fff; margin: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .header-spacer { width: 32px; height: 32px; flex-shrink: 0; }
+        .panel-header-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+        .panel-title { flex-grow: 1; text-align: center; font-size: 16px; font-weight: 700; color: #fff; margin: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .header-spacer { width: 36px; height: 36px; flex-shrink: 0; }
         .menu-list { list-style: none; padding: 0; margin: 0; overflow-y: auto;}
-        .menu-item { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: background-color 0.2s; }
+        .menu-item { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: background-color 0.2s; }
         .menu-item:last-child { border-bottom: none; }
         .menu-item:active, .menu-item:hover { background-color: rgba(255, 255, 255, 0.08); }
         .app-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.4); flex-shrink: 0; }
@@ -291,72 +289,131 @@
         .app-icon.log { background: linear-gradient(135deg, #0A84FF, #005BB5); }
         .app-icon.csv { background: linear-gradient(135deg, #FF9500, #E58600); }
         .menu-icon { width: 18px; height: 18px; stroke: #FFF; stroke-width: 2; margin-right: 0; }
-        .menu-chevron { width: 16px; height: 16px; fill: none; stroke: var(--text-secondary); stroke-width: 2; }
+        .menu-text { font-size: 15px; font-weight: 500; }
+        .menu-chevron { width: 16px; height: 16px; fill: none; stroke: var(--text-secondary); stroke-width: 2; margin-left: auto; }
         .panel-content { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;}
         .panel-content::-webkit-scrollbar { width: 4px; } .panel-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
         
-        /* 🚨 ツールチップ用のスタイル */
         .custom-tooltip-canvas {
             background: rgba(0,0,0,0.8);
             border: 1px solid #555;
             color: #fff;
-            font-size: 11px;
-            padding: 4px 8px;
-            border-radius: 4px;
+            font-size: 12px; font-weight: bold;
+            padding: 6px 10px;
+            border-radius: 6px;
             backdrop-filter: blur(10px);
             white-space: nowrap;
             box-shadow: 0 2px 8px rgba(0,0,0,0.5);
             line-height: 1.4;
         }
 
-        /* 🚨 シミュレーターのタブスタイル */
         .sim-tab {
-            padding: 6px 12px; background: rgba(255,255,255,0.1); border-radius: 16px; font-size: 12px;
+            padding: 8px 14px; background: rgba(255,255,255,0.1); border-radius: 16px; font-size: 13px; font-weight: 600;
             white-space: nowrap; cursor: pointer; border: 1px solid transparent; transition: all 0.2s;
             flex-shrink: 0;
         }
         .sim-tab:hover { background: rgba(255,255,255,0.2); }
-        .sim-tab.active { background: rgba(10, 132, 255, 0.3); border-color: #0A84FF; color: #fff; font-weight: bold; }
+        .sim-tab.active { background: rgba(10, 132, 255, 0.3); border-color: #0A84FF; color: #fff; font-weight: 800; }
         #sim-event-tabs::-webkit-scrollbar { height: 4px; }
         #sim-event-tabs::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
 
         /* ========== 時計パネル ========== */
         #clock-panel {
             position: absolute; top: 20px; left: calc(var(--rail-width) + 10px);
-            z-index: 1000; padding: 8px 14px;
+            z-index: 1000; padding: 10px 16px;
             background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
             border: 0.5px solid var(--border-color); border-radius: 12px;
-            color: #FFFFFF; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums;
-            transition: margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s, color 0.3s;
+            color: #FFFFFF; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums;
+            transition: margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s, color 0.3s, left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
             pointer-events: auto; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         }
         /* 時計トグルスイッチ */
-        .clock-toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .clock-toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .clock-toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .clock-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.2); transition: .4s; border-radius: 22px; }
-        .clock-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        .clock-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.2); transition: .4s; border-radius: 24px; }
+        .clock-slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
         .clock-toggle-switch input:checked + .clock-slider { background-color: #30D158; }
-        .clock-toggle-switch input:checked + .clock-slider:before { transform: translateX(18px); }
+        .clock-toggle-switch input:checked + .clock-slider:before { transform: translateX(20px); }
+
+        /* ==========================================
+           🚨 モバイル対応 (レスポンシブデザイン)
+           ボトムシートとボトムナビゲーションへの切り替え
+        ========================================== */
+        @media (max-width: 768px) {
+            #nav-rail {
+                top: auto; bottom: 0; left: 0; width: 100%; height: var(--bottom-nav-height);
+                flex-direction: row; border-right: none; border-top: 1px solid var(--border-color);
+                padding: 0 10px calc(env(safe-area-inset-bottom, 0px));
+                justify-content: space-around;
+            }
+            .nav-group { flex-direction: row; gap: 10px; width: auto; }
+            .nav-btn::before {
+                left: 50%; top: auto; bottom: -8px; transform: translateX(-50%) scaleX(0);
+                width: 20px; height: 4px; border-radius: 4px 4px 0 0;
+            }
+            .nav-btn.active::before { transform: translateX(-50%) scaleX(1); }
+
+            /* ボトムシート化 */
+            #drawer-panel {
+                top: auto; bottom: var(--bottom-nav-height); left: 0; width: 100%; height: 55vh;
+                border-right: none; border-top: 1px solid var(--border-color); border-radius: 16px 16px 0 0;
+                transform: translateY(100%);
+            }
+            #drawer-panel.open { transform: translateY(0); }
+
+            /* フローティングパネルの配置調整 */
+            .eew-container, #detail-panel { 
+                left: 10px; 
+                bottom: calc(var(--bottom-nav-height) + 15px); 
+                max-width: calc(100vw - 20px);
+                transition: bottom 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), margin-left 0.4s;
+            }
+            .ios-panel-container { left: 10px; top: 10px; width: calc(100vw - 20px); }
+            #clock-panel { left: 10px; top: 10px; }
+            #eew-panel, #tsunami-panel { top: 60px; right: 10px; max-width: calc(100vw - 20px); }
+            
+            /* ドロワー(ボトムシート)が開いた時、上に押し上げる */
+            body.drawer-open .eew-container,
+            body.drawer-open #detail-panel { 
+                margin-left: 0; 
+                bottom: calc(var(--bottom-nav-height) + 55vh + 10px); 
+            }
+            
+            /* スマホでは左へのレイアウトシフトを無効化 */
+            body.drawer-open #eew-panel,
+            body.drawer-open #clock-panel { margin-left: 0; }
+
+            /* スマホでシステムメニュー展開時は時計を非表示にして被りを防ぐ */
+            body.menu-open #clock-panel { margin-left: 0; display: none !important; }
+        }
+        
+        /* スマホ横向き (ランドスケープ) 対応 */
+        @media (max-width: 768px) and (orientation: landscape) {
+            #drawer-panel { height: 80vh; }
+            body.drawer-open .eew-container, 
+            body.drawer-open #detail-panel { bottom: calc(var(--bottom-nav-height) + 80vh + 10px); }
+            #nav-rail { padding: 0 40px calc(env(safe-area-inset-bottom, 0px)); } /* 左右のセーフエリア考慮 */
+        }
     </style>
 </head>
 <body>
 
-<div id="nav-rail">
+<div id="nav-rail" role="navigation" aria-label="メインナビゲーション">
     <div class="nav-group">
-        <div class="nav-btn active" onclick="toggleDrawer('history')" id="btn-history" title="地震履歴">
+        <div class="nav-btn active" onclick="toggleDrawer('history')" id="btn-history" title="地震履歴" aria-label="地震履歴を開く" role="button" tabindex="0">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
             </svg>
         </div>
         
-        <div class="nav-btn" onclick="toggleDrawer('tsunami')" id="btn-tsunami" title="津波情報">
+        <div class="nav-btn" onclick="toggleDrawer('tsunami')" id="btn-tsunami" title="津波情報" aria-label="津波情報を開く" role="button" tabindex="0">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M2 12c3.33 0 3.33-4 6.67-4s3.33 4 6.67 4 3.33-4 6.67-4"></path>
                 <path d="M2 18c3.33 0 3.33-4 6.67-4s3.33 4 6.67 4 3.33-4 6.67-4"></path>
             </svg>
         </div>
         
-        <div class="nav-btn" onclick="toggleDrawer('kyoshin')" id="btn-kyoshin" title="強震モニタ">
+        <div class="nav-btn" onclick="toggleDrawer('kyoshin')" id="btn-kyoshin" title="強震モニタ" aria-label="強震モニタを開く" role="button" tabindex="0">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"></circle>
                 <circle cx="12" cy="12" r="6"></circle>
@@ -366,7 +423,7 @@
     </div>
     
     <div class="nav-group">
-        <div class="nav-btn action-btn" onclick="location.reload()" title="再読み込み">
+        <div class="nav-btn action-btn" onclick="location.reload()" title="再読み込み" aria-label="ページを再読み込み" role="button" tabindex="0">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="23 4 23 10 17 10"></polyline>
                 <polyline points="1 20 1 14 7 14"></polyline>
@@ -374,7 +431,7 @@
             </svg>
         </div>
         
-        <div class="nav-btn action-btn" onclick="toggleSystemMenu()" id="btn-settings" title="システムメニュー">
+        <div class="nav-btn action-btn" onclick="toggleSystemMenu()" id="btn-settings" title="システムメニュー" aria-label="システムメニューを開く" role="button" tabindex="0">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
@@ -383,10 +440,10 @@
     </div>
 </div>
 
-<div id="drawer-panel">
+<div id="drawer-panel" role="region" aria-label="情報パネル">
     <div class="drawer-header">
         <span id="drawer-title">地震履歴</span>
-        <div class="dp-close" style="position:static; margin-left:auto;" onclick="closeDrawer()">✕</div>
+        <div class="dp-close" style="position:static; margin-left:auto;" onclick="closeDrawer()" aria-label="パネルを閉じる" role="button" tabindex="0">✕</div>
     </div>
     
     <div id="content-history" class="drawer-content active">
@@ -400,41 +457,41 @@
     <div id="content-kyoshin" class="drawer-content">
         <div id="kyoshin-list-container">
             <div class="kyoshin-status-box">
-                <span id="kmoni-indicator" class="live-indicator error"></span>
+                <span id="kmoni-indicator" class="live-indicator error" aria-hidden="true"></span>
                 <strong id="kmoni-status-text">データ待機中...</strong><br><br>
-                <span id="kmoni-time" style="font-family: monospace; font-size: 14px; color: #fff;">----/--/-- --:--:--</span><br><br>
+                <span id="kmoni-time" style="font-family: monospace; font-size: 15px; color: #fff; font-weight:bold;">----/--/-- --:--:--</span><br><br>
                 ブラウザで防災科研画像を直接解析中<br>
-                <span style="font-size: 10px; color: #888;">※完全サーバーレス・EEW同時受信</span>
+                <span style="font-size: 11px; color: #888;">※完全サーバーレス・EEW同時受信</span>
 
                 <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1);">
-                    <label style="display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; color: #fff; font-weight: bold;">
-                        <input type="checkbox" id="kmoni-color-mode-toggle" onchange="toggleKyoshinColorMode(this)" style="margin-right: 8px; cursor: pointer; transform: scale(1.2);">
+                    <label style="display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; color: #fff; font-weight: bold;">
+                        <input type="checkbox" id="kmoni-color-mode-toggle" onchange="toggleKyoshinColorMode(this)" style="margin-right: 10px; cursor: pointer; transform: scale(1.3);">
                         震度自動計算・履歴カラーモード
                     </label>
-                    <div style="font-size: 10px; color: #aaa; margin-top: 6px; line-height: 1.4; margin-bottom: 15px;">
+                    <div style="font-size: 11px; color: #aaa; margin-top: 8px; line-height: 1.4; margin-bottom: 15px;">
                         ※RGBから計測震度を逆算し、履歴モードの色で表示します。<br>震度1以上の点はリッチなビジュアルで強調されます。
                     </div>
                 </div>
 
                 <div style="padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); text-align: left;">
-                    <div style="font-size: 12px; font-weight: bold; margin-bottom: 8px; color: #fff;">
-                        表示下限：<span style="color: #64D2FF; font-size: 14px;">震度 <span id="intensity-filter-val">-3.0</span></span> 以上
+                    <div style="font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #fff;">
+                        表示下限：<span style="color: #64D2FF; font-size: 16px;">震度 <span id="intensity-filter-val">-3.0</span></span> 以上
                     </div>
                     <input type="range" id="intensity-slider" min="-3.0" max="7.0" step="0.1" value="-3.0" 
-                           style="width: 100%; cursor: pointer;" 
-                           oninput="updateIntensityFilter(this.value)">
-                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-top: 4px;">
+                           style="width: 100%; height: 24px; cursor: pointer;" 
+                           oninput="updateIntensityFilter(this.value)" aria-label="表示下限震度の調整">
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-top: 4px; font-weight:bold;">
                         <span>-3.0</span><span>0</span><span>3</span><span>7.0</span>
                     </div>
                 </div>
                 
                 <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); text-align: left;">
-                    <div style="font-size: 12px; font-weight: bold; margin-bottom: 8px; color: #fff;">
+                    <div style="font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #fff;">
                         ⏪ アーカイブ再生 (タイムマシン)
                     </div>
-                    <input type="datetime-local" id="archive-datetime" step="1" style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.5); color: white; border: 1px solid var(--border-color); padding: 6px; margin-bottom: 10px; border-radius: 4px; font-family: monospace;">
+                    <input type="datetime-local" id="archive-datetime" step="1" aria-label="アーカイブ再生開始日時" style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.5); color: white; border: 1px solid var(--border-color); padding: 10px; margin-bottom: 10px; border-radius: 6px; font-family: monospace; font-size: 14px;">
                     
-                    <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
                         <button class="sp-btn" onclick="startArchive()" style="flex: 1.5; background: rgba(48, 209, 88, 0.2); border-color: #30D158; color: #30D158;">▶ 再生</button>
                         <button class="sp-btn" onclick="pauseArchive()" style="flex: 1;">⏸ 一時停止</button>
                     </div>
@@ -442,8 +499,8 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <button class="sp-btn sp-btn-danger" onclick="stopArchive()" style="flex: 1; margin-right: 10px;">⏹ ライブに戻る</button>
                         <div style="display: flex; align-items: center; gap: 6px;">
-                            <span style="font-size: 11px; color: var(--text-secondary);">速度:</span>
-                            <select id="archive-speed" style="background: rgba(0,0,0,0.5); color: white; border: 1px solid var(--border-color); border-radius: 4px; padding: 4px; font-size: 11px;">
+                            <span style="font-size: 12px; font-weight:bold; color: var(--text-secondary);">速度:</span>
+                            <select id="archive-speed" aria-label="再生速度" style="background: rgba(0,0,0,0.5); color: white; border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 8px; font-size: 13px; font-weight:bold;">
                                 <option value="1">1倍速</option>
                                 <option value="2">2倍速</option>
                                 <option value="5">5倍速</option>
@@ -451,7 +508,7 @@
                             </select>
                         </div>
                     </div>
-                    <div style="font-size: 10px; color: #aaa; line-height: 1.4;">
+                    <div style="font-size: 11px; color: #aaa; line-height: 1.4;">
                         ※過去数時間（約2〜4時間）より古いデータは、防災科研サーバーから削除されているため再生できません。
                     </div>
                 </div>
@@ -463,23 +520,23 @@
 <div id="map-container">
     <div id="map"></div>
     
-    <div id="canvas-tooltip" class="custom-tooltip-canvas" style="display:none; position:absolute; z-index:4000; pointer-events:none;"></div>
+    <div id="canvas-tooltip" class="custom-tooltip-canvas" style="display:none; position:absolute; z-index:4000; pointer-events:none;" aria-hidden="true"></div>
 
-    <div id="eew-container" class="eew-container"></div>
+    <div id="eew-container" class="eew-container" aria-live="polite"></div>
     
-    <div id="clock-panel">--/--/-- --:--:--</div>
+    <div id="clock-panel" aria-live="polite">--/--/-- --:--:--</div>
 
     <div class="ios-panel-container" id="menu-container">
         <div id="parent-menu" class="ios-panel">
             <div class="panel-header">
                 <div class="header-spacer"></div>
                 <span class="panel-title">システムメニュー</span>
-                <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる">
+                <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる" aria-label="メニューを閉じる">
                     <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"></path></svg>
                 </button>
             </div>
-            <ul class="menu-list">
-                <li class="menu-item" onclick="openChildPanel('panel-clock')">
+            <ul class="menu-list" role="menu">
+                <li class="menu-item" onclick="openChildPanel('panel-clock')" role="menuitem" tabindex="0">
                     <div class="app-icon" style="background: linear-gradient(135deg, #FF9500, #E58600);">
                         <svg viewBox="0 0 24 24" class="menu-icon" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
@@ -489,7 +546,7 @@
                     <span class="menu-text" style="color: #fff;">時計表示設定</span>
                     <svg class="menu-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                 </li>
-                <li class="menu-item" onclick="openChildPanel('panel-csv')">
+                <li class="menu-item" onclick="openChildPanel('panel-csv')" role="menuitem" tabindex="0">
                     <div class="app-icon csv">
                         <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -502,25 +559,25 @@
                     <span class="menu-text" style="color: #fff;">CSVデータ可視化 (ローカル)</span>
                     <svg class="menu-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                 </li>
-                <li class="menu-item" onclick="openChildPanel('panel-status')">
+                <li class="menu-item" onclick="openChildPanel('panel-status')" role="menuitem" tabindex="0">
                     <div class="app-icon status">
                         <svg class="menu-icon" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
                     </div>
-                    <span class="menu-text">フロントエンド解析ステータス</span>
+                    <span class="menu-text" style="color:#fff;">フロントエンド解析ステータス</span>
                     <svg class="menu-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                 </li>
-                <li class="menu-item" onclick="openChildPanel('panel-demo')">
+                <li class="menu-item" onclick="openChildPanel('panel-demo')" role="menuitem" tabindex="0">
                     <div class="app-icon demo">
                         <svg class="menu-icon" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347c-.75.412-1.667-.13-1.667-.986V5.653z" /></svg>
                     </div>
-                    <span class="menu-text">デモ・テスト実行</span>
+                    <span class="menu-text" style="color:#fff;">デモ・テスト実行</span>
                     <svg class="menu-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                 </li>
-                <li class="menu-item" onclick="openChildPanel('panel-log')">
+                <li class="menu-item" onclick="openChildPanel('panel-log')" role="menuitem" tabindex="0">
                     <div class="app-icon log">
                         <svg class="menu-icon" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3M4 6h16v12H4z" /></svg>
                     </div>
-                    <span class="menu-text">フロントエンド受信ログ</span>
+                    <span class="menu-text" style="color:#fff;">フロントエンド受信ログ</span>
                     <svg class="menu-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                 </li>
             </ul>
@@ -528,11 +585,11 @@
 
         <div id="panel-clock" class="ios-panel child-panel">
             <div class="panel-header">
-                <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る">
+                <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る" aria-label="戻る">
                     <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"></path></svg>
                 </button>
                 <span class="panel-title">時計表示設定</span>
-                <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる">
+                <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる" aria-label="閉じる">
                     <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"></path></svg>
                 </button>
             </div>
@@ -540,13 +597,13 @@
                 <div class="sp-info" style="align-items: center;">
                     <span style="color: #fff; font-weight: bold; font-family: inherit;">時計の表示</span>
                     <label class="clock-toggle-switch">
-                        <input type="checkbox" id="clock-toggle-btn">
+                        <input type="checkbox" id="clock-toggle-btn" aria-label="時計の表示切り替え">
                         <span class="clock-slider"></span>
                     </label>
                 </div>
                 <div class="sp-info" style="flex-direction: column; gap: 8px; border-bottom: none; align-items: flex-start;">
-                    <div style="font-size: 13px; color: #e5e5ea; text-align: left;">表示形式</div>
-                    <select id="clock-format-select" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 8px; width: 100%; outline: none; font-size: 14px; cursor: pointer;">
+                    <div style="font-size: 14px; font-weight:bold; color: #e5e5ea; text-align: left;">表示形式</div>
+                    <select id="clock-format-select" aria-label="時計の表示形式" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 10px; width: 100%; outline: none; font-size: 15px; font-weight:bold; cursor: pointer;">
                         <option value="full" style="color: #000;">年月日時間分秒 (例: 2026/04/06 10:20:30)</option>
                         <option value="short" style="color: #000;">月日時間分秒 (例: 04/06 10:20:30)</option>
                         <option value="time" style="color: #000;">時間分秒 (例: 10:20:30)</option>
@@ -557,135 +614,135 @@
 
         <div id="panel-csv" class="ios-panel child-panel">
             <div class="panel-header">
-                <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る">
+                <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る" aria-label="戻る">
                     <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"></path></svg>
                 </button>
                 <span class="panel-title">CSVデータ可視化</span>
-                <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる">
+                <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる" aria-label="閉じる">
                     <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"></path></svg>
                 </button>
             </div>
             <div class="panel-content">
-                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.4;">
+                <div style="font-size: 13px; font-weight:500; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.4;">
                     気象庁の震源・震度リストCSVを選択してください。複数の震源が含まれている場合も、発生時刻順に連動アニメーションで可視化します。
                 </div>
                 
-                <div id="csv-drop-zone" class="drop-zone">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 40px; height: 40px; color: var(--text-secondary); margin-bottom: 10px;">
+                <div id="csv-drop-zone" class="drop-zone" style="border: 2px dashed rgba(255,255,255,0.2); border-radius:12px; padding:20px; text-align:center; cursor:pointer; background:rgba(255,255,255,0.02);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 48px; height: 48px; color: var(--text-secondary); margin-bottom: 10px;">
                         <path d="M21.2 15c.7-1.2 1-2.5.7-3.9-.6-2-2.4-3.5-4.4-3.5h-1.2c-.7-3-3.2-5.2-6.2-5.6-3-.3-5.9 1.3-7.3 4-1.2 2.5-1 6.5.5 8.8m8.7-1.6V21"></path>
                         <path d="M16 16l-4-4-4 4"></path>
                     </svg>
-                    <div class="drop-zone-text">
+                    <div class="drop-zone-text" style="font-size:14px; color:#fff;">
                         <strong>ファイルを選択</strong><br>
-                        またはここにドラッグ＆ドロップ
+                        <span style="font-size:12px; color:var(--text-secondary);">またはここにドラッグ＆ドロップ</span>
                     </div>
-                    <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+                    <input type="file" id="csv-file-input" accept=".csv" style="display: none;" aria-label="CSVファイルアップロード">
                 </div>
                 
-                <div id="csv-file-name" style="font-size: 13px; color: var(--text-primary); text-align: center; margin-bottom: 10px; min-height: 18px;"></div>
+                <div id="csv-file-name" style="font-size: 14px; font-weight:bold; color: var(--text-primary); text-align: center; margin-bottom: 10px; min-height: 20px;"></div>
                 
-                <button class="sp-btn" style="width: 100%; margin-bottom: 10px; background: rgba(10, 132, 255, 0.2); border-color: #0A84FF; color: #64D2FF; font-weight: bold;" onclick="executeCsvLoad()">📄 読み込み・可視化を実行</button>
-                <button class="sp-btn sp-btn-danger" style="width: 100%; margin-bottom: 10px;" onclick="clearCsvData()">🗑 クリア (最新の履歴に戻す)</button>
-                <div id="csv-status" style="font-size: 12px; color: #FFD60A; text-align: center; font-weight: bold; margin-top: 5px;"></div>
+                <button class="sp-btn" style="width: 100%; margin-bottom: 12px; background: rgba(10, 132, 255, 0.2); border-color: #0A84FF; color: #64D2FF; font-weight: bold; font-size:15px;" onclick="executeCsvLoad()">📄 読み込み・可視化を実行</button>
+                <button class="sp-btn sp-btn-danger" style="width: 100%; margin-bottom: 10px; font-size:15px;" onclick="clearCsvData()">🗑 クリア (最新の履歴に戻す)</button>
+                <div id="csv-status" style="font-size: 13px; color: #FFD60A; text-align: center; font-weight: bold; margin-top: 5px;" aria-live="polite"></div>
             </div>
         </div>
 
         <div id="panel-status" class="ios-panel child-panel">
             <div class="panel-header">
-                <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る">
+                <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る" aria-label="戻る">
                     <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"></path></svg>
                 </button>
                 <span class="panel-title">解析ステータス</span>
-                <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる">
+                <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる" aria-label="閉じる">
                     <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"></path></svg>
                 </button>
             </div>
             <div class="panel-content">
-                <div class="sp-info">状態: <span id="sys-status">停止中</span></div>
-                <div class="sp-info">サーバー遅延: <span id="sys-delay">--</span></div>
-                <div class="sp-info">通信成功: <span id="sys-success" style="color:#30D158;">0</span></div>
-                <div class="sp-info">通信エラー: <span id="sys-error" style="color:#FF453A;">0</span></div>
+                <div class="sp-info"><span style="color:#fff;">状態:</span> <span id="sys-status" style="color:#fff;">停止中</span></div>
+                <div class="sp-info"><span style="color:#fff;">サーバー遅延:</span> <span id="sys-delay" style="color:#fff;">--</span></div>
+                <div class="sp-info"><span style="color:#fff;">通信成功:</span> <span id="sys-success" style="color:#30D158; font-size:16px;">0</span></div>
+                <div class="sp-info"><span style="color:#fff;">通信エラー:</span> <span id="sys-error" style="color:#FF453A; font-size:16px;">0</span></div>
             </div>
         </div>
 
         <div id="panel-demo" class="ios-panel child-panel">
             <div class="panel-header">
-                <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る">
+                <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る" aria-label="戻る">
                     <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"></path></svg>
                 </button>
                 <span class="panel-title">デモ・テスト実行</span>
-                <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる">
+                <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる" aria-label="閉じる">
                     <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"></path></svg>
                 </button>
             </div>
             <div class="panel-content">
-                <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                     <button class="sp-btn" onclick="runEEWTest('normal')">通常EEW</button>
                     <button class="sp-btn sp-btn-plum" onclick="runEEWTest('plum')">PLUM法</button>
                     <button class="sp-btn" onclick="runEEWTest('cancel')">取消</button>
                 </div>
-                <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
                     <button class="sp-btn sp-btn-danger" style="flex:1;" onclick="runEEWTest('multiple')">複数EEW</button>
                     <button class="sp-btn" style="flex:1; background: rgba(255, 69, 58, 0.4); border-color: #FF453A;" onclick="runTsunamiTest()">津波自動受信</button>
                 </div>
-                <button class="sp-btn" style="width: 100%;" onclick="clearAllEEWs()">シミュレーション強制クリア</button>
+                <button class="sp-btn" style="width: 100%; font-size:14px;" onclick="clearAllEEWs()">シミュレーション強制クリア</button>
 
-                <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <span style="font-size: 13px; font-weight: bold; color: #fff;">🎛 カスタムEEWエディタ</span>
-                        <div style="display: flex; gap: 4px;">
-                            <button class="sp-btn" style="padding: 4px 8px; flex: 0;" onclick="addNewSimEvent(false)">＋ 追加</button>
-                            <button class="sp-btn" style="padding: 4px 8px; flex: 0;" onclick="addNewSimEvent(true)">🎲 ﾗﾝﾀﾞﾑ</button>
+                        <span style="font-size: 15px; font-weight: bold; color: #fff;">🎛 カスタムEEWエディタ</span>
+                        <div style="display: flex; gap: 6px;">
+                            <button class="sp-btn" style="padding: 6px 10px; flex: 0; font-size:12px;" onclick="addNewSimEvent(false)">＋ 追加</button>
+                            <button class="sp-btn" style="padding: 6px 10px; flex: 0; font-size:12px;" onclick="addNewSimEvent(true)">🎲 ﾗﾝﾀﾞﾑ</button>
                         </div>
                     </div>
                     
-                    <div id="sim-event-tabs" style="display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 4px;">
-                        <span style="font-size: 11px; color: #aaa;">イベントを追加してください</span>
+                    <div id="sim-event-tabs" style="display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 6px;">
+                        <span style="font-size: 12px; font-weight:bold; color: #aaa;">イベントを追加してください</span>
                     </div>
 
-                    <div id="sim-editor-form" style="display: none; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">
+                    <div id="sim-editor-form" style="display: none; flex-direction: column; gap: 12px; background: rgba(0,0,0,0.3); padding: 14px; border-radius: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 4px;">
-                            <span style="font-size: 12px; color: #aaa;">ステータス: <span id="sim-status-text" style="color: #fff;">編集中</span></span>
-                            <span style="font-size: 12px; color: #aaa;">報数: <span id="sim-report-badge" style="color: #fff; font-weight: bold;">未発報</span></span>
+                            <span style="font-size: 13px; font-weight:bold; color: #aaa;">状態: <span id="sim-status-text" style="color: #fff;">編集中</span></span>
+                            <span style="font-size: 13px; font-weight:bold; color: #aaa;">報数: <span id="sim-report-badge" style="color: #fff; font-weight: 800;">未発報</span></span>
                         </div>
                         
                         <div style="display: flex; gap: 8px;">
-                            <input type="text" id="sim-region" list="epicenter-list" placeholder="震央地名" class="sp-btn" style="flex: 2; text-align: left; background: rgba(255,255,255,0.1);">
-                            <input type="time" id="sim-time" step="1" class="sp-btn" style="flex: 1.5; background: rgba(255,255,255,0.1);" title="発生時刻">
+                            <input type="text" id="sim-region" list="epicenter-list" placeholder="震央地名" aria-label="震央地名" class="sp-btn" style="flex: 2; text-align: left; background: rgba(255,255,255,0.1); font-size:14px;">
+                            <input type="time" id="sim-time" step="1" class="sp-btn" aria-label="発生時刻" style="flex: 1.5; background: rgba(255,255,255,0.1); font-size:14px;" title="発生時刻">
                         </div>
 
                         <div style="display: flex; gap: 8px;">
-                            <input type="number" id="sim-lat" step="0.1" placeholder="緯度" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
-                            <input type="number" id="sim-lon" step="0.1" placeholder="経度" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
+                            <input type="number" id="sim-lat" step="0.1" placeholder="緯度" aria-label="緯度" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1); font-size:14px;">
+                            <input type="number" id="sim-lon" step="0.1" placeholder="経度" aria-label="経度" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1); font-size:14px;">
                         </div>
                         <div style="display: flex; gap: 8px;">
-                            <input type="number" id="sim-depth" placeholder="深さ(km)" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
-                            <input type="number" id="sim-mag" step="0.1" placeholder="M" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1);">
+                            <input type="number" id="sim-depth" placeholder="深さ(km)" aria-label="深さ" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1); font-size:14px;">
+                            <input type="number" id="sim-mag" step="0.1" placeholder="M" aria-label="マグニチュード" class="sp-btn" style="flex: 1; text-align: center; background: rgba(255,255,255,0.1); font-size:14px;">
                         </div>
                         
-                        <div style="font-size: 10px; color: var(--text-secondary); text-align: center;">※地図をクリックで座標と地名を自動取得します</div>
+                        <div style="font-size: 11px; font-weight:bold; color: var(--text-secondary); text-align: center;">※地図をクリックで座標と地名を自動取得します</div>
 
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 11px; color: #aaa;">最大震度:</span>
-                                <select id="sim-scale" class="sp-btn" style="background: rgba(255,255,255,0.1); padding: 4px 8px;">
+                                <span style="font-size: 13px; font-weight:bold; color: #aaa;">最大震度:</span>
+                                <select id="sim-scale" class="sp-btn" aria-label="最大震度" style="background: rgba(255,255,255,0.1); padding: 6px 10px; font-size:14px;">
                                     <option value="3">3</option><option value="4">4</option>
                                     <option value="5弱" selected>5弱</option><option value="5強">5強</option>
                                     <option value="6弱">6弱</option><option value="6強">6強</option><option value="7">7</option>
                                 </select>
                             </div>
-                            <div style="display: flex; gap: 10px;">
-                                <label style="font-size: 11px; color: #fff; cursor: pointer;"><input type="checkbox" id="sim-warn" checked> 警報</label>
-                                <label style="font-size: 11px; color: #fff; cursor: pointer;"><input type="checkbox" id="sim-plum"> PLUM</label>
+                            <div style="display: flex; gap: 12px;">
+                                <label style="font-size: 13px; font-weight:bold; color: #fff; cursor: pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="sim-warn" checked style="transform:scale(1.2);"> 警報</label>
+                                <label style="font-size: 13px; font-weight:bold; color: #fff; cursor: pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="sim-plum" style="transform:scale(1.2);"> PLUM</label>
                             </div>
                         </div>
 
-                        <div style="display: flex; gap: 6px; margin-top: 8px;">
-                            <button class="sp-btn" style="flex: 2; background: rgba(48, 209, 88, 0.2); border-color: #30D158; color: #30D158;" onclick="dispatchSimulatedEEW(false, false)">
+                        <div style="display: flex; gap: 8px; margin-top: 12px;">
+                            <button class="sp-btn" style="flex: 2; background: rgba(48, 209, 88, 0.2); border-color: #30D158; color: #30D158; font-size:14px;" onclick="dispatchSimulatedEEW(false, false)">
                                 📢 発報 / 更新
                             </button>
-                            <button class="sp-btn" style="flex: 1; background: rgba(10, 132, 255, 0.2); border-color: #0A84FF; color: #64D2FF;" onclick="dispatchSimulatedEEW(true, false)">🏁 最終</button>
-                            <button class="sp-btn sp-btn-danger" style="flex: 1;" onclick="dispatchSimulatedEEW(false, true)">✖ 取消</button>
+                            <button class="sp-btn" style="flex: 1; background: rgba(10, 132, 255, 0.2); border-color: #0A84FF; color: #64D2FF; font-size:14px;" onclick="dispatchSimulatedEEW(true, false)">🏁 最終</button>
+                            <button class="sp-btn sp-btn-danger" style="flex: 1; font-size:14px;" onclick="dispatchSimulatedEEW(false, true)">✖ 取消</button>
                         </div>
                     </div>
                 </div>
@@ -694,16 +751,16 @@
 
         <div id="panel-log" class="ios-panel child-panel">
             <div class="panel-header">
-                <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る">
+                <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る" aria-label="戻る">
                     <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"></path></svg>
                 </button>
                 <span class="panel-title">受信ログ</span>
-                <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる">
+                <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる" aria-label="閉じる">
                     <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"></path></svg>
                 </button>
             </div>
             <div class="panel-content" style="padding: 0; display: flex; flex-direction: column;">
-                <div id="sys-log-container" class="sp-log-box" style="border: none; border-radius: 0; margin-top: 0; flex-grow: 1;">
+                <div id="sys-log-container" class="sp-log-box" style="border: none; border-radius: 0; margin-top: 0; flex-grow: 1;" aria-live="polite">
                     <div class="log-info">[System] ログの記録を開始しました</div>
                 </div>
             </div>
@@ -711,8 +768,8 @@
 
     </div>
 
-    <div id="detail-panel">
-        <div class="dp-close" onclick="closeDetailPanel()">✕</div>
+    <div id="detail-panel" role="region" aria-label="地震詳細パネル">
+        <div class="dp-close" onclick="closeDetailPanel()" aria-label="詳細パネルを閉じる" role="button" tabindex="0">✕</div>
         <div class="dp-main">
             <div class="dp-scale-box" id="dp-box">
                 <span class="dp-scale-label" id="dp-scale-label">最大震度</span>
@@ -724,9 +781,9 @@
                 <div class="dp-meta">M <strong id="dp-mag">-.-</strong> / 深さ <strong id="dp-depth">--</strong>km</div>
             </div>
         </div>
-        <div class="dp-toggle-btn" id="dp-toggle-btn" onclick="toggleExtendedArea()">詳細情報を表示 ▼</div>
+        <div class="dp-toggle-btn" id="dp-toggle-btn" onclick="toggleExtendedArea()" role="button" tabindex="0">詳細情報を表示 ▼</div>
         <div id="dp-extended-area" class="dp-extended-area collapsed">
-            <div id="dp-comments" class="dp-comments-box" onclick="toggleTsunamiPanelFromEarthquake()">
+            <div id="dp-comments" class="dp-comments-box" onclick="toggleTsunamiPanelFromEarthquake()" role="button" tabindex="0" aria-label="津波詳細を開く">
                 <div id="dp-comments-text"></div>
                 <div class="dp-comments-hint">詳細情報を確認 ▶</div>
             </div>
@@ -741,14 +798,14 @@
         </div>
     </div>
 
-    <div id="eew-panel">
-        <div class="ep-close" onclick="closeEEWPanel()">✕</div>
+    <div id="eew-panel" role="region" aria-label="緊急地震速報パネル">
+        <div class="ep-close" onclick="closeEEWPanel()" aria-label="緊急地震速報パネルを閉じる" role="button" tabindex="0">✕</div>
         <div class="ep-header">緊急地震速報（経過）</div>
         <div id="eew-list" class="ep-list"></div>
     </div>
 
-    <div id="tsunami-panel">
-        <div class="tp-close" onclick="closeTsunamiPanel()">✕</div>
+    <div id="tsunami-panel" role="region" aria-label="津波情報パネル">
+        <div class="tp-close" onclick="closeTsunamiPanel()" aria-label="津波情報パネルを閉じる" role="button" tabindex="0">✕</div>
         <div class="tp-header" id="tp-main-header">津波到達予想</div>
         <div class="tp-list"></div>
     </div>
@@ -764,7 +821,6 @@
     let useProxyForJSON = isHttps;
     const PROXY_BASE = "https://api.codetabs.com/v1/proxy?quest=";
 
-    // Electron環境とWeb環境を自動判別し、安全にJSONを取得するラッパー関数
     async function safeFetchJSON(targetUrl) {
         if (isElectron) return fetch(targetUrl);
         return useProxyForJSON ? fetch(PROXY_BASE + targetUrl) : fetch(targetUrl).catch(() => { useProxyForJSON = true; return fetch(PROXY_BASE + targetUrl); });
@@ -804,11 +860,11 @@
             var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-control-group');
             var fsBtn = L.DomUtil.create('a', 'custom-btn-fs', container);
             fsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
-            fsBtn.href = '#'; fsBtn.title = '全画面表示';
+            fsBtn.href = '#'; fsBtn.title = '全画面表示'; fsBtn.setAttribute('aria-label', '全画面表示切り替え');
             var inBtn = L.DomUtil.create('a', 'custom-btn-in', container);
-            inBtn.innerHTML = '＋'; inBtn.href = '#'; inBtn.title = '拡大';
+            inBtn.innerHTML = '＋'; inBtn.href = '#'; inBtn.title = '拡大'; inBtn.setAttribute('aria-label', '地図を拡大');
             var outBtn = L.DomUtil.create('a', 'custom-btn-out', container);
-            outBtn.innerHTML = '－'; outBtn.href = '#'; outBtn.title = '縮小';
+            outBtn.innerHTML = '－'; outBtn.href = '#'; outBtn.title = '縮小'; outBtn.setAttribute('aria-label', '地図を縮小');
 
             L.DomEvent.disableClickPropagation(container);
             let isPseudoFS = false;
@@ -891,7 +947,6 @@
             menuContainer.style.pointerEvents = 'auto';
             parentMenu.classList.add('active');
             parentMenu.classList.remove('slide-left');
-            // 🚨 【追加】システムメニュー展開時に時計パネルを右へスライドさせるクラスを付与
             document.body.classList.add('menu-open');
             closeTsunamiPanel(); closeEEWPanel();
         } else {
@@ -915,11 +970,9 @@
         parentMenu.classList.remove('active', 'slide-left');
         allChildPanels.forEach(panel => panel.classList.remove('active'));
         menuContainer.style.pointerEvents = 'none';
-        // 🚨 【追加】システムメニューを閉じた時に時計パネルを元の位置に戻す
         document.body.classList.remove('menu-open');
     }
 
-    // 🚨 【追加】マップクリックイベントの拡張（エディタ連携＆空間演算）
     map.on('click', function(e) { 
         const demoPanel = document.getElementById('panel-demo');
         if (demoPanel && demoPanel.classList.contains('active') && currentSimEventId) {
@@ -940,7 +993,6 @@
             }
             document.getElementById('sim-region').value = regionName;
             
-            // 状態を同期
             const ev = simEventsMap.get(currentSimEventId);
             ev.lat = e.latlng.lat.toFixed(2);
             ev.lon = e.latlng.lng.toFixed(2);
@@ -953,7 +1005,6 @@
         closeAllPanels(); 
     });
 
-    // 🚨 レイヤー管理（Pane）の設定
     map.createPane('baseMapPane'); map.getPane('baseMapPane').style.zIndex = 250;
     map.createPane('tsunamiPane'); map.getPane('tsunamiPane').style.zIndex = 260; 
     map.createPane('eewPane'); map.getPane('eewPane').style.zIndex = 450; map.getPane('eewPane').style.pointerEvents = 'none';
@@ -964,9 +1015,6 @@
     const tsunamiLineLayer = L.layerGroup().addTo(map); 
     const eewLayer = L.layerGroup().addTo(map);
 
-    // ==========================================
-    // 🚨 仮想論理時計（Virtual Clock）
-    // ==========================================
     let virtualTimeMs = 0; 
     let isArchiveMode = false; 
     let archiveIsPlaying = false;
@@ -1021,9 +1069,9 @@
 
     if (dropZone && fileInput) {
         dropZone.addEventListener('click', () => fileInput.click());
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
-        dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]); });
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.backgroundColor = 'rgba(255,255,255,0.1)'; });
+        dropZone.addEventListener('dragleave', () => { dropZone.style.backgroundColor = 'rgba(255,255,255,0.02)'; });
+        dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.style.backgroundColor = 'rgba(255,255,255,0.02)'; if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]); });
         fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFileSelect(e.target.files[0]); });
     }
 
@@ -1163,7 +1211,7 @@
                 ctx.fillStyle = item.color; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2; ctx.fill();
                 ctx.shadowColor = 'transparent'; ctx.lineWidth = 1.5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
                 if (zoom >= 8) {
-                    ctx.fillStyle = '#ffffff'; ctx.font = '800 ' + (zoom >= 9 ? '12px' : '9px') + ' sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#ffffff'; ctx.font = '800 ' + (zoom >= 9 ? '12px' : '10px') + ' sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                     ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
                     ctx.fillText(item.text, p.x, p.y + 1); ctx.shadowColor = 'transparent';
                 }
@@ -1176,7 +1224,7 @@
     map.on('mousemove', function(e) {
         if (!map.hasLayer(stationLayer) || !stationLayer._data || stationLayer._data.length === 0) { canvasTooltip.style.display = 'none'; return; }
         const mousePoint = map.latLngToContainerPoint(e.latlng); let found = null;
-        const zoom = map.getZoom(), radius = zoom >= 9 ? 12 : (zoom >= 7 ? 8 : 4), hitRadius = Math.max(radius, 8); 
+        const zoom = map.getZoom(), radius = zoom >= 9 ? 12 : (zoom >= 7 ? 8 : 4), hitRadius = Math.max(radius, 12); 
 
         for (let i = stationLayer._data.length - 1; i >= 0; i--) {
             const item = stationLayer._data[i], p = map.latLngToContainerPoint([item.lat, item.lon]), dx = p.x - mousePoint.x, dy = p.y - mousePoint.y;
@@ -1193,14 +1241,13 @@
     map.on('mouseout', function() { canvasTooltip.style.display = 'none'; hoverStation = null; map.getContainer().style.cursor = ''; });
 
     // ==========================================
-    // 🚨 外部API連携：P2PQuakeからEEWの地域詳細を取得する関数 (シミュレータ対応・距離減衰モデル搭載版)
+    // 外部API連携：P2PQuakeからEEWの地域詳細を取得する関数
     // ==========================================
     const p2pEewCache = new Map();
 
     async function fetchP2PEEWDetails(originTimeStr, reportNum, isCancel) {
         if (isCancel || !originTimeStr) return null;
 
-        // 🚨 【追加】テストモード（シミュレーター）時のリアルなモックデータ連携
         if (isEEWMockActive) {
             let targetEv = null;
             for (let ev of simEventsMap.values()) {
@@ -1212,7 +1259,6 @@
             return new Promise(resolve => setTimeout(() => resolve([]), 300));
         }
 
-        // --- 既存の P2PQuake 通信処理 ---
         const cacheKey = `${originTimeStr}_${reportNum}`;
         if (p2pEewCache.has(cacheKey)) return p2pEewCache.get(cacheKey);
 
@@ -1338,7 +1384,7 @@
                 const sortedKeys = Array.from(scaleGroups.keys()).sort((a, b) => b - a);
                 for (const scale of sortedKeys) {
                     const names = scaleGroups.get(scale), scaleColor = getIntensityColor(scale), scaleStr = getIntensityString(scale), textColor = (scale === 40 || scale === 45) ? '#000' : '#fff';
-                    listHtml += `<div style="display: flex; align-items: flex-start; gap: 8px; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 6px; border-left: 3px solid ${scaleColor};"><div style="background: ${scaleColor}; color: ${textColor}; font-weight: bold; font-size: 11px; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">震度${scaleStr}</div><div style="font-size: 11px; color: #e5e5ea; line-height: 1.4;">${names.join(', ')}</div></div>`;
+                    listHtml += `<div style="display: flex; align-items: flex-start; gap: 8px; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 6px; border-left: 3px solid ${scaleColor};"><div style="background: ${scaleColor}; color: ${textColor}; font-weight: bold; font-size: 11px; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">震度${scaleStr}</div><div style="font-size: 12px; font-weight:600; color: #e5e5ea; line-height: 1.4;">${names.join(', ')}</div></div>`;
                 }
                 container.innerHTML = listHtml + '</div>';
             });
@@ -1558,7 +1604,6 @@
         const isCancel = data.is_cancel === true, isPlum = data.is_plum === true || (data.region_name === "" && data.calcintensity); 
         const timeStr = `${formatEEWTime(data.origin_time)} 頃発生`;
 
-        // 🚨 【修正】初見のEEWかどうかを判定
         const isFirstCatch = !activeEEWs.has(eventId);
         
         if (isCancel) {
@@ -1596,7 +1641,6 @@
             eewState.layerGroup.addLayer(epicenterMarker);
             if (!isPlum) L.marker([lat, lon], { icon: L.divIcon({ className: 'custom-div-icon', html: `<div class="eew-epicenter-pulse"></div>`, iconSize: [0, 0] }) }).addTo(eewState.layerGroup);
             
-            // 🚨 【修正】初回検知時のみズームする
             if (isFirstCatch) map.setView([lat, lon], 6, { animate: true, duration: 1.0 });
         }
 
@@ -1605,7 +1649,6 @@
             let regionsToHighlight = data.alertRegions || [data.region_name];
             L.geoJSON(japanGeoData, {
                 filter: function(feature) { const name = feature.properties.name || ""; return regionsToHighlight.some(r => name.includes(r) || r.includes(name)); },
-                // 🚨 【修正】色を元の黄色に戻し、透明度を0.35に設定
                 style: { fillColor: '#FFFF00', fillOpacity: 0.35, color: '#FFFF00', weight: 2, dashArray: '3' }, interactive: false 
             }).addTo(eewState.alertLayer);
         }
@@ -1623,7 +1666,7 @@
             wrapper = document.createElement('div'); wrapper.id = `eew-wrapper-${eventId}`; wrapper.className = 'eew-wrapper';
             panel = document.createElement('div'); panel.id = `eew-panel-${eventId}`; panel.className = 'eew-panel';
             minIcon = document.createElement('div'); minIcon.id = `eew-minimized-${eventId}`; minIcon.className = 'eew-minimized';
-            minIcon.style.display = 'none'; minIcon.onclick = () => restoreEEW(eventId); minIcon.innerHTML = '!'; minIcon.title = '緊急地震速報を展開';
+            minIcon.style.display = 'none'; minIcon.onclick = () => restoreEEW(eventId); minIcon.innerHTML = '!'; minIcon.title = '緊急地震速報を展開'; minIcon.setAttribute('role', 'button'); minIcon.setAttribute('aria-label', '緊急地震速報を展開');
             wrapper.appendChild(panel); wrapper.appendChild(minIcon); container.appendChild(wrapper); 
         } else {
             panel = document.getElementById(`eew-panel-${eventId}`); minIcon = document.getElementById(`eew-minimized-${eventId}`);
@@ -1636,7 +1679,7 @@
 
         if (isCancel) {
             restoreEEW(eventId); panel.style.backgroundColor = "rgba(28, 28, 30, 0.45)"; panel.style.borderColor = "#8E8E93";
-            panel.innerHTML = `<div class="dp-close" onclick="closeEEW('${eventId}')">✕</div><div class="dp-main"><div class="dp-scale-box" style="background: rgba(0,0,0,0.5); border-color: #8E8E93;"><span class="dp-scale-label">緊急速報</span><span class="dp-scale-value" style="color: #8E8E93; font-size: 26px;">取消</span></div><div class="dp-info"><div class="dp-name"><span style="color:#FF453A; font-weight:800; font-size:16px;">【緊急地震速報】 取消</span></div><div class="dp-time">この速報は取り消されました</div><div class="dp-meta"></div></div></div><div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')">${btnText}</div><div id="eew-extended-${eventId}" class="dp-extended-area${collapsedClass}"><div class="dp-comments-box" style="border-left-color: #8E8E93;"><strong>【誤報・取消】</strong><br>先ほどの緊急地震速報は取り消されました。</div></div>`;
+            panel.innerHTML = `<div class="dp-close" onclick="closeEEW('${eventId}')" aria-label="閉じる" role="button">✕</div><div class="dp-main"><div class="dp-scale-box" style="background: rgba(0,0,0,0.5); border-color: #8E8E93;"><span class="dp-scale-label">緊急速報</span><span class="dp-scale-value" style="color: #8E8E93; font-size: 26px;">取消</span></div><div class="dp-info"><div class="dp-name"><span style="color:#FF453A; font-weight:800; font-size:16px;">【緊急地震速報】 取消</span></div><div class="dp-time">この速報は取り消されました</div><div class="dp-meta"></div></div></div><div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')" role="button">${btnText}</div><div id="eew-extended-${eventId}" class="dp-extended-area${collapsedClass}"><div class="dp-comments-box" style="border-left-color: #8E8E93;"><strong>【誤報・取消】</strong><br>先ほどの緊急地震速報は取り消されました。</div></div>`;
             return;
         }
 
@@ -1660,17 +1703,17 @@
         if (data.alertRegions && data.alertRegions.length > 0) {
             regionsDisplay = data.alertRegions.length > 3 ? [...data.alertRegions.slice(0, 3), '他'] : data.alertRegions;
         }
-        let regionsText = regionsDisplay.length > 0 ? `<div style="font-size:12px; color:#FFD60A; margin-top:2px;">警報対象: ${regionsDisplay.join(', ')}</div>` : '';
+        let regionsText = regionsDisplay.length > 0 ? `<div style="font-size:13px; font-weight:bold; color:#FFD60A; margin-top:4px;">警報対象: ${regionsDisplay.join(', ')}</div>` : '';
 
         const areasContainerId = `eew-areas-container-${eventId}`;
-        let areasHtml = `<div id="${areasContainerId}" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 11px; color: var(--text-secondary); text-align: center;"><div class="spinner" style="width:10px;height:10px;display:inline-block;margin-right:4px;"></div>地域ごとの予想震度を取得中...</div></div>`;
+        let areasHtml = `<div id="${areasContainerId}" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 12px; font-weight:bold; color: var(--text-secondary); text-align: center;"><div class="spinner" style="width:12px;height:12px;display:inline-block;margin-right:6px;"></div>地域ごとの予想震度を取得中...</div></div>`;
 
-        panel.innerHTML = `<div class="dp-close" onclick="minimizeEEW('${eventId}')">✕</div><div class="dp-main"><div class="dp-scale-box" style="background: rgba(0,0,0,0.3); border-color: ${color};"><span class="dp-scale-label">最大予測</span><span class="dp-scale-value" style="color: ${color}; font-size: 34px;">${intensityStr}</span></div><div class="dp-info"><div class="dp-name" title="${regionName}"><span style="color:${titleColor}; font-weight:800;">【緊急地震速報】 ${reportText}</span> ${badgeHtml}<br><span style="font-size:14px; font-weight:normal;">${regionName}</span></div><div class="dp-time">${timeStr}</div><div class="dp-meta">M <strong style="color:#fff;">${magnitude}</strong> / 深さ <strong style="color:#fff;">${depth}</strong>${depth !== 'ごく浅い' && depth !== '--' ? 'km' : ''}</div></div></div>${regionsText}<div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')">${btnText}</div><div id="eew-extended-${eventId}" class="dp-extended-area${collapsedClass}"><div class="dp-comments-box" style="border-left-color: ${color};"><strong>【予測情報】</strong><br>強い揺れに警戒してください。${isWarning ? '<br><span style="color:#FF453A;">※これは緊急地震速報（警報）です。</span>' : ''}${plumNotice}</div>${areasHtml}</div>`;
+        panel.innerHTML = `<div class="dp-close" onclick="minimizeEEW('${eventId}')" aria-label="閉じる" role="button">✕</div><div class="dp-main"><div class="dp-scale-box" style="background: rgba(0,0,0,0.3); border-color: ${color};"><span class="dp-scale-label">最大予測</span><span class="dp-scale-value" style="color: ${color}; font-size: 36px;">${intensityStr}</span></div><div class="dp-info"><div class="dp-name" title="${regionName}"><span style="color:${titleColor}; font-weight:800;">【緊急地震速報】 ${reportText}</span> ${badgeHtml}<br><span style="font-size:15px; font-weight:600;">${regionName}</span></div><div class="dp-time">${timeStr}</div><div class="dp-meta">M <strong style="color:#fff;">${magnitude}</strong> / 深さ <strong style="color:#fff;">${depth}</strong>${depth !== 'ごく浅い' && depth !== '--' ? 'km' : ''}</div></div></div>${regionsText}<div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')" role="button">${btnText}</div><div id="eew-extended-${eventId}" class="dp-extended-area${collapsedClass}"><div class="dp-comments-box" style="border-left-color: ${color};"><strong>【予測情報】</strong><br>強い揺れに警戒してください。${isWarning ? '<br><span style="color:#FF453A; font-weight:bold;">※これは緊急地震速報（警報）です。</span>' : ''}${plumNotice}</div>${areasHtml}</div>`;
 
         fetchP2PEEWDetails(data.origin_time, data.report_num, isCancel).then(areas => {
             const container = document.getElementById(areasContainerId); if (!container) return;
-            if (areas === null) { container.innerHTML = `<div style="font-size: 11px; color: var(--text-secondary); text-align: center;">地域データへのアクセスに失敗しました</div>`; return; }
-            if (areas.length === 0) { container.innerHTML = `<div style="font-size: 11px; color: var(--text-secondary); text-align: center;">詳細な地域データはありません</div>`; return; }
+            if (areas === null) { container.innerHTML = `<div style="font-size: 12px; color: var(--text-secondary); text-align: center;">地域データへのアクセスに失敗しました</div>`; return; }
+            if (areas.length === 0) { container.innerHTML = `<div style="font-size: 12px; color: var(--text-secondary); text-align: center;">詳細な地域データはありません</div>`; return; }
 
             areas.sort((a, b) => (b.scaleTo || b.scaleFrom || 0) - (a.scaleTo || a.scaleFrom || 0));
             const scaleGroups = new Map();
@@ -1678,13 +1721,13 @@
                 const s = area.scaleTo || area.scaleFrom || 0; if (s < 10) return; 
                 if (!scaleGroups.has(s)) scaleGroups.set(s, []); scaleGroups.get(s).push(area.name);
             });
-            if (scaleGroups.size === 0) { container.innerHTML = `<div style="font-size: 11px; color: var(--text-secondary); text-align: center;">予想震度1以上の地域データはありません</div>`; return; }
+            if (scaleGroups.size === 0) { container.innerHTML = `<div style="font-size: 12px; color: var(--text-secondary); text-align: center;">予想震度1以上の地域データはありません</div>`; return; }
 
-            let listHtml = '<div style="font-size: 12px; font-weight: bold; margin-bottom: 6px; color: #fff;">地域別 予想震度</div><div style="display: flex; flex-direction: column; gap: 4px;">';
+            let listHtml = '<div style="font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #fff;">地域別 予想震度</div><div style="display: flex; flex-direction: column; gap: 6px;">';
             const sortedKeys = Array.from(scaleGroups.keys()).sort((a, b) => b - a);
             for (const scale of sortedKeys) {
                 const names = scaleGroups.get(scale), scaleColor = getIntensityColor(scale), scaleStr = getIntensityString(scale), textColor = (scale === 40 || scale === 45) ? '#000' : '#fff';
-                listHtml += `<div style="display: flex; align-items: flex-start; gap: 8px; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 6px; border-left: 3px solid ${scaleColor};"><div style="background: ${scaleColor}; color: ${textColor}; font-weight: bold; font-size: 11px; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">震度${scaleStr}</div><div style="font-size: 11px; color: #e5e5ea; line-height: 1.4;">${names.join(', ')}</div></div>`;
+                listHtml += `<div style="display: flex; align-items: flex-start; gap: 8px; background: rgba(0,0,0,0.3); padding: 6px 10px; border-radius: 8px; border-left: 4px solid ${scaleColor};"><div style="background: ${scaleColor}; color: ${textColor}; font-weight: 800; font-size: 12px; padding: 2px 8px; border-radius: 4px; white-space: nowrap;">震度${scaleStr}</div><div style="font-size: 13px; font-weight:500; color: #e5e5ea; line-height: 1.4;">${names.join(', ')}</div></div>`;
             }
             container.innerHTML = listHtml + '</div>';
         });
@@ -1758,7 +1801,6 @@
         mockEEWTimers.push(interval);
     }
 
-    // --- 🚨 高度なEEWシミュレーター 状態管理 (複数イベント・ランダム・空間演算対応) ---
     let simEventsMap = new Map();
     let currentSimEventId = null;
 
@@ -1772,7 +1814,6 @@
         return `${yyyy}${MM}${dd}${timeClean}`;
     }
 
-    // 空間演算で距離に応じた地域ごとの震度を計算する
     function calcSimulatedRegions(lat, lon, maxScaleStr) {
         let maxInt = 30; // default 3
         if(maxScaleStr==="4") maxInt=40; if(maxScaleStr==="5弱") maxInt=45;
@@ -1791,7 +1832,7 @@
                 const center = turf.centroid(feature);
                 dist = turf.distance(pt, center, {units: 'kilometers'});
             } catch(e) {}
-            if (turf.booleanPointInPolygon(pt, feature)) dist = 0; // 震源ポリゴン内は距離0
+            if (turf.booleanPointInPolygon(pt, feature)) dist = 0; 
             areas.push({ name: feature.properties.name || feature.properties.name_ja, dist: dist });
         });
 
@@ -1818,7 +1859,7 @@
         const form = document.getElementById('sim-editor-form');
         container.innerHTML = '';
         if (simEventsMap.size === 0) {
-            container.innerHTML = '<span style="font-size: 11px; color: #aaa;">イベントがありません。追加してください。</span>';
+            container.innerHTML = '<span style="font-size: 12px; color: #aaa;">イベントがありません。追加してください。</span>';
             form.style.display = 'none';
             return;
         }
@@ -1917,7 +1958,6 @@
 
         const ev = simEventsMap.get(currentSimEventId);
         
-        // フォームから状態を更新
         ev.region = document.getElementById('sim-region').value;
         ev.timeInput = document.getElementById('sim-time').value;
         ev.lat = document.getElementById('sim-lat').value;
@@ -1932,16 +1972,13 @@
         ev.isFinal = isFinal;
         ev.isCancel = isCancel;
 
-        // 初回のみ入力時刻から originTime を確定
         if (!ev.originTime || ev.reportNum === 1) {
             ev.originTime = getOriginTimeFromInput(ev.timeInput);
         }
 
-        // 🚨 Turf.jsで距離を計算し、周辺の予想震度配列を作成
         const regionsList = calcSimulatedRegions(parseFloat(ev.lat), parseFloat(ev.lon), ev.scale);
         ev.mockAreas = regionsList; 
         
-        // 最大震度5弱(45)以上の地域を抽出して警報対象とする
         const alertRegions = ev.isWarn ? regionsList.filter(r => r.scaleFrom >= 45).map(r => r.name) : [];
 
         let data = {
@@ -1963,7 +2000,7 @@
         };
 
         addSystemLog(`[Simulator] 発報: ${ev.region} (第${ev.reportNum}報)`, isCancel ? 'error' : 'warn');
-        selectSimEvent(ev.id); // UIバッジ等を再描画
+        selectSimEvent(ev.id); 
         processEEWData(data);
     }
     // ---------------------------------------------
@@ -2349,7 +2386,7 @@
         fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=0').then(res => res.ok ? res.json() : []).catch(() => []),
         fetch('https://api.p2pquake.net/v2/jma/tsunami?limit=100&offset=100').then(res => res.ok ? res.json() : []).catch(() => []),
         loadLocalJson('intensity-points.json', []),
-        loadLocalJson('震央地名.geo.json', null) // 🚨 震央地名データのロード
+        loadLocalJson('震央地名.geo.json', null) 
     ]).then(([geoData, stations, tGeo, jmaTsunami, p2pTsunami1, p2pTsunami2, intPoints, epiGeoData]) => {
         if (geoData) { japanGeoData = geoData; L.geoJSON(geoData, { pane: 'baseMapPane', style: { color: "#3A3A3C", weight: 1, fillColor: "#1C1C1E", fillOpacity: 1 } }).addTo(map); }
         stationsData = stations || []; tsunamiGeoData = tGeo; intensityPointsData = [];
@@ -2657,7 +2694,7 @@
         else { map.invalidateSize(); map.setView([hypo.latitude, hypo.longitude], 7, { animate: true, duration: 0.5 }); }
 
         document.getElementById('dp-scale-label').innerText = "最大震度"; 
-        const scaleValue = document.getElementById('dp-scale'); scaleValue.innerText = getIntensityString(eq.earthquake.maxScale); scaleValue.style.color = mainColor; scaleValue.style.fontSize = "34px"; 
+        const scaleValue = document.getElementById('dp-scale'); scaleValue.innerText = getIntensityString(eq.earthquake.maxScale); scaleValue.style.color = mainColor; scaleValue.style.fontSize = "38px"; 
         document.getElementById('dp-box').style.borderColor = mainColor; document.getElementById('dp-box').style.background = "rgba(0,0,0,0.3)";
         document.getElementById('detail-panel').style.backgroundColor = "rgba(28, 28, 30, 0.45)";
         const dpNameEl = document.getElementById('dp-name'); dpNameEl.innerText = hypo.name || "震源地不明"; dpNameEl.title = hypo.name || "震源地不明"; 
@@ -2671,7 +2708,7 @@
         const archiveContainer = document.getElementById('dp-archive-btn-container');
 
         if (isWithin4Hours) {
-            archiveContainer.innerHTML = `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);"><button class="sp-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(100, 210, 255, 0.2); border-color: rgba(100, 210, 255, 0.5); color: #64D2FF;" onclick="playArchiveFromEQ('${eq.earthquake.time}')">▶ この地震の強震モニタを再生</button><div style="font-size: 10px; color: #aaa; margin-top: 6px; text-align: center;">※発生時刻を検索し、5秒前から自動再生</div></div>`;
+            archiveContainer.innerHTML = `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);"><button class="sp-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(100, 210, 255, 0.2); border-color: rgba(100, 210, 255, 0.5); color: #64D2FF; font-size:14px;" onclick="playArchiveFromEQ('${eq.earthquake.time}')">▶ この地震の強震モニタを再生</button><div style="font-size: 11px; color: #aaa; margin-top: 8px; text-align: center;">※発生時刻を検索し、5秒前から自動再生</div></div>`;
             archiveContainer.style.display = 'block';
         } else { archiveContainer.innerHTML = ''; archiveContainer.style.display = 'none'; }
     }
@@ -2703,303 +2740,6 @@
     legend.addTo(map);
 
     const style = document.createElement('style'); style.innerHTML = `.custom-tooltip { background: rgba(0,0,0,0.8); border: 1px solid #555; color: #fff; font-size: 11px; backdrop-filter: blur(10px); }`; document.head.appendChild(style);
-
-    
-    (function() {
-        // 1. レイアウト編集用のCSSを動的に追加
-        const style = document.createElement('style');
-        style.innerHTML = `
-            body.layout-edit-mode .draggable-panel { outline: 2px dashed #0A84FF !important; cursor: move !important; pointer-events: auto !important; z-index: 9999 !important; }
-            body.layout-edit-mode .draggable-panel * { pointer-events: none !important; }
-            body.layout-edit-mode .draggable-panel::before { content: "ドラッグで移動"; position: absolute; top: -20px; left: 0; background: #0A84FF; color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: bold; pointer-events: none; }
-            .panel-transition { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s, margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), left 0.1s, top 0.1s, bottom 0.1s, right 0.1s; }
-            .dragging { transition: none !important; }
-        `;
-        document.head.appendChild(style);
-
-        // 2. システムメニューに「表示・レイアウト設定」のボタンを追加
-        const menuList = document.querySelector('.menu-list');
-        if (menuList) {
-            menuList.insertAdjacentHTML('afterbegin', `
-                <li class="menu-item" onclick="if(window.openChildPanel) openChildPanel('panel-layout'); else document.getElementById('panel-layout').classList.add('active');">
-                    <div class="app-icon" style="background: linear-gradient(135deg, #5E5CE6, #4040A1);">
-                        <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-                    </div>
-                    <span class="menu-text" style="color: #fff;">表示・レイアウト設定</span>
-                    <svg class="menu-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-                </li>
-            `);
-        }
-
-        // 3. レイアウト設定パネルのHTMLを追加
-        const menuContainer = document.getElementById('menu-container');
-        if (menuContainer) {
-            menuContainer.insertAdjacentHTML('beforeend', `
-                <div id="panel-layout" class="ios-panel child-panel">
-                    <div class="panel-header"><button class="panel-header-btn" onclick="if(window.backToParentMenu) backToParentMenu(); else document.getElementById('panel-layout').classList.remove('active');" title="戻る"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"></path></svg></button><span class="panel-title">表示・レイアウト設定</span><button class="panel-header-btn" onclick="if(window.closeAllPanels) closeAllPanels(); else document.getElementById('panel-layout').classList.remove('active');" title="閉じる"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"></path></svg></button></div>
-                    <div class="panel-content">
-                        <div class="sp-info" style="align-items: center;"><span style="color: #fff; font-weight: bold;">レイアウト編集モード</span><label class="clock-toggle-switch"><input type="checkbox" id="layout-edit-toggle" onchange="window.toggleLayoutEditMode(this.checked)"><span class="clock-slider"></span></label></div>
-                        <div style="font-size: 11px; color: #aaa; margin-bottom: 10px; line-height: 1.4;">※ONにするとパネルをドラッグで自由に配置できます。<br><b>💡 キーボードの「A」キーでも切り替え可能です。</b></div>
-                        <div class="sp-info" style="flex-direction: column; align-items: flex-start; gap: 8px;">
-                            <div style="font-size: 13px; color: #fff;">編集対象パネル</div>
-                            <select id="layout-target-select" class="sp-btn" style="width: 100%; background: rgba(255,255,255,0.1); outline: none;" onchange="window.updateLayoutEditorUI()">
-                                <option value="eew-container">緊急地震速報 (EEW)</option>
-                                <option value="detail-panel">地震情報 (詳細)</option>
-                                <option value="tsunami-panel">津波情報</option>
-                                <option value="clock-panel">時計</option>
-                            </select>
-                        </div>
-                        <div class="sp-info" style="flex-direction: column; align-items: flex-start; gap: 8px; border-bottom: none;"><div style="display: flex; justify-content: space-between; width: 100%;"><span style="font-size: 13px; color: #fff;">拡大率 (Scale)</span><span id="layout-scale-val" style="color: #0A84FF; font-weight: bold;">1.0x</span></div><input type="range" id="layout-scale-slider" min="0.5" max="2.0" step="0.1" value="1.0" style="width: 100%;" oninput="window.changeLayoutScale(this.value)"></div>
-                        <div class="sp-info" style="flex-direction: column; align-items: flex-start; gap: 8px;"><div style="display: flex; justify-content: space-between; width: 100%;"><span style="font-size: 13px; color: #fff;">文字サイズ (px)</span><span id="layout-fs-val" style="color: #0A84FF; font-weight: bold;">14px</span></div><input type="range" id="layout-fs-slider" min="10" max="24" step="1" value="14" style="width: 100%;" oninput="window.changeLayoutFontSize(this.value)"></div>
-                        <button class="sp-btn sp-btn-danger" style="width: 100%; margin-top: 10px;" onclick="window.resetCurrentLayout()">このパネルの配置とサイズを初期化</button>
-                    </div>
-                </div>
-            `);
-        }
-
-        // 4. データとロジックの管理
-        const defaultLayout = {
-            'eew-container': { x: null, y: null, scale: 1.0, fs: 14 },
-            'detail-panel': { x: null, y: null, scale: 1.0, fs: 14 },
-            'tsunami-panel': { x: null, y: null, scale: 1.0, fs: 14 },
-            'clock-panel': { x: null, y: null, scale: 1.0, fs: 16 }
-        };
-        
-        let layoutData;
-        try {
-            layoutData = JSON.parse(localStorage.getItem('eq_layout_v5'));
-            if (!layoutData || typeof layoutData !== 'object') throw new Error();
-            Object.keys(defaultLayout).forEach(k => {
-                if (!layoutData[k]) layoutData[k] = Object.assign({}, defaultLayout[k]);
-            });
-        } catch(e) {
-            layoutData = JSON.parse(JSON.stringify(defaultLayout));
-        }
-
-        let isEditMode = false;
-        let dragInfo = { el: null, id: null, offsetX: 0, offsetY: 0 };
-
-        function applyLayout() {
-            Object.keys(defaultLayout).forEach(id => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                const d = layoutData[id];
-                
-                el.style.fontSize = d.fs + 'px';
-                
-                if(id === 'tsunami-panel') el.style.transformOrigin = 'top right';
-                else if(id === 'clock-panel') el.style.transformOrigin = 'top left';
-                else el.style.transformOrigin = 'bottom left';
-
-                if (d.x !== null && d.y !== null) {
-                    el.style.left = 'auto'; el.style.top = 'auto'; el.style.bottom = 'auto'; el.style.right = 'auto';
-                    if (id === 'eew-container' || id === 'detail-panel') {
-                        el.style.left = d.x + 'px';
-                        el.style.bottom = d.y + 'px';
-                    } else if (id === 'tsunami-panel') {
-                        el.style.right = d.x + 'px';
-                        el.style.top = d.y + 'px';
-                    } else if (id === 'clock-panel') {
-                        el.style.left = d.x + 'px';
-                        el.style.top = d.y + 'px';
-                    }
-                    el.style.marginLeft = '0px'; 
-                } else {
-                    el.style.left = ''; el.style.top = ''; el.style.bottom = ''; el.style.right = '';
-                    el.style.marginLeft = ''; 
-                }
-            });
-            updateCollision();
-        }
-
-        // 🚨エラー原因を修正: window. を外してローカル関数に統一しました
-        function updateCollision() {
-            const isDrawerOpen = document.body.classList.contains('drawer-open');
-            const isMenuOpen = document.body.classList.contains('menu-open');
-            const drawerThresh = 380;
-            const menuThresh = 460;
-            
-            Object.keys(defaultLayout).forEach(id => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                const d = layoutData[id];
-                let shiftX = 0;
-                
-                if (d.x !== null) {
-                    if (id !== 'tsunami-panel') {
-                        if (isDrawerOpen && d.x < drawerThresh) shiftX = drawerThresh - d.x;
-                        else if (isMenuOpen && id === 'clock-panel' && d.x < menuThresh) shiftX = menuThresh - d.x;
-                    } else {
-                        const w = el.offsetWidth * d.scale;
-                        const leftPos = window.innerWidth - d.x - w;
-                        if (isDrawerOpen && leftPos < drawerThresh) shiftX = drawerThresh - leftPos;
-                    }
-                    el.style.transform = `scale(${d.scale}) translateX(${shiftX > 0 ? shiftX : 0}px)`;
-                } else {
-                    el.style.transform = `scale(${d.scale})`;
-                }
-            });
-        }
-
-        if(window.backToParentMenu && !window.backToParentMenu.isHooked) {
-            const origBack = window.backToParentMenu;
-            window.backToParentMenu = function() { origBack(); const p = document.getElementById('panel-layout'); if(p) p.classList.remove('active'); };
-            window.backToParentMenu.isHooked = true;
-        }
-        if(window.closeAllPanels && !window.closeAllPanels.isHooked) {
-            const origClose = window.closeAllPanels;
-            window.closeAllPanels = function() { origClose(); const p = document.getElementById('panel-layout'); if(p) p.classList.remove('active'); setTimeout(updateCollision, 50); };
-            window.closeAllPanels.isHooked = true;
-        }
-        if(window.toggleDrawer && !window.toggleDrawer.isHooked) {
-            const origToggleDrawer = window.toggleDrawer;
-            window.toggleDrawer = function(mode) { origToggleDrawer(mode); setTimeout(updateCollision, 50); };
-            window.toggleDrawer.isHooked = true;
-        }
-        if(window.toggleSystemMenu && !window.toggleSystemMenu.isHooked) {
-            const origToggleMenu = window.toggleSystemMenu;
-            window.toggleSystemMenu = function() { origToggleMenu(); setTimeout(updateCollision, 50); };
-            window.toggleSystemMenu.isHooked = true;
-        }
-
-        // 5. GUIアップデートと編集モード
-        window.toggleLayoutEditMode = function(isOn) {
-            isEditMode = isOn;
-            const cb = document.getElementById('layout-edit-toggle'); if(cb) cb.checked = isOn;
-
-            Object.keys(defaultLayout).forEach(id => {
-                const el = document.getElementById(id);
-                if(!el) return;
-                
-                if(isOn) {
-                    document.body.classList.add('layout-edit-mode');
-                    el.classList.add('draggable-panel');
-                    if(id === 'detail-panel' || id === 'tsunami-panel') el.classList.add('show');
-                    if(id === 'clock-panel') el.style.display = 'block';
-                    if(id === 'eew-container' && el.innerHTML.trim() === '') {
-                        el.innerHTML = '<div class="eew-panel" style="pointer-events:none;"><div class="dp-main"><div class="dp-scale-box" style="background: rgba(0,0,0,0.3); border-color: #FF453A;"><span class="dp-scale-label">最大予測</span><span class="dp-scale-value" style="color: #FF453A; font-size: 34px;">5強</span></div><div class="dp-info"><div class="dp-name"><span style="color:#FF453A; font-weight:800;">【緊急地震速報】 第3報</span><br><span style="font-size:14px;">東京湾</span></div><div class="dp-time">ドラッグテスト用</div></div></div></div>';
-                    }
-                } else {
-                    document.body.classList.remove('layout-edit-mode');
-                    el.classList.remove('draggable-panel');
-                    if(id === 'detail-panel' || id === 'tsunami-panel') el.classList.remove('show');
-                    if(id === 'eew-container') el.innerHTML = '';
-                    if(id === 'clock-panel') {
-                        let cfg = null;
-                        try { cfg = JSON.parse(localStorage.getItem('eq_clockConfig')); } catch(e){}
-                        if(cfg && !cfg.visible) el.style.display = 'none';
-                    }
-                }
-            });
-            if(isOn) window.updateLayoutEditorUI();
-        };
-
-        window.updateLayoutEditorUI = function() {
-            const tgt = document.getElementById('layout-target-select').value;
-            const d = layoutData[tgt];
-            document.getElementById('layout-scale-slider').value = d.scale;
-            document.getElementById('layout-scale-val').innerText = d.scale.toFixed(1) + 'x';
-            document.getElementById('layout-fs-slider').value = d.fs;
-            document.getElementById('layout-fs-val').innerText = d.fs + 'px';
-        };
-
-        window.changeLayoutScale = function(val) {
-            const tgt = document.getElementById('layout-target-select').value;
-            layoutData[tgt].scale = parseFloat(val);
-            document.getElementById('layout-scale-val').innerText = parseFloat(val).toFixed(1) + 'x';
-            applyLayout(); localStorage.setItem('eq_layout_v5', JSON.stringify(layoutData));
-        };
-
-        window.changeLayoutFontSize = function(val) {
-            const tgt = document.getElementById('layout-target-select').value;
-            layoutData[tgt].fs = parseInt(val);
-            document.getElementById('layout-fs-val').innerText = parseInt(val) + 'px';
-            applyLayout(); localStorage.setItem('eq_layout_v5', JSON.stringify(layoutData));
-        };
-
-        window.resetCurrentLayout = function() {
-            const tgt = document.getElementById('layout-target-select').value;
-            layoutData[tgt] = JSON.parse(JSON.stringify(defaultLayout[tgt]));
-            applyLayout(); window.updateLayoutEditorUI(); localStorage.setItem('eq_layout_v5', JSON.stringify(layoutData));
-        };
-
-        // 6. ドラッグ＆ドロップ処理
-        function onMouseDown(e) {
-            if(!isEditMode) return;
-            const el = e.currentTarget;
-            dragInfo.el = el; dragInfo.id = el.id;
-            
-            const rect = el.getBoundingClientRect();
-            let cx = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
-            let cy = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
-            
-            dragInfo.offsetX = cx - rect.left;
-            dragInfo.offsetY = cy - rect.top;
-            
-            el.classList.add('dragging');
-            document.getElementById('layout-target-select').value = el.id;
-            window.updateLayoutEditorUI();
-        }
-
-        function onMouseMove(e) {
-            if(!isEditMode || !dragInfo.el) return;
-            e.preventDefault();
-            let cx = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
-            let cy = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
-            
-            const id = dragInfo.id;
-            const d = layoutData[id];
-            const w = dragInfo.el.offsetWidth * d.scale, h = dragInfo.el.offsetHeight * d.scale;
-            
-            let nx = cx - dragInfo.offsetX, ny = cy - dragInfo.offsetY;
-            nx = Math.max(0, Math.min(nx, window.innerWidth - w));
-            ny = Math.max(0, Math.min(ny, window.innerHeight - h));
-            
-            if (id === 'eew-container' || id === 'detail-panel') {
-                layoutData[id].x = nx;
-                layoutData[id].y = window.innerHeight - (ny + h);
-            } else if (id === 'tsunami-panel') {
-                layoutData[id].x = window.innerWidth - (nx + w);
-                layoutData[id].y = ny;
-            } else if (id === 'clock-panel') {
-                layoutData[id].x = nx;
-                layoutData[id].y = ny;
-            }
-            applyLayout();
-        }
-
-        function onMouseUp() {
-            if(dragInfo.el) {
-                dragInfo.el.classList.remove('dragging');
-                dragInfo.el = null; dragInfo.id = null;
-                localStorage.setItem('eq_layout_v5', JSON.stringify(layoutData));
-            }
-        }
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-        document.addEventListener('touchmove', onMouseMove, {passive: false});
-        document.addEventListener('touchend', onMouseUp);
-
-        // Aキーによるショートカット
-        document.addEventListener('keydown', e => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-            if (e.key.toLowerCase() === 'a') window.toggleLayoutEditMode(!isEditMode);
-        });
-
-        // 7. 初期化
-        Object.keys(defaultLayout).forEach(id => {
-            const el = document.getElementById(id);
-            if(el) {
-                el.classList.add('panel-transition');
-                el.addEventListener('mousedown', onMouseDown);
-                el.addEventListener('touchstart', onMouseDown, {passive: false});
-            }
-        });
-        applyLayout();
-        window.addEventListener('resize', () => { setTimeout(updateCollision, 100); });
-
-    })();
 </script>
 
 </body>
