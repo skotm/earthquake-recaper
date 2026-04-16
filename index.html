@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>地震情報可視化ツール</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -15,7 +15,7 @@
             --surface-color: rgba(28, 28, 30, 0.75);
             --surface-drawer: rgba(28, 28, 30, 0.85);
             --text-primary: #FFFFFF;
-            /* 🚨 視認性向上: テキストの不透明度を 0.6 -> 0.8 に引き上げコントラスト改善 */
+            /* 視認性向上: テキストの不透明度を引き上げコントラスト改善 */
             --text-secondary: rgba(235, 235, 245, 0.8);
             --border-color: rgba(84, 84, 88, 0.5);
             --accent-color: #0A84FF;
@@ -31,7 +31,7 @@
 
             --rail-width: 68px;
             --drawer-width: 300px;
-            /* 🚨 モバイル用ボトムナビの高さ */
+            /* モバイル用ボトムナビの基本高さ */
             --bottom-nav-height: 64px;
         }
         body { 
@@ -55,7 +55,7 @@
             display: flex; flex-direction: column; gap: 20px; width: 100%; align-items: center;
         }
         .nav-btn {
-            position: relative; width: 48px; height: 48px; border-radius: 12px; /* 🚨 タップ領域確保: 44px -> 48px */
+            position: relative; width: 48px; height: 48px; border-radius: 12px; /* タップ領域確保: 48px */
             background-color: rgba(255, 255, 255, 0.1); display: flex; justify-content: center; align-items: center;
             cursor: pointer; transition: all 0.3s ease;
         }
@@ -93,14 +93,14 @@
         }
         #list-container::-webkit-scrollbar, #tsunami-list-container::-webkit-scrollbar, #kyoshin-list-container::-webkit-scrollbar { width: 0px; }
         .list-item, .t-list-item {
-            padding: 12px 10px; margin-bottom: 4px; border-radius: 8px; cursor: pointer; /* 🚨 タップ領域確保: padding 10px -> 12px 10px */
+            padding: 12px 10px; margin-bottom: 4px; border-radius: 8px; cursor: pointer; 
             border-left: 4px solid transparent; background: rgba(255,255,255,0.02);
             transition: background-color 0.2s, transform 0.1s;
         }
         .list-item:hover, .t-list-item:hover { background-color: rgba(255, 255, 255, 0.08); }
         .list-item.active, .t-list-item.active { background-color: rgba(255, 255, 255, 0.15); }
-        .list-item-title, .t-list-item-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; display: flex; justify-content: space-between;} /* 🚨 視認性: 14px/600 -> 15px/700 */
-        .list-item-details, .t-list-item-details { font-size: 12px; color: var(--text-secondary); font-weight: 500; } /* 🚨 視認性: 11px -> 12px */
+        .list-item-title, .t-list-item-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; display: flex; justify-content: space-between;}
+        .list-item-details, .t-list-item-details { font-size: 12px; color: var(--text-secondary); font-weight: 500; } 
         .kyoshin-status-box { padding: 16px; text-align: center; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
         
         .live-indicator {
@@ -132,14 +132,12 @@
         
         .legend {
             background: var(--surface-color); backdrop-filter: blur(20px); padding: 10px 14px; border-radius: 12px; border: 0.5px solid var(--border-color); line-height: 1.6; color: var(--text-primary); font-size: 12px;
-            /* 🚨 モバイル表示時に他のUIと被らないようにz-indexと下余白を調整 */
-            margin-bottom: env(safe-area-inset-bottom, 0px);
         }
         .legend strong { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
         .legend i { width: 12px; height: 12px; float: left; margin-top: 4px; margin-right: 8px; border-radius: 50%; }
         .dp-close, .tp-close, .sp-close, .ep-close {
             position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; background: rgba(255,255,255,0.15); border-radius: 50%; text-align: center; line-height: 32px; font-size: 14px; cursor: pointer; color: #fff; z-index: 10; transition: background 0.2s;
-        } /* 🚨 タップ領域確保: 28px -> 32px, 背景少し明るく */
+        } 
         .dp-close:hover, .tp-close:hover, .sp-close:hover, .ep-close:hover { background: rgba(255,255,255,0.25); }
 
         .custom-control-group {
@@ -158,7 +156,7 @@
             color: var(--text-primary) !important; 
             border-radius: 0 !important; 
             border-bottom: 1px solid rgba(84, 84, 88, 0.5) !important; 
-            width: 40px !important; /* 🚨 タップ領域確保: 36px -> 40px */
+            width: 40px !important; 
             height: 40px !important; 
             line-height: 40px !important; 
             display: flex;
@@ -177,7 +175,7 @@
         .sp-info { font-size: 13px; color: #e5e5ea; margin-bottom: 6px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; }
         .sp-info:last-of-type { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
         .sp-info span { font-family: monospace; color: #64D2FF; text-align: right; font-weight: bold; }
-        .sp-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; flex: 1; transition: 0.2s; white-space: nowrap; outline: none; } /* 🚨 タップ領域と視認性確保 */
+        .sp-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; flex: 1; transition: 0.2s; white-space: nowrap; outline: none; } 
         .sp-btn:hover { background: rgba(255,255,255,0.2); }
         .sp-btn-danger { background: rgba(255,69,58,0.2); border-color: rgba(255,69,58,0.5); color: #FF453A; }
         .sp-btn-danger:hover { background: rgba(255,69,58,0.4); }
@@ -213,12 +211,12 @@
         .dp-main { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
         .dp-scale-box { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 10px 8px; min-width: 64px; background: rgba(0,0,0,0.3); border: 2px solid transparent; transition: border-color 0.3s, background-color 0.3s; white-space: nowrap; }
         .dp-scale-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 2px; white-space: nowrap; } 
-        .dp-scale-value { font-size: 34px; font-weight: 800; line-height: 1; transition: color 0.3s, font-size 0.3s; white-space: nowrap; } /* 🚨 視認性: 700 -> 800 */
+        .dp-scale-value { font-size: 34px; font-weight: 800; line-height: 1; transition: color 0.3s, font-size 0.3s; white-space: nowrap; }
         .dp-info { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding-right: 4px; }
-        .dp-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; } /* 🚨 視認性: 600 -> 700 */
+        .dp-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; } 
         .dp-time { font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; } 
         .dp-meta { font-size: 13px; line-height: 1.4; color: var(--text-secondary); } .dp-meta strong { font-size: 15px; color: #fff; font-weight: 700; }
-        .dp-toggle-btn { margin-top: 12px; padding: 12px 0 6px 0; text-align: center; font-size: 14px; font-weight: 700; color: var(--text-secondary); cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); transition: color 0.2s; } .dp-toggle-btn:hover { color: #fff; } /* 🚨 タップ領域確保 */
+        .dp-toggle-btn { margin-top: 12px; padding: 12px 0 6px 0; text-align: center; font-size: 14px; font-weight: 700; color: var(--text-secondary); cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); transition: color 0.2s; } .dp-toggle-btn:hover { color: #fff; } 
         .dp-extended-area { overflow-y: auto; padding-right: 4px; transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.4s ease; max-height: 350px; opacity: 1; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; } .dp-extended-area.collapsed { max-height: 0; opacity: 0; margin-top: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; } .dp-extended-area::-webkit-scrollbar { width: 4px; } .dp-extended-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
         .dp-comments-box { background: rgba(0, 0, 0, 0.5); border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.5; color: #e5e5ea; border-left: 4px solid var(--tsunami-none); position: relative; transition: background-color 0.2s, border-color 0.3s; } .dp-comments-box.clickable { cursor: pointer; } .dp-comments-box.clickable:hover { background: rgba(255, 255, 255, 0.1); } .dp-comments-hint { display: none; position: absolute; right: 12px; bottom: 8px; font-size: 11px; font-weight: bold; color: var(--text-secondary); } .dp-comments-box.clickable .dp-comments-hint { display: block; }
         .dp-stations-container { display: flex; flex-direction: column; } .dp-station-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.04); } .dp-station-item:last-child { border-bottom: none; } .dp-station-name { font-size: 14px; font-weight: 500; color: #e5e5ea; } .dp-station-scale { font-size: 13px; font-weight: 800; color: #fff; padding: 4px 10px; border-radius: 6px; }
@@ -273,7 +271,7 @@
         .ios-panel.child-panel { transform: translateX(100%); }
         .ios-panel.child-panel.active { transform: translateX(0); }
         .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(255, 255, 255, 0.02); flex-shrink: 0; }
-        .panel-header-btn { width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); border: none; color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; padding: 0; flex-shrink: 0; } /* 🚨 タップ領域確保 */
+        .panel-header-btn { width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); border: none; color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; padding: 0; flex-shrink: 0; } 
         .panel-header-btn:hover { background: rgba(255, 255, 255, 0.25); }
         .panel-header-btn:active { background: rgba(255, 255, 255, 0.15); transform: scale(0.92); }
         .panel-header-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
@@ -340,22 +338,27 @@
            ボトムシートとボトムナビゲーションへの切り替え
         ========================================== */
         @media (max-width: 768px) {
+            /* 1. Safe Area 対応 (iPhoneのホームバーの余白を自動で空ける) */
             #nav-rail {
-                top: auto; bottom: 0; left: 0; width: 100%; height: var(--bottom-nav-height);
+                top: auto; bottom: 0; left: 0; width: 100%; 
+                height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
                 flex-direction: row; border-right: none; border-top: 1px solid var(--border-color);
                 padding: 0 10px calc(env(safe-area-inset-bottom, 0px));
                 justify-content: space-around;
             }
             .nav-group { flex-direction: row; gap: 10px; width: auto; }
+            
+            /* 2. タブのハイライト(青い線)を上に出す */
             .nav-btn::before {
-                left: 50%; top: auto; bottom: -8px; transform: translateX(-50%) scaleX(0);
-                width: 20px; height: 4px; border-radius: 4px 4px 0 0;
+                left: 50%; top: 0px; bottom: auto; transform: translateX(-50%) scaleX(0);
+                width: 24px; height: 4px; border-radius: 0 0 4px 4px;
+                transform-origin: top;
             }
             .nav-btn.active::before { transform: translateX(-50%) scaleX(1); }
 
             /* ボトムシート化 */
             #drawer-panel {
-                top: auto; bottom: var(--bottom-nav-height); left: 0; width: 100%; height: 55vh;
+                top: auto; bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px)); left: 0; width: 100%; height: 55vh;
                 border-right: none; border-top: 1px solid var(--border-color); border-radius: 16px 16px 0 0;
                 transform: translateY(100%);
             }
@@ -364,7 +367,7 @@
             /* フローティングパネルの配置調整 */
             .eew-container, #detail-panel { 
                 left: 10px; 
-                bottom: calc(var(--bottom-nav-height) + 15px); 
+                bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 15px); 
                 max-width: calc(100vw - 20px);
                 transition: bottom 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), margin-left 0.4s;
             }
@@ -376,7 +379,19 @@
             body.drawer-open .eew-container,
             body.drawer-open #detail-panel { 
                 margin-left: 0; 
-                bottom: calc(var(--bottom-nav-height) + 55vh + 10px); 
+                bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 55vh + 10px); 
+            }
+
+            /* 3. 凡例のデフォルト位置をボトムナビゲーションバーの上にずらす */
+            .leaflet-bottom.leaflet-right {
+                margin-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 10px);
+                transition: margin-bottom 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+                z-index: 900;
+            }
+
+            /* 4. ボトムシート展開時に凡例をさらに上へ避ける (被り解消) */
+            body.drawer-open .leaflet-bottom.leaflet-right {
+                margin-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 55vh + 10px);
             }
             
             /* スマホでは左へのレイアウトシフトを無効化 */
@@ -391,8 +406,9 @@
         @media (max-width: 768px) and (orientation: landscape) {
             #drawer-panel { height: 80vh; }
             body.drawer-open .eew-container, 
-            body.drawer-open #detail-panel { bottom: calc(var(--bottom-nav-height) + 80vh + 10px); }
-            #nav-rail { padding: 0 40px calc(env(safe-area-inset-bottom, 0px)); } /* 左右のセーフエリア考慮 */
+            body.drawer-open #detail-panel { bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 80vh + 10px); }
+            body.drawer-open .leaflet-bottom.leaflet-right { margin-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 80vh + 10px); }
+            #nav-rail { padding: 0 40px calc(env(safe-area-inset-bottom, 0px)); }
         }
     </style>
 </head>
