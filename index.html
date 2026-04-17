@@ -15,7 +15,6 @@
             --surface-color: rgba(28, 28, 30, 0.75);
             --surface-drawer: rgba(28, 28, 30, 0.85);
             --text-primary: #FFFFFF;
-            /* 視認性向上: テキストの不透明度を引き上げコントラスト改善 */
             --text-secondary: rgba(235, 235, 245, 0.8);
             --border-color: rgba(84, 84, 88, 0.5);
             --accent-color: #0A84FF;
@@ -25,13 +24,11 @@
             --tsunami-watch: #FFD60A;
             --tsunami-slight: #64D2FF;
             --tsunami-none: #8E8E93;
-            /* P波・S波カラー */
             --p-wave-color: #32ADE6;
             --s-wave-color: #FF3B30;
 
             --rail-width: 68px;
             --drawer-width: 300px;
-            /* モバイル用ボトムナビの基本高さ */
             --bottom-nav-height: 64px;
         }
         body { 
@@ -55,7 +52,7 @@
             display: flex; flex-direction: column; gap: 20px; width: 100%; align-items: center;
         }
         .nav-btn {
-            position: relative; width: 48px; height: 48px; border-radius: 12px; /* タップ領域確保: 48px */
+            position: relative; width: 48px; height: 48px; border-radius: 12px;
             background-color: rgba(255, 255, 255, 0.1); display: flex; justify-content: center; align-items: center;
             cursor: pointer; transition: all 0.3s ease;
         }
@@ -118,10 +115,12 @@
             position: fixed !important; top: 0 !important; left: 0 !important; z-index: 9999 !important;
         }
         #map-container:fullscreen #detail-panel,
+        #map-container:fullscreen #tsunami-panel,
         #map-container:fullscreen .eew-container,
         #map-container:fullscreen .ios-panel-container,
         #map-container:fullscreen #clock-panel,
         #map-container.pseudo-fullscreen #detail-panel,
+        #map-container.pseudo-fullscreen #tsunami-panel,
         #map-container.pseudo-fullscreen .eew-container,
         #map-container.pseudo-fullscreen .ios-panel-container,
         #map-container.pseudo-fullscreen #clock-panel { 
@@ -132,6 +131,7 @@
         
         .legend {
             background: var(--surface-color); backdrop-filter: blur(20px); padding: 10px 14px; border-radius: 12px; border: 0.5px solid var(--border-color); line-height: 1.6; color: var(--text-primary); font-size: 12px;
+            margin-bottom: env(safe-area-inset-bottom, 0px);
         }
         .legend strong { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
         .legend i { width: 12px; height: 12px; float: left; margin-top: 4px; margin-right: 8px; border-radius: 50%; }
@@ -200,10 +200,10 @@
         .eew-minimized.forecast { background-color: #FFCC00; color: #1C1C1E; }
         @keyframes pulse-minimized-red { 0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 59, 48, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); } }
 
-        .eew-panel, #eew-panel, #tsunami-panel { pointer-events: auto; position: relative; box-sizing: border-box; width: 300px; flex-shrink: 0; background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); color: #FFFFFF; transition: background-color 0.3s, border-color 0.3s, opacity 0.3s, transform 0.3s; }
+        .eew-panel { pointer-events: auto; position: relative; box-sizing: border-box; width: 300px; flex-shrink: 0; background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); color: #FFFFFF; transition: background-color 0.3s, border-color 0.3s, opacity 0.3s, transform 0.3s; }
         .eew-panel { animation: slideInEew 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        #eew-panel, #tsunami-panel { position: absolute; top: 60px; right: 10px; max-width: calc(100vw - 20px); max-height: 40vh; z-index: 1000; opacity: 0; transform: translateX(20px); pointer-events: none; display: flex; flex-direction: column; }
-        #eew-panel.show, #tsunami-panel.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
+        #eew-panel { position: absolute; top: 60px; right: 10px; max-width: calc(100vw - 20px); max-height: 40vh; z-index: 1000; opacity: 0; transform: translateX(20px); pointer-events: none; display: flex; flex-direction: column; }
+        #eew-panel.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
         
         .plum-badge { background-color: #8E44AD; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; margin-left: 6px; font-weight: bold; vertical-align: 2px; box-shadow: 0 0 5px rgba(142,68,173,0.8); }
         @keyframes slideInEew { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
@@ -221,11 +221,27 @@
         .dp-comments-box { background: rgba(0, 0, 0, 0.5); border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.5; color: #e5e5ea; border-left: 4px solid var(--tsunami-none); position: relative; transition: background-color 0.2s, border-color 0.3s; } .dp-comments-box.clickable { cursor: pointer; } .dp-comments-box.clickable:hover { background: rgba(255, 255, 255, 0.1); } .dp-comments-hint { display: none; position: absolute; right: 12px; bottom: 8px; font-size: 11px; font-weight: bold; color: var(--text-secondary); } .dp-comments-box.clickable .dp-comments-hint { display: block; }
         .dp-stations-container { display: flex; flex-direction: column; } .dp-station-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.04); } .dp-station-item:last-child { border-bottom: none; } .dp-station-name { font-size: 14px; font-weight: 500; color: #e5e5ea; } .dp-station-scale { font-size: 13px; font-weight: 800; color: #fff; padding: 4px 10px; border-radius: 6px; }
         
-        #detail-panel { position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); width: 300px; max-width: calc(100vw - 20px); background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 0.5px solid var(--border-color); border-radius: 16px; padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; display: flex; flex-direction: column; opacity: 0; transform: translateY(150%); transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s, margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), bottom 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); pointer-events: none; box-sizing: border-box; }
-        #detail-panel.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        /* 🚨 地震パネル・津波パネルの共通スタイル（位置・アニメーション統一） */
+        #detail-panel, #tsunami-panel { 
+            position: absolute; bottom: 20px; left: calc(var(--rail-width) + 10px); 
+            width: 300px; max-width: calc(100vw - 20px); 
+            background: rgba(28, 28, 30, 0.45); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); 
+            border: 0.5px solid var(--border-color); border-radius: 16px; 
+            padding: 16px 14px 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); 
+            z-index: 1000; display: flex; flex-direction: column; 
+            opacity: 0; transform: translateY(150%); 
+            transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s, margin-left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), bottom 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); 
+            pointer-events: none; box-sizing: border-box; 
+        }
+        #detail-panel.show, #tsunami-panel.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
         
-        .tp-header { font-size: 16px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px; color: #fff; padding-right: 28px; flex-shrink: 0; } .tp-list { overflow-y: auto; padding-right: 4px; flex-grow: 1; } .tp-list::-webkit-scrollbar { width: 4px; } .tp-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-        .tp-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); } .tp-item:last-child { border-bottom: none; } .tp-area { font-size: 15px; font-weight: 700; color: #e5e5ea; } .tp-details { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-align: right;} .tp-height { font-size: 16px; font-weight: 800; margin-left: 8px;} 
+        /* 🚨 津波情報専用のリスト（カード風）デザイン */
+        .tp-list { overflow-y: auto; padding-right: 4px; flex-grow: 1; display: flex; flex-direction: column; gap: 6px; }
+        .tp-list::-webkit-scrollbar { width: 4px; } .tp-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        .tp-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 8px; border-left: 4px solid transparent; background: rgba(0,0,0,0.3); } 
+        .tp-area { font-size: 15px; font-weight: 700; color: #e5e5ea; } 
+        .tp-details { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-align: right; display: flex; align-items: center;} 
+        .tp-height { font-size: 20px; font-weight: 800; margin-left: 8px; line-height: 1;} 
         
         .custom-div-icon { overflow: visible; }
         
@@ -251,6 +267,7 @@
         /* Layout Shift Execution (PC用) */
         body.drawer-open .eew-container,
         body.drawer-open #detail-panel,
+        body.drawer-open #tsunami-panel,
         body.drawer-open #eew-panel,
         body.drawer-open #clock-panel {
             margin-left: calc(var(--drawer-width) + 10px);
@@ -335,10 +352,8 @@
 
         /* ==========================================
            🚨 モバイル対応 (レスポンシブデザイン)
-           ボトムシートとボトムナビゲーションへの切り替え
         ========================================== */
         @media (max-width: 768px) {
-            /* 1. Safe Area 対応 (iPhoneのホームバーの余白を自動で空ける) */
             #nav-rail {
                 top: auto; bottom: 0; left: 0; width: 100%; 
                 height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
@@ -348,7 +363,6 @@
             }
             .nav-group { flex-direction: row; gap: 10px; width: auto; }
             
-            /* 2. タブのハイライト(青い線)を上に出す */
             .nav-btn::before {
                 left: 50%; top: 0px; bottom: auto; transform: translateX(-50%) scaleX(0);
                 width: 24px; height: 4px; border-radius: 0 0 4px 4px;
@@ -356,7 +370,6 @@
             }
             .nav-btn.active::before { transform: translateX(-50%) scaleX(1); }
 
-            /* ボトムシート化 */
             #drawer-panel {
                 top: auto; bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px)); left: 0; width: 100%; height: 55vh;
                 border-right: none; border-top: 1px solid var(--border-color); border-radius: 16px 16px 0 0;
@@ -364,8 +377,7 @@
             }
             #drawer-panel.open { transform: translateY(0); }
 
-            /* フローティングパネルの配置調整 */
-            .eew-container, #detail-panel { 
+            .eew-container, #detail-panel, #tsunami-panel { 
                 left: 10px; 
                 bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 15px); 
                 max-width: calc(100vw - 20px);
@@ -373,40 +385,36 @@
             }
             .ios-panel-container { left: 10px; top: 10px; width: calc(100vw - 20px); }
             #clock-panel { left: 10px; top: 10px; }
-            #eew-panel, #tsunami-panel { top: 60px; right: 10px; max-width: calc(100vw - 20px); }
+            #eew-panel { top: 60px; right: 10px; max-width: calc(100vw - 20px); }
             
-            /* ドロワー(ボトムシート)が開いた時、上に押し上げる */
             body.drawer-open .eew-container,
-            body.drawer-open #detail-panel { 
+            body.drawer-open #detail-panel,
+            body.drawer-open #tsunami-panel { 
                 margin-left: 0; 
                 bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 55vh + 10px); 
             }
 
-            /* 3. 凡例のデフォルト位置をボトムナビゲーションバーの上にずらす */
             .leaflet-bottom.leaflet-right {
                 margin-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 10px);
                 transition: margin-bottom 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
                 z-index: 900;
             }
 
-            /* 4. ボトムシート展開時に凡例をさらに上へ避ける (被り解消) */
             body.drawer-open .leaflet-bottom.leaflet-right {
                 margin-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 55vh + 10px);
             }
             
-            /* スマホでは左へのレイアウトシフトを無効化 */
             body.drawer-open #eew-panel,
             body.drawer-open #clock-panel { margin-left: 0; }
 
-            /* スマホでシステムメニュー展開時は時計を非表示にして被りを防ぐ */
             body.menu-open #clock-panel { margin-left: 0; display: none !important; }
         }
         
-        /* スマホ横向き (ランドスケープ) 対応 */
         @media (max-width: 768px) and (orientation: landscape) {
             #drawer-panel { height: 80vh; }
             body.drawer-open .eew-container, 
-            body.drawer-open #detail-panel { bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 80vh + 10px); }
+            body.drawer-open #detail-panel,
+            body.drawer-open #tsunami-panel { bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 80vh + 10px); }
             body.drawer-open .leaflet-bottom.leaflet-right { margin-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 80vh + 10px); }
             #nav-rail { padding: 0 40px calc(env(safe-area-inset-bottom, 0px)); }
         }
@@ -822,8 +830,19 @@
 
     <div id="tsunami-panel" role="region" aria-label="津波情報パネル">
         <div class="tp-close" onclick="closeTsunamiPanel()" aria-label="津波情報パネルを閉じる" role="button" tabindex="0">✕</div>
-        <div class="tp-header" id="tp-main-header">津波到達予想</div>
-        <div class="tp-list"></div>
+        <div class="dp-main" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none;">
+            <div class="dp-scale-box" id="tp-box" style="background: rgba(0,0,0,0.3); min-width: 90px; padding: 12px 8px;">
+                <span class="dp-scale-label" id="tp-scale-label" style="font-size: 26px; font-weight: 800; line-height: 1.1; margin-bottom: 2px;">津波</span>
+                <span class="dp-scale-value" id="tp-scale" style="font-size: 26px; font-weight: 800; line-height: 1.1;">注意報</span>
+            </div>
+            <div class="dp-info" style="justify-content: center;">
+                <div class="dp-time" id="tp-time" style="font-size: 16px; font-weight: 700; color: #fff; margin: 0; line-height: 1.4;">--/-- --:--<br><span style="font-size: 13px; font-weight: normal; color: var(--text-secondary);">発表</span></div>
+            </div>
+        </div>
+        <div class="dp-toggle-btn" id="tp-toggle-btn" onclick="toggleTsunamiExtendedArea()" role="button" tabindex="0">津波の到達予想と高さ ▼</div>
+        <div id="tp-extended-area" class="dp-extended-area collapsed">
+            <div class="tp-list" id="tp-list-content"></div>
+        </div>
     </div>
 </div>
 
@@ -2026,8 +2045,10 @@
         const mockTsunami = { id: "mock_tsunami_" + Date.now(), created_at: new Date().toISOString(), cancelled: false, areas: [{ name: "東京湾内", grade: "Warning", maxHeight: { description: "1m" } }, { name: "千葉県内房", grade: "Warning", maxHeight: { description: "1m" } }, { name: "相模湾・三浦半島", grade: "Watch", maxHeight: { description: "0.2m" } }, { name: "伊豆諸島", grade: "Watch", maxHeight: { description: "0.2m" } }, { name: "テスト予報区", grade: "NonEffective", maxHeight: { description: "0.2m未満" } }] };
         lastTsunamiId = mockTsunami.id; tsunamiDataList.unshift(mockTsunami);
         if (currentMode === 'tsunami') renderTsunamiList();
-        drawTsunamiCoastlines(mockTsunami); updateTsunamiPanelUI(mockTsunami);
-        document.getElementById('tp-main-header').innerText = "津波警報 (自動受信テスト)"; document.getElementById('tsunami-panel').classList.add('show');
+        drawTsunamiCoastlines(mockTsunami); 
+        openedFromEarthquake = false;
+        updateTsunamiPanelUI(mockTsunami);
+        document.getElementById('tsunami-panel').classList.add('show');
     };
 
     // ==========================================
@@ -2280,6 +2301,7 @@
     // UI制御：ドロワー＆ナビゲーション
     // ==========================================
     let currentMode = 'history'; 
+    let openedFromEarthquake = false; 
 
     window.toggleDrawer = function(mode) {
         const isDrawerOpen = document.body.classList.contains('drawer-open');
@@ -2362,8 +2384,9 @@
                         if(!isDuplicate) {
                             tsunamiDataList.unshift(latest);
                             if (currentMode === 'tsunami') renderTsunamiList();
-                            drawTsunamiCoastlines(latest); updateTsunamiPanelUI(latest);
-                            document.getElementById('tp-main-header').innerText = latest.cancelled ? "津波予報・警報 (解除等)" : "津波情報 (自動受信)";
+                            drawTsunamiCoastlines(latest); 
+                            openedFromEarthquake = false;
+                            updateTsunamiPanelUI(latest);
                             document.getElementById('tsunami-panel').classList.add('show');
                             addSystemLog(`[自動受信] 新しい津波情報を検知・表示しました`, 'warn');
                         }
@@ -2475,9 +2498,6 @@
         legendDiv.innerHTML = html;
     }
 
-    // ==========================================
-    // UI イベント詳細制御
-    // ==========================================
     window.toggleKyoshinColorMode = function(checkbox) {
         if (kyoshinLayer) kyoshinLayer.setCalcMode(checkbox.checked);
         updateLegend(checkbox.checked ? 'kyoshin-calc' : 'kyoshin');
@@ -2489,10 +2509,30 @@
         else { area.classList.add('collapsed'); btn.innerHTML = '詳細情報を表示 ▼'; closeTsunamiPanel(); }
     };
 
+    window.toggleTsunamiExtendedArea = function() {
+        const area = document.getElementById('tp-extended-area'); 
+        const btn = document.getElementById('tp-toggle-btn');
+        if (area.classList.contains('collapsed')) { 
+            area.classList.remove('collapsed'); 
+            btn.innerHTML = '津波の到達予想と高さ ▲'; 
+        } else { 
+            area.classList.add('collapsed'); 
+            btn.innerHTML = '津波の到達予想と高さ ▼'; 
+        }
+    };
+
     window.toggleTsunamiPanelFromEarthquake = function() {
         const commentsBox = document.getElementById('dp-comments'); if (!commentsBox.classList.contains('clickable')) return; 
-        const panel = document.getElementById('tsunami-panel'); document.getElementById('tp-main-header').innerText = "津波到達予想";
-        if (panel.classList.contains('show')) closeTsunamiPanel(); else panel.classList.add('show');
+        const panel = document.getElementById('tsunami-panel');
+        if (panel.classList.contains('show')) {
+            closeTsunamiPanel();
+        } else {
+            openedFromEarthquake = true;
+            document.getElementById('detail-panel').classList.remove('show');
+            setTimeout(() => {
+                panel.classList.add('show');
+            }, 300);
+        }
     };
 
     function renderEarthquakeList(data) {
@@ -2558,9 +2598,14 @@
             item.addEventListener('click', () => {
                 if (item.classList.contains('active')) { closeTsunamiPanel(); return; }
                 document.querySelectorAll('.t-list-item').forEach(el => el.classList.remove('active'));
-                item.classList.add('active'); document.getElementById('detail-panel').classList.remove('show');
-                document.getElementById('tp-main-header').innerText = title + " (発表内容)";
-                updateTsunamiPanelUI(tInfo); document.getElementById('tsunami-panel').classList.add('show'); drawTsunamiCoastlines(tInfo);
+                item.classList.add('active'); 
+                
+                openedFromEarthquake = false;
+                document.getElementById('detail-panel').classList.remove('show');
+                
+                updateTsunamiPanelUI(tInfo); 
+                document.getElementById('tsunami-panel').classList.add('show'); 
+                drawTsunamiCoastlines(tInfo);
             });
             container.appendChild(item); renderCount++;
         });
@@ -2582,29 +2627,74 @@
     }
 
     function updateTsunamiPanelUI(matchedData) {
-        const listContainer = document.querySelector('#tsunami-panel .tp-list'); listContainer.innerHTML = ''; 
+        const listContainer = document.getElementById('tp-list-content'); listContainer.innerHTML = ''; 
+        
+        let maxGrade = "Unknown", titleColor = "var(--tsunami-none)", labelText = "津波", scaleText = "情報";
+        
         if (matchedData && matchedData.cancelled) {
-             listContainer.innerHTML = `<div class="tp-item"><div class="tp-area" style="color: var(--tsunami-none); line-height: 1.5;">発表されていた津波に関する予報・警報は、すべて解除されたか、発表期限が過ぎています。</div></div>`; return;
-        }
-        if (!matchedData || !matchedData.areas || matchedData.areas.length === 0) { listContainer.innerHTML = `<div class="tp-item"><div class="tp-area" style="color: var(--text-secondary);">詳細データが見つかりません</div></div>`; return; }
-        const gradeWeight = { "MajorWarning": 3, "Warning": 2, "Watch": 1, "Unknown": 0 };
-        const sortedAreas = matchedData.areas.sort((a, b) => (gradeWeight[b.grade] || 0) - (gradeWeight[a.grade] || 0));
-        sortedAreas.forEach(area => {
-            const item = document.createElement('div'); item.className = 'tp-item';
-            let colorVar = "var(--tsunami-none)";
-            if (area.grade === "MajorWarning") colorVar = "var(--tsunami-major)"; else if (area.grade === "Warning") colorVar = "var(--tsunami-warning)"; else if (area.grade === "Watch") colorVar = "var(--tsunami-watch)"; else if (area.grade === "NonEffective") colorVar = "var(--tsunami-slight)";
-            let timeText = "--:--";
-            if (area.firstHeight) {
-                if (area.firstHeight.condition) timeText = area.firstHeight.condition;
-                else if (area.firstHeight.time) {
-                    const d = getSafeDateObj(area.firstHeight.time);
-                    if (!isNaN(d.getTime())) timeText = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; else timeText = area.firstHeight.time;
+             labelText = "津波予報"; scaleText = "解除";
+             listContainer.innerHTML = `<div style="padding: 10px; font-size: 13px; color: var(--text-secondary); line-height: 1.5;">発表されていた津波に関する予報・警報は、すべて解除されたか、発表期限が過ぎています。</div>`; 
+        } else if (!matchedData || !matchedData.areas || matchedData.areas.length === 0) { 
+             listContainer.innerHTML = `<div style="padding: 10px; font-size: 13px; color: var(--text-secondary);">詳細データが見つかりません</div>`; 
+        } else {
+            const gradeWeight = { "MajorWarning": 3, "Warning": 2, "Watch": 1, "NonEffective": 0.5, "Unknown": 0 };
+            let highestWeight = -1;
+            matchedData.areas.forEach(area => { const w = gradeWeight[area.grade] || 0; if (w > highestWeight) { highestWeight = w; maxGrade = area.grade; } });
+            
+            if (maxGrade === "MajorWarning") { titleColor = "var(--tsunami-major)"; labelText = "大津波"; scaleText = "警報"; }
+            else if (maxGrade === "Warning") { titleColor = "var(--tsunami-warning)"; labelText = "津波"; scaleText = "警報"; }
+            else if (maxGrade === "Watch") { titleColor = "var(--tsunami-watch)"; labelText = "津波"; scaleText = "注意報"; }
+            else if (highestWeight === 0.5) { titleColor = "var(--tsunami-slight)"; labelText = "津波"; scaleText = "予報"; }
+            else { titleColor = "var(--tsunami-none)"; labelText = "津波"; scaleText = "情報"; }
+
+            const sortedAreas = matchedData.areas.sort((a, b) => (gradeWeight[b.grade] || 0) - (gradeWeight[a.grade] || 0));
+            sortedAreas.forEach(area => {
+                const item = document.createElement('div'); item.className = 'tp-item';
+                let colorVar = "var(--tsunami-none)", bgVar = "rgba(0,0,0,0.3)";
+                if (area.grade === "MajorWarning") { colorVar = "var(--tsunami-major)"; bgVar = "rgba(191, 90, 242, 0.15)"; } 
+                else if (area.grade === "Warning") { colorVar = "var(--tsunami-warning)"; bgVar = "rgba(255, 69, 58, 0.15)"; } 
+                else if (area.grade === "Watch") { colorVar = "var(--tsunami-watch)"; bgVar = "rgba(255, 214, 10, 0.15)"; } 
+                else if (area.grade === "NonEffective") { colorVar = "var(--tsunami-slight)"; bgVar = "rgba(100, 210, 255, 0.15)"; }
+                
+                item.style.backgroundColor = bgVar;
+                item.style.borderLeftColor = colorVar;
+                
+                let timeText = "--:--";
+                if (area.firstHeight) {
+                    if (area.firstHeight.condition) timeText = area.firstHeight.condition;
+                    else if (area.firstHeight.time) {
+                        const d = getSafeDateObj(area.firstHeight.time);
+                        if (!isNaN(d.getTime())) timeText = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; else timeText = area.firstHeight.time;
+                    }
                 }
-            }
-            let heightText = area.maxHeight && area.maxHeight.description ? area.maxHeight.description : "";
-            item.innerHTML = `<div class="tp-area" style="color: ${colorVar};">${area.name}</div><div class="tp-details">${timeText}<span class="tp-height" style="color: ${colorVar};">${heightText}</span></div>`;
-            listContainer.appendChild(item);
-        });
+                let heightText = area.maxHeight && area.maxHeight.description ? area.maxHeight.description : "";
+                item.innerHTML = `<div class="tp-area" style="color: ${colorVar};">${area.name}</div><div class="tp-details">${timeText}<span class="tp-height" style="color: ${colorVar};">${heightText}</span></div>`;
+                listContainer.appendChild(item);
+            });
+        }
+        
+        const box = document.getElementById('tp-box');
+        box.style.borderColor = titleColor;
+        
+        const labelEl = document.getElementById('tp-scale-label');
+        labelEl.innerText = labelText;
+        labelEl.style.color = titleColor;
+        
+        const scaleEl = document.getElementById('tp-scale');
+        scaleEl.innerText = scaleText;
+        scaleEl.style.color = titleColor;
+        
+        const rawTime = matchedData ? (matchedData.time || (matchedData.issue && matchedData.issue.time) || matchedData.created_at) : null;
+        const timeStr = safeFormatDateString(rawTime);
+        
+        document.getElementById('tp-time').innerHTML = timeStr !== "--/-- --:--" 
+            ? `${timeStr}<br><span style="font-size: 13px; font-weight: normal; color: var(--text-secondary);">発表</span>` 
+            : `--/-- --:--<br><span style="font-size: 13px; font-weight: normal; color: var(--text-secondary);">発表</span>`;
+        
+        document.getElementById('tsunami-panel').style.backgroundColor = "rgba(28, 28, 30, 0.45)";
+        
+        document.getElementById('tp-extended-area').classList.add('collapsed');
+        document.getElementById('tp-toggle-btn').innerHTML = '津波の到達予想と高さ ▼';
     }
 
     let multiEventTimer = null;
@@ -2630,7 +2720,10 @@
     function showEarthquakeDetails(eq, mainColor) {
         map.removeLayer(allEarthquakesLayer); 
         if (kyoshinLayer && map.hasLayer(kyoshinLayer)) map.removeLayer(kyoshinLayer); 
-        detailLayer.clearLayers(); tsunamiLineLayer.clearLayers(); map.addLayer(detailLayer); closeTsunamiPanel(); 
+        detailLayer.clearLayers(); tsunamiLineLayer.clearLayers(); map.addLayer(detailLayer); 
+        
+        openedFromEarthquake = false;
+        document.getElementById('tsunami-panel').classList.remove('show'); 
         
         if (multiEventTimer) { clearTimeout(multiEventTimer); multiEventTimer = null; }
         multiEventMarkers = []; let bounds = []; let stationDrawData = []; 
@@ -2747,8 +2840,17 @@
 
     window.closeTsunamiPanel = function() {
         document.getElementById('tsunami-panel').classList.remove('show');
-        document.querySelectorAll('.t-list-item').forEach(el => el.classList.remove('active'));
-        tsunamiLineLayer.clearLayers(); 
+        
+        // 🚨 地震情報から遷移していた場合は元に戻す処理
+        if (openedFromEarthquake) {
+            setTimeout(() => {
+                document.getElementById('detail-panel').classList.add('show');
+            }, 300); // 津波パネルが沈むアニメーションを少し待ってから表示
+            openedFromEarthquake = false; // フラグをリセット
+        } else {
+            document.querySelectorAll('.t-list-item').forEach(el => el.classList.remove('active'));
+            tsunamiLineLayer.clearLayers(); 
+        }
     };
 
     const legend = L.control({position: 'bottomright'});
