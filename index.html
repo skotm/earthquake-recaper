@@ -343,7 +343,7 @@
             pointer-events: auto; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         }
         /* 時計トグルスイッチ */
-        .clock-toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .clock-toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
         .clock-toggle-switch input { opacity: 0; width: 0; height: 0; }
         .clock-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.2); transition: .4s; border-radius: 24px; }
         .clock-slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
@@ -570,6 +570,17 @@
                     <span class="menu-text" style="color: #fff;">時計表示設定</span>
                     <svg class="menu-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                 </li>
+                
+                <li class="menu-item" onclick="openChildPanel('panel-display')" role="menuitem" tabindex="0">
+                    <div class="app-icon" style="background: linear-gradient(135deg, #8E44AD, #9B59B6);">
+                        <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                            <line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line>
+                        </svg>
+                    </div>
+                    <span class="menu-text" style="color: #fff;">表示設定 (推計震度など)</span>
+                    <svg class="menu-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                </li>
                 <li class="menu-item" onclick="openChildPanel('panel-csv')" role="menuitem" tabindex="0">
                     <div class="app-icon csv">
                         <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -606,7 +617,6 @@
                 </li>
             </ul>
         </div>
-
         <div id="panel-clock" class="ios-panel child-panel">
             <div class="panel-header">
                 <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る" aria-label="戻る">
@@ -636,6 +646,29 @@
             </div>
         </div>
 
+        <div id="panel-display" class="ios-panel child-panel">
+            <div class="panel-header">
+                <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る" aria-label="戻る">
+                    <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"></path></svg>
+                </button>
+                <span class="panel-title">表示設定</span>
+                <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる" aria-label="閉じる">
+                    <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="panel-content">
+                <div class="sp-info" style="align-items: center; border-bottom: none; padding-bottom: 0;">
+                    <div style="display:flex; flex-direction:column; text-align:left; flex: 1; padding-right: 12px;">
+                        <span style="color: #fff; font-weight: bold; font-family: inherit;">推計震度分布の表示</span>
+                        <span style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">震度5弱以上の地震選択時、気象庁の250mメッシュ推計震度をマップに重ねて表示します。</span>
+                    </div>
+                    <label class="clock-toggle-switch">
+                        <input type="checkbox" id="jrisq-toggle-btn" aria-label="推計震度の表示切り替え">
+                        <span class="clock-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
         <div id="panel-csv" class="ios-panel child-panel">
             <div class="panel-header">
                 <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る" aria-label="戻る">
@@ -1050,12 +1083,15 @@
     const tsunamiLineLayer = L.layerGroup().addTo(map); 
     const eewLayer = L.layerGroup().addTo(map);
 
+    // ▼ 追加: 気象庁推計震度分布図用レイヤーグループ ▼
+    let jmaIntensityLayerGroup = L.layerGroup().addTo(map);
+
     let virtualTimeMs = 0; 
     let isArchiveMode = false; 
     let archiveIsPlaying = false;
 
     // ==========================================
-    // 時計表示機能
+    // 時計設定 ＆ 推計震度(表示設定) ロジック
     // ==========================================
     let clockConfig = JSON.parse(localStorage.getItem('eq_clockConfig')) || { visible: true, format: 'short' };
     const clockToggleBtn = document.getElementById('clock-toggle-btn');
@@ -1094,6 +1130,85 @@
     }
     updateClockVisibility(); setInterval(updateClock, 1000);
 
+    // ==========================================
+    // 気象庁 推計震度分布 連携ロジック (1次メッシュオーバーレイ)
+    // ==========================================
+    let displayConfig = JSON.parse(localStorage.getItem('eq_displayConfig')) || { showEstimatedIntensity: true };
+    const jrisqToggleBtn = document.getElementById('jrisq-toggle-btn');
+
+    if (jrisqToggleBtn) {
+        jrisqToggleBtn.checked = displayConfig.showEstimatedIntensity;
+        jrisqToggleBtn.addEventListener('change', function() {
+            displayConfig.showEstimatedIntensity = this.checked;
+            localStorage.setItem('eq_displayConfig', JSON.stringify(displayConfig));
+            // オフにされた場合、表示中なら即座に消す
+            if (!this.checked) {
+                jmaIntensityLayerGroup.clearLayers();
+            }
+        });
+    }
+
+    async function showJmaEstimatedIntensity(eqTimeStr, maxScale) {
+        // 震度5弱(45)未満、または設定がOFFの場合は処理しない
+        if (maxScale < 45 || !displayConfig.showEstimatedIntensity) return;
+
+        jmaIntensityLayerGroup.clearLayers(); // 以前のレイヤーをクリア
+        addSystemLog(`[気象庁] 推計震度分布データを検索中...`, 'info');
+
+        try {
+            // 気象庁の公式リストJSONを取得
+            const listUrl = "https://www.jma.go.jp/bosai/estimated_intensity_map/data/list.json"; 
+            const res = await safeFetchJSON(listUrl);
+            if (!res.ok) throw new Error("リストの取得に失敗");
+            
+            const data = await res.json();
+            const targetTimeMs = getSafeDateObj(eqTimeStr).getTime();
+            let matchedData = null;
+
+            // ±5分以内の地震データをマッチング
+            if (data && Array.isArray(data)) {
+                for (let item of data) {
+                    if (!item.hypo || !item.hypo.at) continue;
+                    const jmaTime = new Date(item.hypo.at).getTime();
+                    if (Math.abs(jmaTime - targetTimeMs) <= 300000) {
+                        matchedData = item; break;
+                    }
+                }
+            }
+
+            if (!matchedData || !matchedData.mesh_num || !matchedData.url) {
+                addSystemLog(`[気象庁] 該当する推計震度分布データがありません`, 'warn');
+                return;
+            }
+
+            addSystemLog(`[気象庁] 推計震度メッシュ画像を読み込み中...`, 'info');
+            const baseUrl = `https://www.jma.go.jp/bosai/estimated_intensity_map/data/${matchedData.url}/`;
+
+            // 各メッシュコードをループして地図に重畳
+            matchedData.mesh_num.forEach(meshCode => {
+                const latStart = parseInt(meshCode.substring(0, 2)) / 1.5;
+                const lonStart = parseInt(meshCode.substring(2, 4)) + 100;
+                const latEnd = latStart + (2 / 3);
+                const lonEnd = lonStart + 1;
+
+                const imageUrl = `${baseUrl}${meshCode}.png`;
+                
+                L.imageOverlay(imageUrl, [[latEnd, lonStart], [latStart, lonEnd]], {
+                    opacity: 0.75, // 背景地図が見えるように透過
+                    interactive: false
+                }).addTo(jmaIntensityLayerGroup);
+            });
+
+            // メッシュ画像を他のマーカー等より下に配置しつつ地図の上に表示
+            jmaIntensityLayerGroup.bringToFront();
+            if(detailLayer) detailLayer.bringToFront();
+
+            addSystemLog(`[気象庁] 推計震度分布図の表示を完了しました`, 'success');
+
+        } catch (e) {
+            addSystemLog(`[気象庁] 推計震度分布の取得エラー: ${e.message}`, 'error');
+        }
+    }
     // ==========================================
     // 気象庁 CSV読み込み・複数震源パース処理
     // ==========================================
@@ -1393,7 +1508,9 @@
             if(item.maxInt.includes("6弱")) intNum=55; if(item.maxInt.includes("6強")) intNum=60; if(item.maxInt.includes("7")) intNum=70;
             let color = getIntensityColor(intNum);
             const bgClass = item.isWarning ? 'background: rgba(255, 69, 58, 0.1);' : 'background: rgba(0,0,0,0.2);';
-            let warningHtml = item.isWarning ? `<div class="dp-comments-box" style="border-left-color: #FF453A; margin-top: 8px;"><strong>⚠️ 警報対象地域</strong><br><span style="color:#FFD60A; font-size:12px;">${item.area} 等</span></div>` : '';
+            
+            const regionsContainerId = `eew-hist-regions-${item.originTime}-${item.reportNum}-${index}`;
+            let warningHtml = item.isWarning ? `<div id="${regionsContainerId}" class="dp-comments-box" style="border-left-color: #FF453A; margin-top: 8px;"><strong>⚠️ 警報対象地域</strong><br><span style="color:#FFD60A; font-size:12px;">${item.area} 等</span></div>` : '';
             
             const areasContainerId = `eew-hist-areas-${item.originTime}-${item.reportNum}-${index}`;
             let areasHtml = `<div id="${areasContainerId}" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 11px; color: var(--text-secondary); text-align: center;"><div class="spinner" style="width:10px;height:10px;display:inline-block;margin-right:4px;"></div>地域ごとの予想震度を取得中...</div></div>`;
@@ -1403,6 +1520,15 @@
             listContainer.appendChild(div);
 
             fetchP2PEEWDetails(item.originTime, item.reportNum, false).then(areas => {
+                if (item.isWarning && areas && areas.length > 0) {
+                    const warningRegions = areas.filter(a => (a.scaleTo || a.scaleFrom || 0) >= 40).map(a => a.name);
+                    const regionsEl = document.getElementById(regionsContainerId);
+                    if (regionsEl && warningRegions.length > 0) {
+                        let displayNames = warningRegions.length > 4 ? [...warningRegions.slice(0, 4), '他'] : warningRegions;
+                        regionsEl.innerHTML = `<strong>⚠️ 警報対象地域</strong><br><span style="color:#FFD60A; font-size:12px;">${displayNames.join(', ')}</span>`;
+                    }
+                }
+
                 const container = document.getElementById(areasContainerId); if (!container) return;
                 if (areas === null) { container.innerHTML = `<div style="font-size: 11px; color: var(--text-secondary); text-align: center;">地域データへのアクセスに失敗しました</div>`; return; }
                 if (areas.length === 0) { container.innerHTML = `<div style="font-size: 11px; color: var(--text-secondary); text-align: center;">詳細な地域データはありません</div>`; return; }
@@ -1595,6 +1721,21 @@
     let japanGeoData = null; 
     let epicenterGeoData = null; 
 
+    // EEWの自動クリアタイマー（古い報が残るのを防止）
+    setInterval(() => {
+        const now = Date.now();
+        activeEEWs.forEach((state, eventId) => {
+            if (state.lastUpdated && (now - state.lastUpdated > 180000)) { 
+                if (state.clearTimer) clearTimeout(state.clearTimer);
+                if (state.animFrame) cancelAnimationFrame(state.animFrame);
+                eewLayer.removeLayer(state.layerGroup); 
+                activeEEWs.delete(eventId);
+                removeEEWDOM(eventId);
+                addSystemLog(`[EEW] タイムアウトによりEEW(${eventId})をクリアしました`, 'info');
+            }
+        });
+    }, 10000);
+
     function formatEEWTime(timeStr) {
         if (!timeStr || timeStr.length < 14) return "時刻不明";
         return `${timeStr.slice(8, 10)}:${timeStr.slice(10, 12)}:${timeStr.slice(12, 14)}`;
@@ -1634,8 +1775,11 @@
     }
 
     function processEEWData(data) {
+        if (Array.isArray(data)) { data.forEach(d => processEEWData(d)); return; }
         if (!data || !data.result || data.result.message === "データがありません" || data.result.message === "対象外") return;
         const eventId = data.report_id || data.origin_time; 
+        if (!eventId) return;
+
         const isCancel = data.is_cancel === true, isPlum = data.is_plum === true || (data.region_name === "" && data.calcintensity); 
         const timeStr = `${formatEEWTime(data.origin_time)} 頃発生`;
 
@@ -1645,6 +1789,7 @@
             updateEEWPanelUI(eventId, data, isPlum, timeStr, true);
             if (activeEEWs.has(eventId)) {
                 const state = activeEEWs.get(eventId);
+                if (state.clearTimer) clearTimeout(state.clearTimer);
                 if (state.animFrame) cancelAnimationFrame(state.animFrame);
                 eewLayer.removeLayer(state.layerGroup); activeEEWs.delete(eventId);
             }
@@ -1657,7 +1802,9 @@
                 data: data, layerGroup: layerGroup, clearTimer: null,
                 pCircle: L.circle([0,0], {renderer: eewRenderer, radius: 0, color: '#32ADE6', weight: 1.5, fill: true, fillOpacity: 0.05, interactive: false}),
                 sCircle: L.circle([0,0], {renderer: eewRenderer, radius: 0, color: '#FF3B30', weight: 2.5, fill: true, fillOpacity: 0.15, interactive: false}),
-                alertLayer: L.layerGroup(), animFrame: null
+                alertLayer: L.layerGroup(), animFrame: null,
+                lastLat: null, lastLon: null, lastPlum: null, lastAlertRegionsStr: "",
+                lastUpdated: Date.now()
             });
             const state = activeEEWs.get(eventId);
             state.pCircle.addTo(layerGroup); state.sCircle.addTo(layerGroup); state.alertLayer.addTo(layerGroup);
@@ -1665,31 +1812,70 @@
         }
 
         const eewState = activeEEWs.get(eventId);
-        eewState.data = data; eewState.layerGroup.clearLayers(); 
-        eewState.pCircle.addTo(eewState.layerGroup); eewState.sCircle.addTo(eewState.layerGroup); eewState.alertLayer.addTo(eewState.layerGroup);
+        eewState.data = data; 
+        eewState.lastUpdated = Date.now();
+
+        if (!eewState.layerGroup.hasLayer(eewState.pCircle)) eewState.pCircle.addTo(eewState.layerGroup);
+        if (!eewState.layerGroup.hasLayer(eewState.sCircle)) eewState.sCircle.addTo(eewState.layerGroup);
+        if (!eewState.layerGroup.hasLayer(eewState.alertLayer)) eewState.alertLayer.addTo(eewState.layerGroup);
 
         if (data.latitude && data.longitude) {
             const lat = parseFloat(data.latitude), lon = parseFloat(data.longitude);
             eewState.pCircle.setLatLng([lat, lon]); eewState.sCircle.setLatLng([lat, lon]);
-            const iconHtml = isPlum ? `<div class="eew-marker-plum"></div>` : `<div class="eew-marker-cross"></div>`;
-            const epicenterMarker = L.marker([lat, lon], { icon: L.divIcon({ className: 'custom-div-icon', html: iconHtml, iconSize: [0, 0] }), zIndexOffset: 30000 });
-            eewState.layerGroup.addLayer(epicenterMarker);
-            if (!isPlum) L.marker([lat, lon], { icon: L.divIcon({ className: 'custom-div-icon', html: `<div class="eew-epicenter-pulse"></div>`, iconSize: [0, 0] }) }).addTo(eewState.layerGroup);
             
-            if (isFirstCatch) map.setView([lat, lon], 6, { animate: true, duration: 1.0 });
+            if (eewState.lastLat !== lat || eewState.lastLon !== lon || eewState.lastPlum !== isPlum) {
+                if (eewState.epicenterMarker) eewState.layerGroup.removeLayer(eewState.epicenterMarker);
+                if (eewState.pulseMarker) eewState.layerGroup.removeLayer(eewState.pulseMarker);
+
+                const iconHtml = isPlum ? `<div class="eew-marker-plum"></div>` : `<div class="eew-marker-cross"></div>`;
+                eewState.epicenterMarker = L.marker([lat, lon], { icon: L.divIcon({ className: 'custom-div-icon', html: iconHtml, iconSize: [0, 0] }), zIndexOffset: 30000 });
+                eewState.layerGroup.addLayer(eewState.epicenterMarker);
+                
+                if (!isPlum) {
+                    eewState.pulseMarker = L.marker([lat, lon], { icon: L.divIcon({ className: 'custom-div-icon', html: `<div class="eew-epicenter-pulse"></div>`, iconSize: [0, 0] }) });
+                    eewState.layerGroup.addLayer(eewState.pulseMarker);
+                }
+                eewState.lastLat = lat; eewState.lastLon = lon; eewState.lastPlum = isPlum;
+            }
+            
+            if (isFirstCatch) map.setView([lat, lon], 8, { animate: true, duration: 1.0 });
         }
 
-        eewState.alertLayer.clearLayers();
-        if (data.alertflg === "警報" && japanGeoData) {
-            let regionsToHighlight = data.alertRegions || [data.region_name];
+        // 警報ポリゴンの更新 (防災科研側のデータ処理)
+        let regionsToHighlight = data.alertRegions || [];
+        
+        if (regionsToHighlight.length > 0) {
+            // テスト等で明示的に渡された場合
+            let currentAlertRegionsStr = regionsToHighlight.sort().join(',');
+            if (data.alertflg === "警報" && japanGeoData && eewState.lastAlertRegionsStr !== currentAlertRegionsStr) {
+                eewState.alertLayer.clearLayers();
+                L.geoJSON(japanGeoData, {
+                    filter: function(feature) { const name = feature.properties.name || ""; return regionsToHighlight.some(r => name.includes(r) || r.includes(name)); },
+                    style: { fillColor: '#FFFF00', fillOpacity: 0.35, color: '#FFFF00', weight: 2, dashArray: '3' }, interactive: false 
+                }).addTo(eewState.alertLayer);
+                eewState.lastAlertRegionsStr = currentAlertRegionsStr;
+            }
+        } else if (data.alertflg === "警報" && !eewState.lastAlertRegionsStr) {
+            // 実際の地震の初回で、まだP2PQuakeデータがない場合のみフォールバックで塗る
+            let fallbackRegions = [data.region_name];
+            let currentAlertRegionsStr = fallbackRegions.join(',');
+            eewState.alertLayer.clearLayers();
             L.geoJSON(japanGeoData, {
-                filter: function(feature) { const name = feature.properties.name || ""; return regionsToHighlight.some(r => name.includes(r) || r.includes(name)); },
+                filter: function(feature) { const name = feature.properties.name || ""; return fallbackRegions.some(r => name.includes(r) || r.includes(name)); },
                 style: { fillColor: '#FFFF00', fillOpacity: 0.35, color: '#FFFF00', weight: 2, dashArray: '3' }, interactive: false 
             }).addTo(eewState.alertLayer);
+            eewState.lastAlertRegionsStr = "FALLBACK:" + currentAlertRegionsStr;
+        } else if (data.alertflg !== "警報") {
+            eewState.alertLayer.clearLayers();
+            eewState.lastAlertRegionsStr = "";
         }
 
         updateEEWPanelUI(eventId, data, isPlum, timeStr, false);
-        if (data.is_final) { if (!eewState.clearTimer) eewState.clearTimer = setTimeout(() => { closeEEW(eventId); }, 20000); }
+        
+        if (data.is_final) { 
+            if (eewState.clearTimer) clearTimeout(eewState.clearTimer);
+            eewState.clearTimer = setTimeout(() => { closeEEW(eventId); }, 20000); 
+        }
     }
 
     function updateEEWPanelUI(eventId, data, isPlum, timeStr, isCancel) {
@@ -1697,31 +1883,7 @@
         let wrapper = document.getElementById(`eew-wrapper-${eventId}`);
         let panel, minIcon;
         
-        if (!wrapper) {
-            wrapper = document.createElement('div'); wrapper.id = `eew-wrapper-${eventId}`; wrapper.className = 'eew-wrapper';
-            panel = document.createElement('div'); panel.id = `eew-panel-${eventId}`; panel.className = 'eew-panel';
-            minIcon = document.createElement('div'); minIcon.id = `eew-minimized-${eventId}`; minIcon.className = 'eew-minimized';
-            minIcon.style.display = 'none'; minIcon.onclick = () => restoreEEW(eventId); minIcon.innerHTML = '!'; minIcon.title = '緊急地震速報を展開'; minIcon.setAttribute('role', 'button'); minIcon.setAttribute('aria-label', '緊急地震速報を展開');
-            wrapper.appendChild(panel); wrapper.appendChild(minIcon); container.appendChild(wrapper); 
-        } else {
-            panel = document.getElementById(`eew-panel-${eventId}`); minIcon = document.getElementById(`eew-minimized-${eventId}`);
-        }
-
-        const existingExtended = document.getElementById(`eew-extended-${eventId}`);
-        const isCollapsed = existingExtended ? existingExtended.classList.contains('collapsed') : true;
-        const btnText = isCollapsed ? '詳細情報を表示 ▼' : '詳細情報を閉じる ▲';
-        const collapsedClass = isCollapsed ? ' collapsed' : '';
-
-        if (isCancel) {
-            restoreEEW(eventId); panel.style.backgroundColor = "rgba(28, 28, 30, 0.45)"; panel.style.borderColor = "#8E8E93";
-            panel.innerHTML = `<div class="dp-close" onclick="closeEEW('${eventId}')" aria-label="閉じる" role="button">✕</div><div class="dp-main"><div class="dp-scale-box" style="background: rgba(0,0,0,0.5); border-color: #8E8E93;"><span class="dp-scale-label">緊急速報</span><span class="dp-scale-value" style="color: #8E8E93; font-size: 26px;">取消</span></div><div class="dp-info"><div class="dp-name"><span style="color:#FF453A; font-weight:800; font-size:16px;">【緊急地震速報】 取消</span></div><div class="dp-time">この速報は取り消されました</div><div class="dp-meta"></div></div></div><div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')" role="button">${btnText}</div><div id="eew-extended-${eventId}" class="dp-extended-area${collapsedClass}"><div class="dp-comments-box" style="border-left-color: #8E8E93;"><strong>【誤報・取消】</strong><br>先ほどの緊急地震速報は取り消されました。</div></div>`;
-            return;
-        }
-
         const isWarning = data.alertflg === "警報";
-        minIcon.className = `eew-minimized ${isWarning ? 'warning' : 'forecast'}`;
-        panel.style.backgroundColor = isWarning ? "rgba(100, 20, 20, 0.45)" : "rgba(28, 28, 30, 0.45)";
-        panel.style.borderColor = isWarning ? "rgba(255, 69, 58, 0.6)" : "var(--border-color)";
         const badgeHtml = isPlum ? `<span class="plum-badge">PLUM法</span>` : '';
         const reportText = data.is_final ? "最終報" : `第${data.report_num}報`;
         const titleColor = isWarning ? "#FF453A" : "#FFD60A", regionName = data.region_name || '調査中', magnitude = data.magunitude ? data.magunitude : '-.-';
@@ -1734,18 +1896,122 @@
         let color = getIntensityColor(intNum);
         let plumNotice = isPlum ? '<br><span style="font-size: 11px; color: #aaa;">※観測点の揺れから予測しています。</span>' : '';
         
-        let regionsDisplay = [];
-        if (data.alertRegions && data.alertRegions.length > 0) {
-            regionsDisplay = data.alertRegions.length > 3 ? [...data.alertRegions.slice(0, 3), '他'] : data.alertRegions;
+        let regionsDisplay = data.alertRegions || [data.region_name];
+        let regionsTextId = `eew-regions-${eventId}`;
+        let areasContainerId = `eew-areas-container-${eventId}`;
+        
+        const existingExtended = document.getElementById(`eew-extended-${eventId}`);
+        const isCollapsed = existingExtended ? existingExtended.classList.contains('collapsed') : true;
+        const btnText = isCollapsed ? '詳細情報を表示 ▼' : '詳細情報を閉じる ▲';
+        const collapsedClass = isCollapsed ? ' collapsed' : '';
+
+        // 🚨 差分更新のためのDOM構造化
+        if (!wrapper) {
+            wrapper = document.createElement('div'); wrapper.id = `eew-wrapper-${eventId}`; wrapper.className = 'eew-wrapper';
+            panel = document.createElement('div'); panel.id = `eew-panel-${eventId}`; panel.className = 'eew-panel';
+            minIcon = document.createElement('div'); minIcon.id = `eew-minimized-${eventId}`; minIcon.className = 'eew-minimized';
+            minIcon.style.display = 'none'; minIcon.onclick = () => restoreEEW(eventId); minIcon.innerHTML = '!'; minIcon.title = '緊急地震速報を展開'; minIcon.setAttribute('role', 'button'); minIcon.setAttribute('aria-label', '緊急地震速報を展開');
+            wrapper.appendChild(panel); wrapper.appendChild(minIcon); container.appendChild(wrapper); 
+
+            let displayStyle = (isWarning && regionsDisplay.length > 0 && regionsDisplay[0] !== '') ? 'block' : 'none';
+            let displayNamesStr = regionsDisplay.length > 3 ? [...regionsDisplay.slice(0, 3), '他'].join(', ') : regionsDisplay.join(', ');
+            let regionsText = `<div id="${regionsTextId}" style="font-size:13px; font-weight:bold; color:#FFD60A; margin-top:4px; display:${displayStyle};">警報対象: ${displayNamesStr}</div>`;
+
+            let areasHtml = `<div id="${areasContainerId}" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 12px; font-weight:bold; color: var(--text-secondary); text-align: center;"><div class="spinner" style="width:12px;height:12px;display:inline-block;margin-right:6px;"></div>地域ごとの予想震度を取得中...</div></div>`;
+
+            panel.innerHTML = `
+                <div class="dp-close" onclick="minimizeEEW('${eventId}')" aria-label="閉じる" role="button">✕</div>
+                <div class="dp-main">
+                    <div class="dp-scale-box" id="eew-scale-box-${eventId}" style="background: rgba(0,0,0,0.3); border-color: ${color};">
+                        <span class="dp-scale-label">最大予測</span>
+                        <span class="dp-scale-value" id="eew-scale-val-${eventId}" style="color: ${color}; font-size: 36px;">${intensityStr}</span>
+                    </div>
+                    <div class="dp-info">
+                        <div class="dp-name" title="${regionName}"><span id="eew-title-${eventId}" style="color:${titleColor}; font-weight:800;">【緊急地震速報】 ${reportText}</span> <span id="eew-badge-${eventId}">${badgeHtml}</span><br><span id="eew-region-${eventId}" style="font-size:15px; font-weight:600;">${regionName}</span></div>
+                        <div class="dp-time" id="eew-time-${eventId}">${timeStr}</div>
+                        <div class="dp-meta" id="eew-meta-${eventId}">M <strong style="color:#fff;">${magnitude}</strong> / 深さ <strong style="color:#fff;">${depth}</strong>${depth !== 'ごく浅い' && depth !== '--' ? 'km' : ''}</div>
+                    </div>
+                </div>
+                ${regionsText}
+                <div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')" role="button">${btnText}</div>
+                <div id="eew-extended-${eventId}" class="dp-extended-area${collapsedClass}">
+                    <div class="dp-comments-box" id="eew-comment-${eventId}" style="border-left-color: ${color};">
+                        <strong>【予測情報】</strong><br>強い揺れに警戒してください。<span id="eew-warn-text-${eventId}">${isWarning ? '<br><span style="color:#FF453A; font-weight:bold;">※これは緊急地震速報（警報）です。</span>' : ''}</span><span id="eew-plum-text-${eventId}">${plumNotice}</span>
+                    </div>
+                    ${areasHtml}
+                </div>
+            `;
+        } else {
+            panel = document.getElementById(`eew-panel-${eventId}`); minIcon = document.getElementById(`eew-minimized-${eventId}`);
+            
+            if (isCancel) {
+                restoreEEW(eventId); panel.style.backgroundColor = "rgba(28, 28, 30, 0.45)"; panel.style.borderColor = "#8E8E93";
+                panel.innerHTML = `<div class="dp-close" onclick="closeEEW('${eventId}')" aria-label="閉じる" role="button">✕</div><div class="dp-main"><div class="dp-scale-box" style="background: rgba(0,0,0,0.5); border-color: #8E8E93;"><span class="dp-scale-label">緊急速報</span><span class="dp-scale-value" style="color: #8E8E93; font-size: 26px;">取消</span></div><div class="dp-info"><div class="dp-name"><span style="color:#FF453A; font-weight:800; font-size:16px;">【緊急地震速報】 取消</span></div><div class="dp-time">この速報は取り消されました</div><div class="dp-meta"></div></div></div><div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')" role="button">${btnText}</div><div id="eew-extended-${eventId}" class="dp-extended-area${collapsedClass}"><div class="dp-comments-box" style="border-left-color: #8E8E93;"><strong>【誤報・取消】</strong><br>先ほどの緊急地震速報は取り消されました。</div></div>`;
+                return;
+            }
+
+            minIcon.className = `eew-minimized ${isWarning ? 'warning' : 'forecast'}`;
+            panel.style.backgroundColor = isWarning ? "rgba(100, 20, 20, 0.45)" : "rgba(28, 28, 30, 0.45)";
+            panel.style.borderColor = isWarning ? "rgba(255, 69, 58, 0.6)" : "var(--border-color)";
+
+            document.getElementById(`eew-scale-box-${eventId}`).style.borderColor = color;
+            const scaleValEl = document.getElementById(`eew-scale-val-${eventId}`);
+            if(scaleValEl.innerText !== intensityStr) { scaleValEl.innerText = intensityStr; scaleValEl.style.color = color; }
+
+            const titleEl = document.getElementById(`eew-title-${eventId}`);
+            titleEl.innerText = `【緊急地震速報】 ${reportText}`; titleEl.style.color = titleColor;
+            
+            document.getElementById(`eew-badge-${eventId}`).innerHTML = badgeHtml;
+            document.getElementById(`eew-region-${eventId}`).innerText = regionName;
+            document.getElementById(`eew-time-${eventId}`).innerText = timeStr;
+            document.getElementById(`eew-meta-${eventId}`).innerHTML = `M <strong style="color:#fff;">${magnitude}</strong> / 深さ <strong style="color:#fff;">${depth}</strong>${depth !== 'ごく浅い' && depth !== '--' ? 'km' : ''}`;
+
+            const regionsEl = document.getElementById(regionsTextId);
+            if (regionsEl) {
+                if (isWarning && regionsDisplay.length > 0 && regionsDisplay[0] !== '') {
+                    let displayNamesStr = regionsDisplay.length > 3 ? [...regionsDisplay.slice(0, 3), '他'].join(', ') : regionsDisplay.join(', ');
+                    regionsEl.innerText = `警報対象: ${displayNamesStr}`;
+                    regionsEl.style.display = 'block';
+                } else {
+                    regionsEl.style.display = 'none';
+                }
+            }
+
+            document.getElementById(`eew-comment-${eventId}`).style.borderLeftColor = color;
+            document.getElementById(`eew-warn-text-${eventId}`).innerHTML = isWarning ? '<br><span style="color:#FF453A; font-weight:bold;">※これは緊急地震速報（警報）です。</span>' : '';
+            document.getElementById(`eew-plum-text-${eventId}`).innerHTML = plumNotice;
         }
-        let regionsText = regionsDisplay.length > 0 ? `<div style="font-size:13px; font-weight:bold; color:#FFD60A; margin-top:4px;">警報対象: ${regionsDisplay.join(', ')}</div>` : '';
 
-        const areasContainerId = `eew-areas-container-${eventId}`;
-        let areasHtml = `<div id="${areasContainerId}" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 12px; font-weight:bold; color: var(--text-secondary); text-align: center;"><div class="spinner" style="width:12px;height:12px;display:inline-block;margin-right:6px;"></div>地域ごとの予想震度を取得中...</div></div>`;
-
-        panel.innerHTML = `<div class="dp-close" onclick="minimizeEEW('${eventId}')" aria-label="閉じる" role="button">✕</div><div class="dp-main"><div class="dp-scale-box" style="background: rgba(0,0,0,0.3); border-color: ${color};"><span class="dp-scale-label">最大予測</span><span class="dp-scale-value" style="color: ${color}; font-size: 36px;">${intensityStr}</span></div><div class="dp-info"><div class="dp-name" title="${regionName}"><span style="color:${titleColor}; font-weight:800;">【緊急地震速報】 ${reportText}</span> ${badgeHtml}<br><span style="font-size:15px; font-weight:600;">${regionName}</span></div><div class="dp-time">${timeStr}</div><div class="dp-meta">M <strong style="color:#fff;">${magnitude}</strong> / 深さ <strong style="color:#fff;">${depth}</strong>${depth !== 'ごく浅い' && depth !== '--' ? 'km' : ''}</div></div></div>${regionsText}<div class="dp-toggle-btn" id="eew-toggle-${eventId}" onclick="toggleEEWExtendedArea('${eventId}')" role="button">${btnText}</div><div id="eew-extended-${eventId}" class="dp-extended-area${collapsedClass}"><div class="dp-comments-box" style="border-left-color: ${color};"><strong>【予測情報】</strong><br>強い揺れに警戒してください。${isWarning ? '<br><span style="color:#FF453A; font-weight:bold;">※これは緊急地震速報（警報）です。</span>' : ''}${plumNotice}</div>${areasHtml}</div>`;
-
+        // P2PQuake通信で詳細エリアを取得して動的更新
         fetchP2PEEWDetails(data.origin_time, data.report_num, isCancel).then(areas => {
+            if (data.alertflg === "警報" && areas && areas.length > 0) {
+                const warningRegions = areas.filter(a => (a.scaleTo || a.scaleFrom || 0) >= 40).map(a => a.name);
+                if (warningRegions.length > 0) {
+                    const regionsEl = document.getElementById(regionsTextId);
+                    if (regionsEl) {
+                        let displayNames = warningRegions.length > 3 ? [...warningRegions.slice(0, 3), '他'] : warningRegions;
+                        regionsEl.innerText = `警報対象: ${displayNames.join(', ')}`;
+                        regionsEl.style.display = 'block';
+                    }
+                    
+                    const eewState = activeEEWs.get(eventId);
+                    if (eewState && japanGeoData) {
+                        let currentAlertRegionsStr = warningRegions.sort().join(',');
+                        if (eewState.lastAlertRegionsStr !== currentAlertRegionsStr) {
+                            eewState.alertLayer.clearLayers();
+                            L.geoJSON(japanGeoData, {
+                                filter: function(feature) {
+                                    const name = feature.properties.name || "";
+                                    return warningRegions.some(r => name.includes(r) || r.includes(name));
+                                },
+                                style: { fillColor: '#FFFF00', fillOpacity: 0.35, color: '#FFFF00', weight: 2, dashArray: '3' }, interactive: false
+                            }).addTo(eewState.alertLayer);
+                            eewState.lastAlertRegionsStr = currentAlertRegionsStr;
+                        }
+                    }
+                }
+            }
+
             const container = document.getElementById(areasContainerId); if (!container) return;
             if (areas === null) { container.innerHTML = `<div style="font-size: 12px; color: var(--text-secondary); text-align: center;">地域データへのアクセスに失敗しました</div>`; return; }
             if (areas.length === 0) { container.innerHTML = `<div style="font-size: 12px; color: var(--text-secondary); text-align: center;">詳細な地域データはありません</div>`; return; }
@@ -1764,7 +2030,9 @@
                 const names = scaleGroups.get(scale), scaleColor = getIntensityColor(scale), scaleStr = getIntensityString(scale), textColor = (scale === 40 || scale === 45) ? '#000' : '#fff';
                 listHtml += `<div style="display: flex; align-items: flex-start; gap: 8px; background: rgba(0,0,0,0.3); padding: 6px 10px; border-radius: 8px; border-left: 4px solid ${scaleColor};"><div style="background: ${scaleColor}; color: ${textColor}; font-weight: 800; font-size: 12px; padding: 2px 8px; border-radius: 4px; white-space: nowrap;">震度${scaleStr}</div><div style="font-size: 13px; font-weight:500; color: #e5e5ea; line-height: 1.4;">${names.join(', ')}</div></div>`;
             }
-            container.innerHTML = listHtml + '</div>';
+            if (container.innerHTML !== listHtml) {
+                container.innerHTML = listHtml;
+            }
         });
     }
 
@@ -2491,7 +2759,7 @@
         } else if (type === 'kyoshin') {
             html = `<strong>強震モニタ</strong><div style="display: flex;"><div style="width: 15px; height: 180px; background: linear-gradient(to top, #000080 0%, #0044FF 10%, #00AAFF 20%, #00FFFF 30%, #00FF00 40%, #ADFF2F 50%, #FFFF00 60%, #FFA500 70%, #FF0000 80%, #800000 90%, #4B0082 100%); border: 1px solid #555; border-radius: 3px; margin-right: 10px;"></div><div style="display: flex; flex-direction: column; justify-content: space-between; font-size: 11px; font-weight: bold; height: 180px;"><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span><span>0</span><span>-1</span><span>-2</span><span>-3</span></div></div><div style="font-size:11px; color:#aaa; margin-top:8px;">● = 陸上</div>`;
         } else if (type === 'kyoshin-calc') {
-            const grades = [10, 20, 30, 40, 45, 50, 55, 60, 70]; const labels = ['1', '2', '3', '4', '5-', '5+', '6-', '6+', '7']; html = '<strong style="margin-bottom:6px; display:block;">推定計測震度</strong>';
+            const grades = [10, 20, 30, 40, 45, 50, 55, 60, 70]; const labels = ['1', '2', '3', '4','5-', '5+', '6-', '6+', '7']; html = '<strong style="margin-bottom:6px; display:block;">推定計測震度</strong>';
             for (let i = 0; i < grades.length; i++) html += '<div><i style="background:' + getIntensityColor(grades[i]) + '"></i> ' + labels[i] + '</div>';
             html += '<div style="margin-top: 8px; font-size: 10px; color: #aaa; line-height:1.2;">※設定値未満は透過</div>';
         }
@@ -2820,6 +3088,11 @@
             archiveContainer.innerHTML = `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);"><button class="sp-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(100, 210, 255, 0.2); border-color: rgba(100, 210, 255, 0.5); color: #64D2FF; font-size:14px;" onclick="playArchiveFromEQ('${eq.earthquake.time}')">▶ この地震の強震モニタを再生</button><div style="font-size: 11px; color: #aaa; margin-top: 8px; text-align: center;">※発生時刻を検索し、5秒前から自動再生</div></div>`;
             archiveContainer.style.display = 'block';
         } else { archiveContainer.innerHTML = ''; archiveContainer.style.display = 'none'; }
+
+        // ▼ 追加: 気象庁推計震度分布図の描画をキック ▼
+        if (!eq.isCsv && eq.earthquake && eq.earthquake.maxScale >= 45) {
+            showJmaEstimatedIntensity(eq.earthquake.time, eq.earthquake.maxScale);
+        }
     }
 
     window.closeDetailPanel = function() {
@@ -2830,6 +3103,11 @@
         
         map.removeLayer(detailLayer); closeTsunamiPanel(); 
         if (stationLayer && map.hasLayer(stationLayer)) map.removeLayer(stationLayer);
+        
+        // ▼ 追加: 気象庁推計震度分布レイヤーをクリア ▼
+        if (jmaIntensityLayerGroup) {
+            jmaIntensityLayerGroup.clearLayers();
+        }
         
         const isHistoryTab = (currentMode === 'history'), isKyoshinTab = (currentMode === 'kyoshin');
         
