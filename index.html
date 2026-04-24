@@ -322,6 +322,29 @@
             line-height: 1.4;
         }
 
+        /* ▼ 追加: 地震ツールチップ用のデザイン (観測点と完全統一) ▼ */
+        .leaflet-tooltip.custom-eq-tooltip {
+            background: rgba(0,0,0,0.8) !important;
+            border: 1px solid #555 !important;
+            color: #fff !important;
+            font-size: 12px !important;
+            font-weight: bold !important;
+            padding: 6px 10px !important;
+            border-radius: 6px !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+            white-space: nowrap !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
+            line-height: 1.4 !important;
+            opacity: 1 !important;
+        }
+        .leaflet-tooltip-left.custom-eq-tooltip::before,
+        .leaflet-tooltip-right.custom-eq-tooltip::before,
+        .leaflet-tooltip-top.custom-eq-tooltip::before,
+        .leaflet-tooltip-bottom.custom-eq-tooltip::before {
+            display: none !important; /* デフォルトの三角形ポインタを強制的に隠す */
+        }
+
         .sim-tab {
             padding: 8px 14px; background: rgba(255,255,255,0.1); border-radius: 16px; font-size: 13px; font-weight: 600;
             white-space: nowrap; cursor: pointer; border: 1px solid transparent; transition: all 0.2s;
@@ -657,7 +680,7 @@
                 </button>
             </div>
             <div class="panel-content">
-                <div class="sp-info" style="align-items: center; border-bottom: none; padding-bottom: 0;">
+                <div class="sp-info" style="align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
                     <div style="display:flex; flex-direction:column; text-align:left; flex: 1; padding-right: 12px;">
                         <span style="color: #fff; font-weight: bold; font-family: inherit;">推計震度分布の表示</span>
                         <span style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">震度5弱以上の地震選択時、気象庁の250mメッシュ推計震度をマップに重ねて表示します。</span>
@@ -667,8 +690,19 @@
                         <span class="clock-slider"></span>
                     </label>
                 </div>
+                <div class="sp-info" style="align-items: center; border-bottom: none; padding-bottom: 0;">
+                    <div style="display:flex; flex-direction:column; text-align:left; flex: 1; padding-right: 12px;">
+                        <span style="color: #fff; font-weight: bold; font-family: inherit;">前日の微小地震の表示</span>
+                        <span style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">震度1未満の無感地震をグレーの小円で表示します。</span>
+                    </div>
+                    <label class="clock-toggle-switch">
+                        <input type="checkbox" id="micro-eq-toggle-btn" aria-label="微小地震の表示切り替え">
+                        <span class="clock-slider"></span>
+                    </label>
+                </div>
             </div>
         </div>
+        
         <div id="panel-csv" class="ios-panel child-panel">
             <div class="panel-header">
                 <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る" aria-label="戻る">
@@ -893,6 +927,11 @@
         if (isElectron) return fetch(targetUrl);
         return useProxyForJSON ? fetch(PROXY_BASE + targetUrl) : fetch(targetUrl).catch(() => { useProxyForJSON = true; return fetch(PROXY_BASE + targetUrl); });
     }
+    
+    async function safeFetchText(targetUrl) {
+        if (isElectron) return fetch(targetUrl).then(r=>r.text());
+        return useProxyForJSON ? fetch(PROXY_BASE + targetUrl).then(r=>r.text()) : fetch(targetUrl).then(r=>r.text()).catch(() => { useProxyForJSON = true; return fetch(PROXY_BASE + targetUrl).then(r=>r.text()); });
+    }
 
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([38.0, 137.0], 5);
 
@@ -1083,7 +1122,6 @@
     const tsunamiLineLayer = L.layerGroup().addTo(map); 
     const eewLayer = L.layerGroup().addTo(map);
 
-    // ▼ 追加: 気象庁推計震度分布図用レイヤーグループ ▼
     let jmaIntensityLayerGroup = L.layerGroup().addTo(map);
 
     let virtualTimeMs = 0; 
@@ -1091,7 +1129,7 @@
     let archiveIsPlaying = false;
 
     // ==========================================
-    // 時計設定 ＆ 推計震度(表示設定) ロジック
+    // 時計設定 ＆ 推計震度 ＆ 微小地震 (表示設定) ロジック
     // ==========================================
     let clockConfig = JSON.parse(localStorage.getItem('eq_clockConfig')) || { visible: true, format: 'short' };
     const clockToggleBtn = document.getElementById('clock-toggle-btn');
@@ -1130,33 +1168,38 @@
     }
     updateClockVisibility(); setInterval(updateClock, 1000);
 
-    // ==========================================
-    // 気象庁 推計震度分布 連携ロジック (1次メッシュオーバーレイ)
-    // ==========================================
-    let displayConfig = JSON.parse(localStorage.getItem('eq_displayConfig')) || { showEstimatedIntensity: true };
+    let displayConfig = JSON.parse(localStorage.getItem('eq_displayConfig')) || { showEstimatedIntensity: true, showMicroEarthquakes: false };
     const jrisqToggleBtn = document.getElementById('jrisq-toggle-btn');
+    const microEqToggleBtn = document.getElementById('micro-eq-toggle-btn');
 
     if (jrisqToggleBtn) {
         jrisqToggleBtn.checked = displayConfig.showEstimatedIntensity;
         jrisqToggleBtn.addEventListener('change', function() {
             displayConfig.showEstimatedIntensity = this.checked;
             localStorage.setItem('eq_displayConfig', JSON.stringify(displayConfig));
-            // オフにされた場合、表示中なら即座に消す
-            if (!this.checked) {
-                jmaIntensityLayerGroup.clearLayers();
-            }
+            if (!this.checked) jmaIntensityLayerGroup.clearLayers();
         });
     }
 
+    if (microEqToggleBtn) {
+        microEqToggleBtn.checked = displayConfig.showMicroEarthquakes;
+        microEqToggleBtn.addEventListener('change', function() {
+            displayConfig.showMicroEarthquakes = this.checked;
+            localStorage.setItem('eq_displayConfig', JSON.stringify(displayConfig));
+            fetchEarthquakeHistory(); // 即座に再描画
+        });
+    }
+
+    // ==========================================
+    // 気象庁 推計震度分布 連携ロジック (1次メッシュオーバーレイ)
+    // ==========================================
     async function showJmaEstimatedIntensity(eqTimeStr, maxScale) {
-        // 震度5弱(45)未満、または設定がOFFの場合は処理しない
         if (maxScale < 45 || !displayConfig.showEstimatedIntensity) return;
 
-        jmaIntensityLayerGroup.clearLayers(); // 以前のレイヤーをクリア
+        jmaIntensityLayerGroup.clearLayers();
         addSystemLog(`[気象庁] 推計震度分布データを検索中...`, 'info');
 
         try {
-            // 気象庁の公式リストJSONを取得
             const listUrl = "https://www.jma.go.jp/bosai/estimated_intensity_map/data/list.json"; 
             const res = await safeFetchJSON(listUrl);
             if (!res.ok) throw new Error("リストの取得に失敗");
@@ -1165,7 +1208,6 @@
             const targetTimeMs = getSafeDateObj(eqTimeStr).getTime();
             let matchedData = null;
 
-            // ±5分以内の地震データをマッチング
             if (data && Array.isArray(data)) {
                 for (let item of data) {
                     if (!item.hypo || !item.hypo.at) continue;
@@ -1184,7 +1226,6 @@
             addSystemLog(`[気象庁] 推計震度メッシュ画像を読み込み中...`, 'info');
             const baseUrl = `https://www.jma.go.jp/bosai/estimated_intensity_map/data/${matchedData.url}/`;
 
-            // 各メッシュコードをループして地図に重畳
             matchedData.mesh_num.forEach(meshCode => {
                 const latStart = parseInt(meshCode.substring(0, 2)) / 1.5;
                 const lonStart = parseInt(meshCode.substring(2, 4)) + 100;
@@ -1194,12 +1235,11 @@
                 const imageUrl = `${baseUrl}${meshCode}.png`;
                 
                 L.imageOverlay(imageUrl, [[latEnd, lonStart], [latStart, lonEnd]], {
-                    opacity: 0.75, // 背景地図が見えるように透過
+                    opacity: 0.75,
                     interactive: false
                 }).addTo(jmaIntensityLayerGroup);
             });
 
-            // メッシュ画像を他のマーカー等より下に配置しつつ地図の上に表示
             jmaIntensityLayerGroup.bringToFront();
             if(detailLayer) detailLayer.bringToFront();
 
@@ -1209,7 +1249,66 @@
             addSystemLog(`[気象庁] 推計震度分布の取得エラー: ${e.message}`, 'error');
         }
     }
+
     // ==========================================
+    // 気象庁 日別震源一覧スクレイピング (座標高精度化＆微小地震用)
+    // ==========================================
+    async function fetchJmaDailyMap(dateStr) { // dateStr: "YYYYMMDD"
+        const targetUrl = `https://www.data.jma.go.jp/eqev/data/daily_map/${dateStr}.html`;
+        try {
+            const html = await safeFetchText(targetUrl);
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const pre = doc.querySelector('pre');
+            if (!pre) return [];
+            
+            const lines = pre.textContent.split('\n');
+            const eqData = [];
+            
+            // 例: 2026  4 22 00:00 45.6  39°53.4'N 143° 3.8'E   17     1.1  三陸沖
+            // スペースの揺らぎや、各種引用符に対応した堅牢な正規表現
+            const regex = /^\s*(\d{4})\s+(\d{1,2})\s+(\d{1,2})\s+(\d{2}):(\d{2})\s+([\d.]+)\s+(\d{2,3})°\s*([\d.]+)[′'’]\s*([NS])\s+(\d{2,3})°\s*([\d.]+)[′'’]\s*([EW])\s+(\d+|-)\s+([-\d.]+)\s+(.*)/;
+
+            lines.forEach(line => {
+                const match = line.match(regex);
+                if (match) {
+                    const year = parseInt(match[1]);
+                    const month = parseInt(match[2]);
+                    const day = parseInt(match[3]);
+                    const hour = parseInt(match[4]);
+                    const min = parseInt(match[5]);
+                    const sec = parseFloat(match[6]);
+
+                    const eqDate = new Date(year, month-1, day, hour, min, Math.floor(sec));
+                    
+                    let lat = parseFloat(match[7]) + parseFloat(match[8])/60.0;
+                    if (match[9] === 'S') lat = -lat;
+                    let lon = parseFloat(match[10]) + parseFloat(match[11])/60.0;
+                    if (match[12] === 'W') lon = -lon;
+                    
+                    let depthStr = match[13];
+                    let depth = 0;
+                    if (depthStr !== "-") depth = parseInt(depthStr) || 0;
+                    
+                    let magStr = match[14];
+                    let mag = -1.0;
+                    if (magStr !== "-") mag = parseFloat(magStr);
+                    
+                    eqData.push({
+                        time: eqDate.getTime(),
+                        lat: lat,
+                        lon: lon,
+                        depth: depth,
+                        mag: mag,
+                        matched: false
+                    });
+                }
+            });
+            return eqData;
+        } catch (e) {
+            return [];
+        }
+    }
+// ==========================================
     // 気象庁 CSV読み込み・複数震源パース処理
     // ==========================================
     const dropZone = document.getElementById('csv-drop-zone');
@@ -1721,7 +1820,7 @@
     let japanGeoData = null; 
     let epicenterGeoData = null; 
 
-    // EEWの自動クリアタイマー（古い報が残るのを防止）
+    // EEWの自動クリアタイマー
     setInterval(() => {
         const now = Date.now();
         activeEEWs.forEach((state, eventId) => {
@@ -1845,7 +1944,6 @@
         let regionsToHighlight = data.alertRegions || [];
         
         if (regionsToHighlight.length > 0) {
-            // テスト等で明示的に渡された場合
             let currentAlertRegionsStr = regionsToHighlight.sort().join(',');
             if (data.alertflg === "警報" && japanGeoData && eewState.lastAlertRegionsStr !== currentAlertRegionsStr) {
                 eewState.alertLayer.clearLayers();
@@ -1856,7 +1954,6 @@
                 eewState.lastAlertRegionsStr = currentAlertRegionsStr;
             }
         } else if (data.alertflg === "警報" && !eewState.lastAlertRegionsStr) {
-            // 実際の地震の初回で、まだP2PQuakeデータがない場合のみフォールバックで塗る
             let fallbackRegions = [data.region_name];
             let currentAlertRegionsStr = fallbackRegions.join(',');
             eewState.alertLayer.clearLayers();
@@ -1905,7 +2002,6 @@
         const btnText = isCollapsed ? '詳細情報を表示 ▼' : '詳細情報を閉じる ▲';
         const collapsedClass = isCollapsed ? ' collapsed' : '';
 
-        // 🚨 差分更新のためのDOM構造化
         if (!wrapper) {
             wrapper = document.createElement('div'); wrapper.id = `eew-wrapper-${eventId}`; wrapper.className = 'eew-wrapper';
             panel = document.createElement('div'); panel.id = `eew-panel-${eventId}`; panel.className = 'eew-panel';
@@ -1982,7 +2078,6 @@
             document.getElementById(`eew-plum-text-${eventId}`).innerHTML = plumNotice;
         }
 
-        // P2PQuake通信で詳細エリアを取得して動的更新
         fetchP2PEEWDetails(data.origin_time, data.report_num, isCancel).then(areas => {
             if (data.alertflg === "警報" && areas && areas.length > 0) {
                 const warningRegions = areas.filter(a => (a.scaleTo || a.scaleFrom || 0) >= 40).map(a => a.name);
@@ -2078,7 +2173,6 @@
         activeEEWs.clear(); addSystemLog(`[EEW Test] 全てのシミュレーションをクリアしました`, 'info');
     }
 
-    // --- 既存のプリセットテスト ---
     window.runEEWTest = function(type) {
         ensureMode('kyoshin'); isEEWMockActive = true; closeDetailPanel();
         const baseTime = getFormatTimeStr(new Date()).time; addSystemLog(`[EEW Test] ${type} テストを開始`, 'warn');
@@ -2740,7 +2834,9 @@
         switch (scale) { case 10: return '#64D2FF'; case 20: return '#0A84FF'; case 30: return '#30D158'; case 40: return '#FFD60A'; case 45: return '#FF9F0A'; case 50: return '#FF453A'; case 55: return '#FF2D55'; case 60: return '#BF5AF2'; case 70: return '#5E5CE6'; default: return '#8E8E93'; }
     }
     function getIntensityString(scale) {
-        const scaleMap = { 10: "1", 20: "2", 30: "3", 40: "4", 45: "5弱", 50: "5強", 55: "6弱", 60: "6強", 70: "7" }; return scaleMap[scale] || "?";
+        const scaleMap = { 10: "1", 20: "2", 30: "3", 40: "4", 45: "5弱", 50: "5強", 55: "6弱", 60: "6強", 70: "7" }; 
+        if (scale < 10 && scale >= 0) return "1未満";
+        return scaleMap[scale] || "?";
     }
     function getShortIntensityString(scale) {
         const scaleMap = { 10: "1", 20: "2", 30: "3", 40: "4", 45: "5-", 50: "5+", 55: "6-", 60: "6+", 70: "7" }; return scaleMap[scale] || "?";
@@ -2803,28 +2899,222 @@
         }
     };
 
+    // ==========================================
+    // 🚨 地震履歴描画・マージ処理
+    // ==========================================
     function renderEarthquakeList(data) {
-        const listContainer = document.getElementById('list-container'); listContainer.innerHTML = ''; allEarthquakesLayer.clearLayers();
+        const listContainer = document.getElementById('list-container'); 
+        listContainer.innerHTML = ''; 
+        allEarthquakesLayer.clearLayers();
+
+        // 微小地震と通常地震を分けて配列化
+        const microEqsToDraw = [];
+        const normalEqsToDraw = [];
 
         data.forEach((eq) => {
             if (!eq.earthquake || !eq.earthquake.hypocenter) return;
-            const hypo = eq.earthquake.hypocenter; const maxScale = eq.earthquake.maxScale;
-            if (hypo.latitude === -200 || hypo.longitude === -200 || maxScale === undefined || maxScale === null || maxScale < 10) return;
-            const color = getIntensityColor(maxScale); const timeStr = safeFormatDateString(eq.earthquake.time);
-            const radius = Math.max((hypo.magnitude || 4) * 2.5, 5);
-            const eqCircle = L.circleMarker([hypo.latitude, hypo.longitude], { radius: radius, fillColor: color, color: color, weight: 1.5, opacity: 0.9, fillOpacity: 0.4 }).bindTooltip(`${hypo.name} (M${hypo.magnitude >= 0 ? hypo.magnitude : '-'})`).addTo(allEarthquakesLayer);
-            const listItem = document.createElement('div'); listItem.className = 'list-item'; listItem.style.borderLeftColor = color; 
-            listItem.innerHTML = `<div class="list-item-title"><span>${hypo.name || "不明"}</span><span style="color:${color};">震度${getIntensityString(maxScale)}</span></div><div class="list-item-details">${timeStr} | M${hypo.magnitude >= 0 ? hypo.magnitude : '-'}</div>`;
-            const activateEarthquake = () => {
-                if (listItem.classList.contains('active')) { closeDetailPanel(); return; }
-                document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
-                listItem.classList.add('active'); listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); showEarthquakeDetails(eq, color);
-            };
-            listItem.addEventListener('click', activateEarthquake); eqCircle.on('click', activateEarthquake); listContainer.appendChild(listItem);
+            const hypo = eq.earthquake.hypocenter; 
+            const maxScale = eq.earthquake.maxScale;
+            
+            if (hypo.latitude === -200 || hypo.longitude === -200 || maxScale === undefined || maxScale === null) return;
+            
+            const isMicro = eq.isMicro || maxScale < 10;
+            if (isMicro && !displayConfig.showMicroEarthquakes) return; 
+
+            if (isMicro) microEqsToDraw.push(eq);
+            else normalEqsToDraw.push(eq);
+        });
+
+        // 微小地震を先に描画し、通常地震を後から描画することで背面に配置する
+        [...microEqsToDraw, ...normalEqsToDraw].forEach((eq) => {
+            const hypo = eq.earthquake.hypocenter; 
+            const maxScale = eq.earthquake.maxScale;
+            const isMicro = eq.isMicro || maxScale < 10;
+            const color = isMicro ? '#8E8E93' : getIntensityColor(maxScale); 
+            const timeStr = safeFormatDateString(eq.earthquake.time);
+            
+            let radius, weight, fillOpacity;
+            if (isMicro) {
+                radius = 3.5; weight = 1.0; fillOpacity = 0.6;
+            } else {
+                radius = Math.max((hypo.magnitude || 4) * 2.5, 5); weight = 1.5; fillOpacity = 0.4;
+            }
+
+            // ツールチップ設定（観測点と同じUI、マウス追従）
+            const tooltipText = `${timeStr} 発生<br>M ${hypo.magnitude >= 0 ? hypo.magnitude.toFixed(1) : '-'}<br>深さ: ${hypo.depth > 0 ? hypo.depth+'km' : '不明'}`;
+            const eqCircle = L.circleMarker([hypo.latitude, hypo.longitude], { 
+                radius: radius, fillColor: color, color: color, weight: weight, opacity: 0.9, fillOpacity: fillOpacity 
+            }).bindTooltip(tooltipText, { className: 'custom-eq-tooltip', direction: 'auto', sticky: true }).addTo(allEarthquakesLayer);
+            
+            const intensityLabel = isMicro ? "震度1未満/不明" : `震度${getIntensityString(maxScale)}`;
+            
+            if (!isMicro) {
+                const listItem = document.createElement('div'); listItem.className = 'list-item'; listItem.style.borderLeftColor = color; 
+                listItem.innerHTML = `<div class="list-item-title"><span>${hypo.name || "不明"}</span><span style="color:${color}; font-size: 13px;">${intensityLabel}</span></div><div class="list-item-details">${timeStr} | M${hypo.magnitude >= 0 ? hypo.magnitude : '-'}</div>`;
+                
+                const activateEarthquake = () => {
+                    if (listItem.classList.contains('active')) { closeDetailPanel(); return; }
+                    document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
+                    listItem.classList.add('active'); listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); showEarthquakeDetails(eq, color);
+                };
+                listItem.addEventListener('click', activateEarthquake); 
+                eqCircle.on('click', activateEarthquake); 
+                listContainer.appendChild(listItem);
+            } else {
+                eqCircle.on('click', () => {}); // 微小地震は詳細パネルを開かない
+            }
         });
     }
 
-    function fetchEarthquakeHistory() { fetch('https://api.p2pquake.net/v2/history?codes=551&limit=100').then(res => res.json()).then(data => renderEarthquakeList(data)); }
+    async function fetchEarthquakeHistory() { 
+        try {
+            const res = await fetch('https://api.p2pquake.net/v2/history?codes=551&limit=100');
+            let p2pData = await res.json();
+            
+            if (p2pData.length === 0) {
+                renderEarthquakeList(p2pData);
+                return;
+            }
+
+            let minTime = Infinity;
+            p2pData.forEach(eq => {
+                if (eq.earthquake && eq.earthquake.time) {
+                    const t = getSafeDateObj(eq.earthquake.time).getTime();
+                    if (t < minTime) minTime = t;
+                }
+            });
+            
+            const nowDate = new Date();
+            const endTime = nowDate.getTime();
+            
+            let datesToFetch = new Set();
+            let tmpDate = new Date(minTime);
+            while(tmpDate.getTime() <= endTime + 24*60*60*1000) {
+                datesToFetch.add(`${tmpDate.getFullYear()}${String(tmpDate.getMonth()+1).padStart(2,'0')}${String(tmpDate.getDate()).padStart(2,'0')}`);
+                tmpDate = new Date(tmpDate.getTime() + 24 * 60 * 60 * 1000);
+            }
+            
+            // 安全のために今日と昨日も必ず追加
+            const yesterday = new Date(nowDate.getTime() - 24 * 60 * 60 * 1000);
+            datesToFetch.add(`${nowDate.getFullYear()}${String(nowDate.getMonth()+1).padStart(2,'0')}${String(nowDate.getDate()).padStart(2,'0')}`);
+            datesToFetch.add(`${yesterday.getFullYear()}${String(yesterday.getMonth()+1).padStart(2,'0')}${String(yesterday.getDate()).padStart(2,'0')}`);
+
+            // 日付を降順（新しい順）にソートして配列化
+            const dateArray = Array.from(datesToFetch).sort((a,b) => b.localeCompare(a));
+            
+            let jmaDataAll = [];
+            let latestAvailableDateStr = null;
+
+            // 気象庁日別データの取得
+            const jmaPromises = dateArray.map(dateStr => fetchJmaDailyMap(dateStr).then(data => ({dateStr, data})));
+            const jmaResults = await Promise.all(jmaPromises);
+            
+            jmaResults.forEach(result => {
+                if (result.data.length > 0) {
+                    jmaDataAll = jmaDataAll.concat(result.data);
+                    // 最も新しい利用可能な日付を特定（降順に処理しているため最初の1つ）
+                    if (!latestAvailableDateStr) {
+                        latestAvailableDateStr = result.dateStr;
+                    }
+                }
+            });
+
+            // 🚨 P2Pデータとのマージ（複合照合と座標上書き）
+            p2pData.forEach(p2pEq => {
+                if (!p2pEq.earthquake || !p2pEq.earthquake.hypocenter || !p2pEq.earthquake.time) return;
+                const hypo = p2pEq.earthquake.hypocenter;
+                if (hypo.latitude === -200 || hypo.longitude === -200) return;
+
+                const p2pTime = getSafeDateObj(p2pEq.earthquake.time).getTime();
+                const p2pLat = hypo.latitude;
+                const p2pLon = hypo.longitude;
+                const p2pMag = hypo.magnitude;
+
+                let bestMatch = null;
+                let bestScore = Infinity;
+
+                jmaDataAll.forEach(jmaEq => {
+                    if (jmaEq.matched) return; // 既に使用済みはスキップ
+
+                    // 【第1段階】時間フィルター: ±120秒（2分）以内
+                    const timeDiff = Math.abs(jmaEq.time - p2pTime) / 1000;
+                    if (timeDiff > 120) return;
+
+                    // 【第2段階】空間フィルター: P2Pの座標から約50km以内
+                    let dist = 999;
+                    if (typeof turf !== 'undefined') {
+                        const pt1 = turf.point([p2pLon, p2pLat]);
+                        const pt2 = turf.point([jmaEq.lon, jmaEq.lat]);
+                        dist = turf.distance(pt1, pt2, { units: 'kilometers' });
+                    } else {
+                        // fallback (turf未読込時)
+                        dist = Math.sqrt(Math.pow(p2pLon - jmaEq.lon, 2) + Math.pow(p2pLat - jmaEq.lat, 2)) * 100;
+                    }
+                    if (dist > 50) return;
+
+                    // 【第3段階】スコアリング: 時間差 + (マグニチュード差 * 10) + 距離
+                    const magDiff = (p2pMag >= 0 && jmaEq.mag >= 0) ? Math.abs(p2pMag - jmaEq.mag) : 0;
+                    const score = timeDiff + (magDiff * 10) + dist;
+
+                    // 最もズレが少ないものを記憶
+                    if (score < bestScore) {
+                        bestScore = score;
+                        bestMatch = jmaEq;
+                    }
+                });
+
+                if (bestMatch) {
+                    // 照合成功：高精度座標で上書き
+                    hypo.latitude = bestMatch.lat;
+                    hypo.longitude = bestMatch.lon;
+                    if (bestMatch.depth > 0 && hypo.depth !== bestMatch.depth) hypo.depth = bestMatch.depth;
+                    if (bestMatch.mag >= 0 && p2pMag === -1) hypo.magnitude = bestMatch.mag;
+                    bestMatch.matched = true; // マッチフラグを立てる
+                }
+            });
+
+            // 🚨 震度1未満の抽出（最新取得可能日のデータで照合されなかったもの）
+            const microEqs = [];
+            if (latestAvailableDateStr) {
+                jmaDataAll.forEach(jmaEq => {
+                    if (!jmaEq.matched) {
+                        const eqDate = new Date(jmaEq.time);
+                        const dStr = `${eqDate.getFullYear()}${String(eqDate.getMonth()+1).padStart(2,'0')}${String(eqDate.getDate()).padStart(2,'0')}`;
+                        
+                        // 最新日（基本は前日）のデータのみを抽出
+                        if (dStr === latestAvailableDateStr) {
+                            const timeStr = `${eqDate.getFullYear()}/${String(eqDate.getMonth()+1).padStart(2,'0')}/${String(eqDate.getDate()).padStart(2,'0')} ${String(eqDate.getHours()).padStart(2,'0')}:${String(eqDate.getMinutes()).padStart(2,'0')}:00`;
+                            
+                            microEqs.push({
+                                isMicro: true,
+                                earthquake: {
+                                    time: timeStr,
+                                    maxScale: 0, // 震度不明/1未満
+                                    hypocenter: {
+                                        name: "微小地震",
+                                        latitude: jmaEq.lat,
+                                        longitude: jmaEq.lon,
+                                        depth: jmaEq.depth,
+                                        magnitude: jmaEq.mag
+                                    }
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+
+            // リストを結合して発生時刻順（新しい順）にソート
+            const combinedData = p2pData.concat(microEqs);
+            combinedData.sort((a, b) => getSafeDateObj(b.earthquake.time).getTime() - getSafeDateObj(a.earthquake.time).getTime());
+
+            // 描画関数へ渡す
+            renderEarthquakeList(combinedData);
+
+        } catch (e) {
+            addSystemLog(`Err: 地震履歴の取得に失敗しました: ${e.message}`, 'error');
+        }
+    }
 
     function drawTsunamiCoastlines(matchedData) {
         tsunamiLineLayer.clearLayers(); 
