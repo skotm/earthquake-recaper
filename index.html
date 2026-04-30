@@ -454,6 +454,7 @@
     }
 </style>
 
+
 </head>
 <body>
 
@@ -654,6 +655,16 @@
                 <span class="menu-text" style="color:#fff;">フロントエンド受信ログ</span>
                 <svg class="menu-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
             </li>
+            <li class="menu-item" onclick="openChildPanel('panel-command')" role="menuitem" tabindex="0">
+                <div class="app-icon" style="background: linear-gradient(135deg, #1C1C1E, #3A3A3C);">
+                    <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="4 17 10 11 4 5"></polyline>
+                        <line x1="12" y1="19" x2="20" y2="19"></line>
+                    </svg>
+                </div>
+                <span class="menu-text" style="color:#fff;">コマンド</span>
+                <svg class="menu-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+            </li>
         </ul>
     </div>
     <div id="panel-clock" class="ios-panel child-panel">
@@ -703,6 +714,26 @@
                 </div>
                 <label class="clock-toggle-switch">
                     <input type="checkbox" id="jrisq-toggle-btn" aria-label="推計震度の表示切り替え">
+                    <span class="clock-slider"></span>
+                </label>
+            </div>
+            <div class="sp-info" style="align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
+                <div style="display:flex; flex-direction:column; text-align:left; flex: 1; padding-right: 12px;">
+                    <span style="color: #fff; font-weight: bold; font-family: inherit;">EEW 警報範囲を地図に表示</span>
+                    <span style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">警報対象の都道府県を黄色で塗ります。予想震度分布と同時ONは不可。</span>
+                </div>
+                <label class="clock-toggle-switch">
+                    <input type="checkbox" id="eew-alert-range-toggle" aria-label="EEW警報範囲の表示切り替え">
+                    <span class="clock-slider"></span>
+                </label>
+            </div>
+            <div class="sp-info" style="align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
+                <div style="display:flex; flex-direction:column; text-align:left; flex: 1; padding-right: 12px;">
+                    <span style="color: #fff; font-weight: bold; font-family: inherit;">EEW 予想震度分布を地図に表示</span>
+                    <span style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">地域別予想震度を震度凡例の色で塗ります。警報範囲と同時ONは不可。</span>
+                </div>
+                <label class="clock-toggle-switch">
+                    <input type="checkbox" id="eew-intensity-map-toggle" aria-label="EEW予想震度分布の表示切り替え">
                     <span class="clock-slider"></span>
                 </label>
             </div>
@@ -903,6 +934,48 @@
         <div class="panel-content" style="padding: 0; display: flex; flex-direction: column;">
             <div id="sys-log-container" class="sp-log-box" style="border: none; border-radius: 0; margin-top: 0; flex-grow: 1;" aria-live="polite">
                 <div class="log-info">[System] ログの記録を開始しました</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="panel-command" class="ios-panel child-panel">
+        <div class="panel-header">
+            <button class="panel-header-btn" onclick="backToParentMenu()" title="戻る" aria-label="戻る">
+                <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <span class="panel-title">コマンド</span>
+            <button class="panel-header-btn" onclick="closeAllPanels()" title="閉じる" aria-label="閉じる">
+                <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="panel-content">
+            <div class="sp-info" style="align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
+                <div style="display:flex; flex-direction:column; text-align:left; flex: 1; padding-right: 12px;">
+                    <span style="color: #fff; font-weight: bold; font-family: inherit;">キーボードコマンドを有効化</span>
+                    <span style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">ONにするとキーボードショートカットが使えます。</span>
+                </div>
+                <label class="clock-toggle-switch">
+                    <input type="checkbox" id="keyboard-command-toggle" aria-label="キーボードコマンドの有効化">
+                    <span class="clock-slider"></span>
+                </label>
+            </div>
+
+            <div style="margin-top: 14px; font-size: 13px; font-weight: bold; color: var(--text-secondary); margin-bottom: 8px; letter-spacing: 0.05em;">コマンド一覧</div>
+            <div id="command-list" style="display: flex; flex-direction: column; gap: 8px; opacity: 0.4; pointer-events: none; transition: opacity 0.3s;">
+                <div style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.05); border-radius: 10px; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.08);">
+                    <kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; padding: 0 8px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; font-size: 15px; font-weight: 800; color: #fff; font-family: monospace; box-shadow: 0 2px 0 rgba(0,0,0,0.4);">E</kbd>
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 14px; font-weight: 600; color: #fff;">緊急地震速報 (ランダム)</span>
+                        <span style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">押すたびに別の震源でEEWを同時発報</span>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.05); border-radius: 10px; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.08);">
+                    <kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; padding: 0 8px; background: rgba(255,69,58,0.15); border: 1px solid rgba(255,69,58,0.4); border-radius: 6px; font-size: 15px; font-weight: 800; color: #FF453A; font-family: monospace; box-shadow: 0 2px 0 rgba(0,0,0,0.4);">R</kbd>
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 14px; font-weight: 600; color: #fff;">EEWリセット</span>
+                        <span style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">全EEWとシミュレーターをリセット</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1221,7 +1294,7 @@
 
     // 🚨 表示設定 UI ＆ 期間指定バッジ
     // ==========================================
-    let displayConfig = JSON.parse(localStorage.getItem('eq_displayConfig')) || { showEstimatedIntensity: true, showFeltEarthquakes: true, showMicroEarthquakes: false, useCustomDateRange: false, startDate: "", endDate: "" };
+    let displayConfig = JSON.parse(localStorage.getItem('eq_displayConfig')) || { showEstimatedIntensity: true, showFeltEarthquakes: true, showMicroEarthquakes: false, useCustomDateRange: false, startDate: "", endDate: "", eewMapMode: "alert" };
 
     const jrisqToggleBtn = document.getElementById('jrisq-toggle-btn');
     const feltEqToggleBtn = document.getElementById('felt-eq-toggle-btn');
@@ -1282,8 +1355,34 @@
         closeAllPanels();
     };
 
-    // ==========================================
-    // 気象庁データ キャッシュ＆フェッチ
+    // EEW地図モードトグル（排他制御）
+    const eewAlertRangeToggle = document.getElementById('eew-alert-range-toggle');
+    const eewIntensityMapToggle = document.getElementById('eew-intensity-map-toggle');
+    if (!displayConfig.eewMapMode) displayConfig.eewMapMode = "alert";
+
+    function syncEEWMapToggles() {
+        if (eewAlertRangeToggle)   eewAlertRangeToggle.checked   = (displayConfig.eewMapMode === "alert");
+        if (eewIntensityMapToggle) eewIntensityMapToggle.checked = (displayConfig.eewMapMode === "intensity");
+    }
+    syncEEWMapToggles();
+
+    if (eewAlertRangeToggle) {
+        eewAlertRangeToggle.addEventListener('change', function() {
+            displayConfig.eewMapMode = this.checked ? "alert" : "none";
+            if (this.checked && eewIntensityMapToggle) eewIntensityMapToggle.checked = false;
+            localStorage.setItem('eq_displayConfig', JSON.stringify(displayConfig));
+            // 現在表示中のEEWの地図表示をリセット
+            activeEEWs.forEach(state => { state.alertLayer.clearLayers(); state.lastAlertRegionsStr = ""; });
+        });
+    }
+    if (eewIntensityMapToggle) {
+        eewIntensityMapToggle.addEventListener('change', function() {
+            displayConfig.eewMapMode = this.checked ? "intensity" : "none";
+            if (this.checked && eewAlertRangeToggle) eewAlertRangeToggle.checked = false;
+            localStorage.setItem('eq_displayConfig', JSON.stringify(displayConfig));
+            activeEEWs.forEach(state => { state.alertLayer.clearLayers(); state.lastAlertRegionsStr = ""; });
+        });
+    }
     // ==========================================
     const jmaDailyCache = new Map();
     async function fetchJmaDailyMapWithCache(dateStr) {
@@ -2044,31 +2143,39 @@
 
         // 警報ポリゴンの更新 (防災科研側のデータ処理)
         let regionsToHighlight = data.alertRegions || [];
-        
-        if (regionsToHighlight.length > 0) {
-            // テスト等で明示的に渡された場合
-            let currentAlertRegionsStr = regionsToHighlight.sort().join(',');
-            if (data.alertflg === "警報" && japanGeoData && eewState.lastAlertRegionsStr !== currentAlertRegionsStr) {
+
+        if (displayConfig.eewMapMode === "alert") {
+            if (regionsToHighlight.length > 0) {
+                // テスト等で明示的に渡された場合
+                let currentAlertRegionsStr = regionsToHighlight.sort().join(',');
+                if (data.alertflg === "警報" && japanGeoData && eewState.lastAlertRegionsStr !== currentAlertRegionsStr) {
+                    eewState.alertLayer.clearLayers();
+                    L.geoJSON(japanGeoData, {
+                        filter: function(feature) { const name = feature.properties.name || ""; return regionsToHighlight.some(r => name.includes(r) || r.includes(name)); },
+                        style: { fillColor: '#FFFF00', fillOpacity: 0.35, color: '#FFFF00', weight: 2, dashArray: '3' }, interactive: false 
+                    }).addTo(eewState.alertLayer);
+                    eewState.lastAlertRegionsStr = currentAlertRegionsStr;
+                }
+            } else if (data.alertflg === "警報" && !eewState.lastAlertRegionsStr) {
+                // 実際の地震の初回で、まだP2PQuakeデータがない場合のみフォールバックで塗る
+                let fallbackRegions = [data.region_name];
+                let currentAlertRegionsStr = fallbackRegions.join(',');
                 eewState.alertLayer.clearLayers();
                 L.geoJSON(japanGeoData, {
-                    filter: function(feature) { const name = feature.properties.name || ""; return regionsToHighlight.some(r => name.includes(r) || r.includes(name)); },
+                    filter: function(feature) { const name = feature.properties.name || ""; return fallbackRegions.some(r => name.includes(r) || r.includes(name)); },
                     style: { fillColor: '#FFFF00', fillOpacity: 0.35, color: '#FFFF00', weight: 2, dashArray: '3' }, interactive: false 
                 }).addTo(eewState.alertLayer);
-                eewState.lastAlertRegionsStr = currentAlertRegionsStr;
+                eewState.lastAlertRegionsStr = "FALLBACK:" + currentAlertRegionsStr;
+            } else if (data.alertflg !== "警報") {
+                eewState.alertLayer.clearLayers();
+                eewState.lastAlertRegionsStr = "";
             }
-        } else if (data.alertflg === "警報" && !eewState.lastAlertRegionsStr) {
-            // 実際の地震の初回で、まだP2PQuakeデータがない場合のみフォールバックで塗る
-            let fallbackRegions = [data.region_name];
-            let currentAlertRegionsStr = fallbackRegions.join(',');
-            eewState.alertLayer.clearLayers();
-            L.geoJSON(japanGeoData, {
-                filter: function(feature) { const name = feature.properties.name || ""; return fallbackRegions.some(r => name.includes(r) || r.includes(name)); },
-                style: { fillColor: '#FFFF00', fillOpacity: 0.35, color: '#FFFF00', weight: 2, dashArray: '3' }, interactive: false 
-            }).addTo(eewState.alertLayer);
-            eewState.lastAlertRegionsStr = "FALLBACK:" + currentAlertRegionsStr;
-        } else if (data.alertflg !== "警報") {
-            eewState.alertLayer.clearLayers();
-            eewState.lastAlertRegionsStr = "";
+        } else {
+            // alert以外のモードでは警報ポリゴンを表示しない
+            if (data.alertflg !== "警報") {
+                eewState.alertLayer.clearLayers();
+                eewState.lastAlertRegionsStr = "";
+            }
         }
 
         updateEEWPanelUI(eventId, data, isPlum, timeStr, false);
@@ -2206,9 +2313,12 @@
                         regionsEl.innerText = `警報対象: ${displayNames.join(', ')}`;
                         regionsEl.style.display = 'block';
                     }
-                    
-                    const eewState = activeEEWs.get(eventId);
-                    if (eewState && japanGeoData) {
+                }
+
+                const eewState = activeEEWs.get(eventId);
+                if (eewState && japanGeoData) {
+                    if (displayConfig.eewMapMode === "alert" && warningRegions.length > 0) {
+                        // 🟡 警報範囲モード: 黄色ポリゴン
                         let currentAlertRegionsStr = warningRegions.sort().join(',');
                         if (eewState.lastAlertRegionsStr !== currentAlertRegionsStr) {
                             eewState.alertLayer.clearLayers();
@@ -2220,6 +2330,25 @@
                                 style: { fillColor: '#FFFF00', fillOpacity: 0.35, color: '#FFFF00', weight: 2, dashArray: '3' }, interactive: false
                             }).addTo(eewState.alertLayer);
                             eewState.lastAlertRegionsStr = currentAlertRegionsStr;
+                        }
+                    } else if (displayConfig.eewMapMode === "intensity") {
+                        // 🎨 予想震度分布モード: 震度別カラーで半透明塗り分け
+                        const intensityRegionsStr = areas.map(a => `${a.name}:${a.scaleTo||a.scaleFrom||0}`).sort().join(',');
+                        if (eewState.lastAlertRegionsStr !== intensityRegionsStr) {
+                            eewState.alertLayer.clearLayers();
+                            areas.forEach(area => {
+                                const scale = area.scaleTo || area.scaleFrom || 0;
+                                if (scale < 10) return;
+                                const hexColor = getIntensityColor(scale);
+                                L.geoJSON(japanGeoData, {
+                                    filter: function(feature) {
+                                        const name = feature.properties.name || "";
+                                        return name === area.name || name.includes(area.name) || area.name.includes(name);
+                                    },
+                                    style: { fillColor: hexColor, fillOpacity: 0.45, color: hexColor, weight: 1.5, opacity: 0.7 }, interactive: false
+                                }).addTo(eewState.alertLayer);
+                            });
+                            eewState.lastAlertRegionsStr = intensityRegionsStr;
                         }
                     }
                 }
@@ -2318,6 +2447,57 @@
         mockEEWTimers.push(interval);
     }
 
+    // ==========================================
+    // キーボードコマンド
+    // ==========================================
+    let keyboardCommandEnabled = JSON.parse(localStorage.getItem('eq_keyboardCommand') || 'false');
+
+    const keyboardCommandToggle = document.getElementById('keyboard-command-toggle');
+    const commandList = document.getElementById('command-list');
+
+    function updateKeyboardCommandUI() {
+        if (keyboardCommandToggle) keyboardCommandToggle.checked = keyboardCommandEnabled;
+        if (commandList) { commandList.style.opacity = keyboardCommandEnabled ? '1' : '0.4'; commandList.style.pointerEvents = keyboardCommandEnabled ? 'auto' : 'none'; }
+    }
+    updateKeyboardCommandUI();
+
+    if (keyboardCommandToggle) {
+        keyboardCommandToggle.addEventListener('change', function() {
+            keyboardCommandEnabled = this.checked;
+            localStorage.setItem('eq_keyboardCommand', JSON.stringify(keyboardCommandEnabled));
+            updateKeyboardCommandUI();
+            addSystemLog(`[コマンド] キーボードコマンドを${keyboardCommandEnabled ? '有効' : '無効'}にしました`, 'info');
+        });
+    }
+
+    // ランダムEEWテスト用データ
+    function runRandomEEWCommand() {
+        // カスタムEEWエディタのランダム生成→即時発報（複数同時起動可）
+        addNewSimEvent(true);               // ランダムパラメータでイベント生成＆DOM更新
+        dispatchSimulatedEEW(false, false); // 生成されたイベントを第1報として即発報
+    }
+
+    function resetEEWCommand() {
+        resetEEWSimulation();
+        addSystemLog('[コマンド R] EEWシミュレーターをリセットしました', 'info');
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (!keyboardCommandEnabled) return;
+        // テキスト入力フォームにフォーカス中は無視
+        const tag = document.activeElement ? document.activeElement.tagName : '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+        switch (e.key.toUpperCase()) {
+            case 'E':
+                runRandomEEWCommand();
+                break;
+            case 'R':
+                resetEEWCommand();
+                break;
+        }
+    });
+
     let simEventsMap = new Map();
     let currentSimEventId = null;
 
@@ -2353,17 +2533,27 @@
             areas.push({ name: feature.properties.name || feature.properties.name_ja, dist: dist });
         });
 
+        // 有効な震度スケール値のみ（これ以外は getIntensityString が "?" を返す）
+        const VALID_SCALES = [70, 60, 55, 50, 45, 40, 30, 20, 10];
+        function snapToValidScale(val) {
+            for (const s of VALID_SCALES) { if (val >= s) return s; }
+            return 10;
+        }
+
         areas.sort((a, b) => a.dist - b.dist);
         let result = [];
         areas.forEach(area => {
             if (result.length >= 15) return;
             let currentInt = maxInt;
-            if (area.dist > 30) currentInt -= 5;   
-            if (area.dist > 80) currentInt -= 5;
+            if (area.dist > 30)  currentInt -= 5;
+            if (area.dist > 80)  currentInt -= 5;
             if (area.dist > 150) currentInt -= 5;
-            if (area.dist > 250) currentInt -= 10; 
+            if (area.dist > 250) currentInt -= 10;
             if (area.dist > 400) currentInt -= 10;
-            
+
+            // 有効値にスナップ（35→30, 25→20 などの無効値を除去）
+            currentInt = snapToValidScale(currentInt);
+
             if (currentInt >= 30) {
                 result.push({ name: area.name, scaleFrom: currentInt, scaleTo: currentInt });
             }
